@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SENSIS GOOD FF — Chat en Vivo</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;background:#03070D;font-family:system-ui,sans-serif;color:#E4F2FF;}
+#app{width:100%;max-width:520px;height:100vh;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+
+/* FONDOS */
+body.bg-matrix{background:#000;}
+body.bg-rain{background:linear-gradient(180deg,#000510,#001020);}
+body.bg-cyber{background:linear-gradient(135deg,#050010,#001030,#050010);}
+body.bg-fire{background:radial-gradient(ellipse at bottom,#1a0000,#000);}
+canvas#matrixCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;display:none;}
+#app{position:relative;z-index:1;}
+
+/* HEADER */
+.header{flex-shrink:0;background:linear-gradient(135deg,rgba(4,12,35,0.97),rgba(5,15,48,0.97));border-bottom:1px solid rgba(56,190,255,0.15);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
+.header-center{text-align:center;flex:1;}
+.header h1{font-size:18px;font-weight:900;letter-spacing:3px;background:linear-gradient(135deg,#fff,#38BEFF,#0A84FF);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.header-sub{display:flex;justify-content:center;gap:14px;margin-top:3px;}
+.hinfo{font-size:9px;letter-spacing:2px;color:rgba(160,215,255,0.4);text-transform:uppercase;}
+.online-dot{display:inline-block;width:6px;height:6px;background:#3DFF8F;border-radius:50%;margin-right:3px;box-shadow:0 0 5px #3DFF8F;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+.icon-btn{background:none;border:none;color:rgba(160,215,255,0.5);font-size:18px;cursor:pointer;padding:4px;border-radius:8px;transition:all 0.2s;}
+.icon-btn:hover{color:#38BEFF;background:rgba(56,190,255,0.1);}
+
+/* TABS */
+.tabs{flex-shrink:0;display:flex;border-bottom:1px solid rgba(56,190,255,0.1);}
+.tab{flex:1;padding:10px;text-align:center;font-size:10px;font-weight:800;letter-spacing:2px;cursor:pointer;color:rgba(160,215,255,0.35);text-transform:uppercase;border-bottom:2px solid transparent;transition:all 0.2s;}
+.tab.active{color:#38BEFF;border-bottom-color:#38BEFF;}
+
+/* MODAL BASE */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:flex-end;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:linear-gradient(135deg,#040e28,#02081c);border:1px solid rgba(56,190,255,0.2);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:520px;max-height:80vh;overflow-y:auto;}
+.modal-title{font-size:13px;font-weight:900;letter-spacing:3px;color:#38BEFF;text-align:center;margin-bottom:16px;text-transform:uppercase;}
+.modal-row{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.modal-label{font-size:10px;font-weight:800;letter-spacing:2px;color:rgba(160,215,255,0.5);text-transform:uppercase;}
+.modal-input{background:rgba(4,16,48,0.92);border:1px solid rgba(56,190,255,0.18);border-radius:12px;padding:11px 14px;color:#E4F2FF;font-size:14px;font-weight:600;outline:none;font-family:inherit;width:100%;}
+.modal-btn{width:100%;border:none;border-radius:12px;padding:12px;font-weight:900;font-size:12px;letter-spacing:2px;cursor:pointer;text-transform:uppercase;margin-bottom:8px;}
+.btn-primary{background:linear-gradient(160deg,#2BB8FF,#0A84FF,#0052D4);color:#fff;box-shadow:0 4px 16px rgba(10,132,255,0.3);}
+.btn-danger{background:rgba(255,50,80,0.15);border:1px solid rgba(255,50,80,0.3)!important;color:#FF5566;}
+.btn-ghost{background:rgba(56,190,255,0.08);border:1px solid rgba(56,190,255,0.2)!important;color:#38BEFF;}
+.bg-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.bg-opt{padding:10px;border-radius:12px;border:1px solid rgba(56,190,255,0.15);background:rgba(4,16,48,0.5);color:#E4F2FF;font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:all 0.2s;}
+.bg-opt.selected,.bg-opt:hover{border-color:#38BEFF;background:rgba(56,190,255,0.12);color:#38BEFF;}
+.modal-close{display:block;text-align:center;margin-top:8px;color:rgba(160,215,255,0.35);font-size:12px;cursor:pointer;padding:8px;}
+
+/* LOGIN */
+#loginScreen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 24px;gap:14px;overflow-y:auto;}
+#loginScreen h2{font-size:15px;font-weight:800;letter-spacing:2px;color:#38BEFF;text-align:center;}
+#loginScreen p{font-size:12px;color:rgba(160,215,255,0.5);text-align:center;letter-spacing:1px;line-height:1.6;}
+.login-input{width:100%;background:rgba(4,16,48,0.92);border:1px solid rgba(56,190,255,0.2);border-radius:14px;padding:13px 16px;color:#E4F2FF;font-size:15px;font-weight:600;outline:none;font-family:inherit;}
+.login-input::placeholder{color:rgba(100,170,255,0.3);}
+.login-btn{width:100%;background:linear-gradient(160deg,#2BB8FF,#0A84FF,#0052D4);border:none;border-radius:14px;padding:14px;color:#fff;font-weight:900;font-size:14px;letter-spacing:2px;cursor:pointer;box-shadow:0 4px 18px rgba(10,132,255,0.4);}
+
+/* CHAT SCREEN */
+#chatScreen{flex:1;display:none;flex-direction:column;overflow:hidden;}
+
+/* FEED */
+#feedPanel{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;}
+.feed-item{background:linear-gradient(135deg,rgba(4,14,45,0.95),rgba(2,8,28,0.98));border:1px solid rgba(56,190,255,0.12);border-radius:14px;padding:12px 14px;position:relative;-webkit-user-select:none;user-select:none;}
+.feed-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+.feed-user{font-size:11px;font-weight:800;letter-spacing:2px;color:#38BEFF;}
+.feed-time{font-size:9px;color:rgba(160,215,255,0.3);}
+.feed-msg{font-size:12px;color:rgba(160,215,255,0.6);margin-bottom:5px;}
+.feed-nivel{display:inline-block;font-size:9px;font-weight:800;letter-spacing:2px;padding:2px 10px;border-radius:99px;margin-bottom:6px;}
+.nivel-baja{background:rgba(61,255,143,0.1);border:1px solid rgba(61,255,143,0.3);color:#3DFF8F;}
+.nivel-media{background:rgba(56,190,255,0.1);border:1px solid rgba(56,190,255,0.3);color:#38BEFF;}
+.nivel-alta{background:rgba(255,85,102,0.1);border:1px solid rgba(255,85,102,0.3);color:#FF5566;}
+.feed-result{font-size:12px;font-weight:700;line-height:1.7;color:#E4F2FF;white-space:pre-wrap;}
+.reactions-bar{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;min-height:10px;}
+.r-chip{background:rgba(56,190,255,0.08);border:1px solid rgba(56,190,255,0.18);border-radius:99px;padding:3px 9px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:all 0.15s;}
+.r-chip.mine{border-color:rgba(56,190,255,0.5);background:rgba(56,190,255,0.18);}
+.r-chip .rc{font-size:10px;font-weight:800;color:rgba(160,215,255,0.7);}
+.hold-hint{font-size:9px;color:rgba(160,215,255,0.2);margin-top:6px;letter-spacing:1px;}
+
+/* EMOJI PICKER POPUP */
+#emojiPopup{display:none;position:fixed;z-index:300;background:#040e28;border:1px solid rgba(56,190,255,0.3);border-radius:16px;padding:12px;flex-wrap:wrap;gap:6px;justify-content:center;width:260px;box-shadow:0 8px 32px rgba(0,0,0,0.6);}
+#emojiPopup.show{display:flex;}
+.ep-emoji{font-size:24px;cursor:pointer;padding:4px 6px;border-radius:8px;transition:transform 0.1s;}
+.ep-emoji:hover{transform:scale(1.3);background:rgba(56,190,255,0.1);}
+.ep-close{width:100%;text-align:center;font-size:10px;color:rgba(160,215,255,0.3);cursor:pointer;margin-top:4px;letter-spacing:2px;}
+
+/* MI CHAT */
+#myPanel{flex:1;display:none;flex-direction:column;overflow:hidden;}
+#myChatMessages{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
+.msg-wrap{display:flex;flex-direction:column;}
+.msg-wrap.user{align-items:flex-end;}
+.msg-wrap.bot{align-items:flex-start;}
+.bubble{max-width:88%;padding:10px 14px;font-size:13px;font-weight:600;line-height:1.65;white-space:pre-wrap;}
+.bubble.bot{background:rgba(4,18,52,0.95);border:1px solid rgba(56,190,255,0.15);border-radius:4px 14px 14px 14px;}
+.bubble.user{background:linear-gradient(135deg,#0A84FF,#0052D4);border-radius:14px 4px 14px 14px;}
+.bubble.admin-pm{background:linear-gradient(135deg,rgba(255,170,0,0.15),rgba(255,100,0,0.1));border:1px solid rgba(255,170,0,0.3);border-radius:4px 14px 14px 14px;}
+.btns{display:flex;gap:7px;margin-top:7px;flex-wrap:wrap;}
+.opt-btn{background:rgba(10,100,230,0.12);border:1px solid rgba(56,190,255,0.28);border-radius:10px;padding:8px 14px;color:#38BEFF;font-size:12px;font-weight:800;cursor:pointer;}
+.opt-btn:disabled{opacity:0.35;cursor:default;}
+.copy-btn{display:block;margin-top:8px;width:100%;background:rgba(56,190,255,0.08);border:1px solid rgba(56,190,255,0.22);border-radius:9px;padding:8px;color:#38BEFF;font-size:10px;font-weight:800;letter-spacing:2px;cursor:pointer;text-transform:uppercase;}
+.copy-btn.copied{background:rgba(61,255,143,0.12);border-color:rgba(61,255,143,0.35);color:#3DFF8F;}
+.input-area{flex-shrink:0;padding:8px 12px 14px;display:flex;gap:8px;background:rgba(3,7,20,0.98);border-top:1px solid rgba(56,190,255,0.08);}
+#msgInput{flex:1;background:rgba(4,16,48,0.92);border:1px solid rgba(56,190,255,0.15);border-radius:12px;padding:11px 15px;color:#E4F2FF;font-family:inherit;font-size:14px;font-weight:600;outline:none;}
+#msgInput::placeholder{color:rgba(100,170,255,0.28);}
+#sendBtn{background:linear-gradient(160deg,#2BB8FF,#0A84FF,#0052D4);border:none;border-radius:12px;padding:11px 16px;color:#fff;font-weight:900;font-size:17px;cursor:pointer;flex-shrink:0;}
+
+/* scrollbar */
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:rgba(56,190,255,0.2);border-radius:3px;}
+</style>
+</head>
+<body>
+<canvas id="matrixCanvas"></canvas>
+<div id="app">
+  <div class="header">
+    <div style="width:36px;"></div>
+    <div class="header-center">
+      <h1>SENSIS GOOD FF</h1>
+      <div class="header-sub">
+        <span class="hinfo"><span class="online-dot"></span><span id="onlineCount">0</span> EN LÍNEA</span>
+        <span class="hinfo" id="counterLabel">5/5 SENSIS HOY</span>
+      </div>
+    </div>
+    <button class="icon-btn" id="configBtn" title="Configuración">⚙️</button>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="loginScreen">
+    <h2>⚡ ENTRA AL CHAT</h2>
+    <p>Elige un nombre de usuario para recibir tu sensibilidad personalizada</p>
+    <input class="login-input" id="nicknameInput" placeholder="Tu nombre (ej: SniperX, NoobKiller...)" maxlength="20" autocomplete="off"/>
+    <button class="login-btn" id="loginBtn">ENTRAR AL CHAT ⚡</button>
+  </div>
+
+  <!-- CHAT -->
+  <div id="chatScreen">
+    <div class="tabs">
+      <div class="tab" id="tabFeed">🌐 EN VIVO</div>
+      <div class="tab active" id="tabMio">💬 MI CHAT</div>
+    </div>
+    <div id="feedPanel" style="display:none;"></div>
+    <div id="myPanel">
+      <div id="myChatMessages"></div>
+      <div class="input-area">
+        <input id="msgInput" placeholder="Ej: Honor X5C Plus..." autocomplete="off"/>
+        <button id="sendBtn">⚡</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EMOJI POPUP GLOBAL -->
+<div id="emojiPopup">
+  <span class="ep-close" id="epClose">✕ CERRAR</span>
+</div>
+
+<!-- MODAL CONFIG -->
+<div class="modal-overlay" id="configModal">
+  <div class="modal-box">
+    <div class="modal-title">⚙️ CONFIGURACIÓN</div>
+    <div class="modal-row">
+      <div class="modal-label">Cambiar nombre</div>
+      <input class="modal-input" id="newNickInput" placeholder="Nuevo nombre..."/>
+      <button class="modal-btn btn-primary" id="changeNickBtn">CAMBIAR NOMBRE</button>
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Estilo de fondo</div>
+      <div class="bg-options">
+        <div class="bg-opt selected" data-bg="default">🌌 OSCURO</div>
+        <div class="bg-opt" data-bg="matrix">💻 MATRIX</div>
+        <div class="bg-opt" data-bg="rain">🌧️ LLUVIA</div>
+        <div class="bg-opt" data-bg="cyber">🔷 CYBER</div>
+        <div class="bg-opt" data-bg="fire">🔥 FUEGO</div>
+        <div class="bg-opt" data-bg="neon">💜 NEON</div>
+      </div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Sesión</div>
+      <button class="modal-btn btn-danger" id="clearSessionBtn">🗑️ BORRAR MI SESIÓN</button>
+    </div>
+    <span class="modal-close" id="configClose">CERRAR</span>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, doc, setDoc, getDoc, updateDoc, serverTimestamp, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBbQYpPdRH_rVeZmMLwU8vBvIX_9-EBnO8",
+  authDomain: "sensis-good-ff-217fd.firebaseapp.com",
+  projectId: "sensis-good-ff-217fd",
+  storageBucket: "sensis-good-ff-217fd.firebasestorage.app",
+  messagingSenderId: "708862120786",
+  appId: "1:708862120786:web:a374242f39ec464408608b"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const EMOJIS = ["☠️","⚡","⚙️","📂","🎁","🤫","📲","🔥","😱","🫡","👹","👺","👋","👍"];
+const MAX_DEFAULT = 5;
+const NL = {baja:"🟢 BAJA", media:"🔵 MEDIA", alta:"🔴 ALTA"};
+const ADMIN_CODE = "0986012";
+
+// ── LOCALSTORAGE ──────────────────────────────────────
+function getToday(){ const d=new Date(); return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); }
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch{ return null; } }
+function lsSet(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
+function saveSession(){ lsSet("sg_session",{nickname, count:myCount, day:getToday(), bg:currentBg}); }
+function loadSession(){
+  const s=lsGet("sg_session");
+  if(!s||!s.nickname) return null;
+  if(s.day!==getToday()) return {...s, count:0}; // reset diario
+  return s;
+}
+function clearSession(){
+  localStorage.removeItem("sg_session");
+  location.reload();
+}
+
+// ── SENSIS LOGIC ──────────────────────────────────────
+const _GA=new Set(["Samsung","Google Pixel","OnePlus","Sony","Sony Ericsson","Razer","Sharp","Sharp Aquos","Nubia","RED"]);
+const _GB=new Set(["Motorola","Nokia","LG","HTC","Asus","Lenovo","TCL","Meizu","Meitu","Microsoft"]);
+const _GB2=new Set(["Xiaomi","Poco"]);
+const _GB3=new Set(["Honor","Huawei","HMD Global"]);
+const _GB4=new Set(["Realme","Oppo","Vivo"]);
+const _GC=new Set(["Infinix","Tecno","Itel","iTel","Alcatel","BLU","Wiko","Blackview","Doogee","Oukitel","Cubot","Ulefone","UMIDIGI","Gionee","Micromax","Lava","Intex","Karbonn","Celkon","Spice","QMobile","Walton","Symphony","MyPhone","Cherry Mobile"]);
+const MARCAS=["iPhone","Samsung","Motorola","Xiaomi","Honor","Huawei","Realme","Oppo","Vivo","Google Pixel","OnePlus","Sony","Asus","Lenovo","Nokia","LG","HTC","TCL","Poco","Infinix","Tecno","Alcatel","BLU","Blackview","Doogee","Oukitel","Cubot","Ulefone","UMIDIGI","Meizu","Nubia","RED","Razer","Sharp","ZTE","Acer","Panasonic","Microsoft","Amazon","BlackBerry"];
+const PERFILES={A:{genMin:144,genMax:200,rojoD:[0,3],x2D:[-12,-6],franMin:62,franMax:76,camaraD:[16,28],dpiMin:530,dpiMax:610},B:{genMin:145,genMax:196,rojoD:[0,3],x2D:[-12,-6],franMin:55,franMax:72,camaraD:[14,26],dpiMin:530,dpiMax:600},B2:{genMin:143,genMax:188,rojoD:[0,2],x2D:[-14,-7],franMin:53,franMax:70,camaraD:[13,24],dpiMin:530,dpiMax:595},B3:{genMin:146,genMax:193,rojoD:[0,2],x2D:[-13,-7],franMin:55,franMax:73,camaraD:[14,26],dpiMin:530,dpiMax:598},B4:{genMin:143,genMax:196,rojoD:[0,3],x2D:[-13,-7],franMin:57,franMax:75,camaraD:[15,27],dpiMin:530,dpiMax:602},C:{genMin:148,genMax:182,rojoD:[0,2],x2D:[-10,-5],franMin:50,franMax:68,camaraD:[18,32],dpiMin:530,dpiMax:580},D:{genMin:145,genMax:192,rojoD:[0,3],x2D:[-12,-6],franMin:54,franMax:71,camaraD:[14,26],dpiMin:530,dpiMax:596},E:{genMin:85,genMax:200,rojoD:[0,4],x2D:[-18,-10],franMin:52,franMax:70,camaraD:[20,36],dpiMin:0,dpiMax:0},V:{genMin:162,genMax:200,rojoD:[0,2],x2D:[-6,-2],franMin:66,franMax:80,camaraD:[8,16],dpiMin:600,dpiMax:630}};
+function _grp(m){if(m==="iPhone")return"E";if(_GA.has(m))return"A";if(_GB.has(m))return"B";if(_GB2.has(m))return"B2";if(_GB3.has(m))return"B3";if(_GB4.has(m))return"B4";if(_GC.has(m))return"C";return"D";}
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function detectarMarca(txt){const t=txt.toLowerCase();let f=null;for(const m of MARCAS){if(t.includes(m.toLowerCase())){if(!f||m.length>f.length)f=m;}}return f;}
+function extraerModelo(txt,marca){const stop=["para","un","una","el","la","con","sin","dpi","quiero","dame","necesito","sensibilidad","alta","media","baja","por favor","porfavor","me","puedes","dar","genera","generame","generar"];let m=txt.replace(new RegExp(marca,"gi"),"").trim();stop.forEach(w=>{m=m.replace(new RegExp("\\b"+w+"\\b","gi")," ");});return m.replace(/\s+/g," ").trim()||marca;}
+function generarSensi(marca,modelo,nivel,usarDpi){const grp=_grp(marca),iP=(grp==="E"),p=PERFILES[grp];let gLo,gHi;if(iP){if(nivel==="baja"){gLo=89;gHi=120;}else if(nivel==="media"){gLo=121;gHi=169;}else{gLo=172;gHi=200;}}else{if(nivel==="baja"){gLo=clamp(Math.max(p.genMin,149),149,158);gHi=clamp(Math.min(158,p.genMax),149,158);}else if(nivel==="media"){gLo=clamp(Math.max(p.genMin,159),159,171);gHi=clamp(Math.min(171,p.genMax),159,171);}else{gLo=clamp(Math.max(p.genMin,176),176,200);gHi=clamp(Math.min(200,p.genMax),176,200);}}if(gLo>gHi){gLo=p.genMin;gHi=p.genMax;}const general=clamp(rand(gLo,gHi),100,200);const hsR=Math.random(),hs=hsR<0.60?"full":hsR<0.90?"mid":"normal";let rojo;if(nivel==="baja"){const mn=2;if(hs==="full")rojo=clamp(general+Math.max(p.rojoD[0],mn),100,200);else if(hs==="mid")rojo=clamp(general+Math.max(Math.round((p.rojoD[0]+p.rojoD[1])/2),mn),100,200);else rojo=clamp(general+Math.max(p.rojoD[1],mn+1),100,200);}else if(hs==="full")rojo=clamp(general+p.rojoD[0],100,200);else if(hs==="mid")rojo=clamp(general+Math.round((p.rojoD[0]+p.rojoD[1])/2),100,200);else rojo=clamp(general+p.rojoD[1],100,200);const xLo=Math.abs(p.x2D[1]),xHi=Math.abs(p.x2D[0]);let x2,x4;if(nivel==="baja"){const d=rand(xLo,Math.round(xLo+(xHi-xLo)*0.55));x2=clamp(rojo-Math.max(d,xLo),100,rojo-xLo);}else if(nivel==="media"){const d=rand(Math.round(xLo+(xHi-xLo)*0.25),Math.round(xLo+(xHi-xLo)*0.75));x2=clamp(rojo-Math.max(d,xLo),100,rojo-xLo);}else{const d=rand(xLo,Math.round(xLo+(xHi-xLo)*0.45));x2=clamp(rojo-Math.max(d,xLo),100,rojo-xLo);}x4=clamp(x2+rand(20,27),100,200);const fMin=Math.max(p.franMin,100),fMax=Math.min(p.franMax,200),fD=fMax-fMin;let fLo,fHi;if(nivel==="baja"){fLo=fMin;fHi=Math.round(fMin+fD*0.40);}else if(nivel==="media"){fLo=Math.round(fMin+fD*0.20);fHi=Math.round(fMin+fD*0.70);}else{fLo=Math.round(fMin+fD*0.48);fHi=fMax;}let franco=clamp(rand(fLo,fHi),fMin,fMax);const cD=p.camaraD[1]-p.camaraD[0];let cLo,cHi;if(nivel==="baja"){cLo=p.camaraD[0];cHi=Math.round(p.camaraD[0]+cD*0.38);}else if(nivel==="media"){cLo=Math.round(p.camaraD[0]+cD*0.22);cHi=Math.round(p.camaraD[0]+cD*0.72);}else{cLo=Math.round(p.camaraD[0]+cD*0.50);cHi=p.camaraD[1];}const camara=clamp(general+rand(cLo,cHi),100,200);function _b(){if(nivel==="baja"){if(hs==="full")return rand(32,34);if(hs==="mid")return rand(33,35);return rand(34,36);}else if(nivel==="media"){if(hs==="full")return rand(36,39);if(hs==="mid")return rand(38,41);return rand(40,43);}else{if(hs==="full")return rand(40,43);if(hs==="mid")return rand(42,46);return rand(44,49);}}let boton=iP?clamp(nivel==="baja"?rand(38,46):nivel==="media"?rand(42,49):rand(44,52),35,52):_b();const rd=rojo-general;if(hs==="full"||rd>=3)boton=clamp(boton-rand(2,3),32,boton);else if(rd>=1)boton=clamp(boton-1,32,boton);boton=clamp(boton,32,52);if(rojo<=general)rojo=clamp(general+1,100,200);if(x2>=rojo)x2=clamp(rojo-xLo,100,rojo-1);if(x4<=x2)x4=clamp(x2+20,100,200);if(franco>=x2)franco=clamp(x2-1,fMin,x2-1);rojo=clamp(rojo,100,200);x2=clamp(x2,100,200);x4=clamp(x4,100,200);let dpi=null;if(usarDpi&&!iP&&p.dpiMin>0){let base;if(nivel==="baja")base=rand(Math.round(p.dpiMin+(p.dpiMax-p.dpiMin)*0.55),p.dpiMax);else if(nivel==="media")base=rand(Math.round(p.dpiMin+(p.dpiMax-p.dpiMin)*0.25),Math.round(p.dpiMin+(p.dpiMax-p.dpiMin)*0.75));else base=rand(p.dpiMin,Math.round(p.dpiMin+(p.dpiMax-p.dpiMin)*0.45));dpi=clamp(base+rand(-4,4),530,630);}return{general,rojo,x2,x4,franco,camara,boton,dpi,nivel,hs};}
+
+// ── ESTADO ────────────────────────────────────────────
+let nickname="", step="idle", data={marca:"",modelo:"",nivel:"",dpi:false}, myCount=0, myMax=MAX_DEFAULT, currentBg="default";
+let activeFeedDocId=null;
+
+function updateCounter(){ document.getElementById("counterLabel").textContent=(myMax-myCount)+"/"+myMax+" SENSIS HOY"; }
+
+// ── MATRIX BACKGROUND ─────────────────────────────────
+const canvas=document.getElementById("matrixCanvas");
+const ctx=canvas.getContext("2d");
+let matrixInterval=null;
+function startMatrix(){
+  canvas.style.display="block";
+  canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+  const cols=Math.floor(canvas.width/16); const drops=Array(cols).fill(1);
+  const chars="アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモ0123456789ABCDEF☠️⚡";
+  matrixInterval=setInterval(()=>{
+    ctx.fillStyle="rgba(0,0,0,0.05)"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle="#0f0"; ctx.font="14px monospace";
+    drops.forEach((y,i)=>{ const c=chars[Math.floor(Math.random()*chars.length)]; ctx.fillText(c,i*16,y*16); if(y*16>canvas.height&&Math.random()>0.975)drops[i]=0; drops[i]++; });
+  },50);
+}
+function stopMatrix(){ if(matrixInterval){clearInterval(matrixInterval);matrixInterval=null;} canvas.style.display="none"; ctx.clearRect(0,0,canvas.width,canvas.height); }
+
+function applyBg(bg){
+  currentBg=bg;
+  document.body.className="";
+  stopMatrix();
+  if(bg==="matrix"){document.body.classList.add("bg-matrix");startMatrix();}
+  else if(bg==="rain") document.body.classList.add("bg-rain");
+  else if(bg==="cyber") document.body.classList.add("bg-cyber");
+  else if(bg==="fire") document.body.classList.add("bg-fire");
+  else if(bg==="neon") document.body.style.background="linear-gradient(135deg,#0a0020,#1a0040,#0a0020)";
+  document.querySelectorAll(".bg-opt").forEach(o=>o.classList.toggle("selected",o.dataset.bg===bg));
+  saveSession();
+}
+
+// ── EMOJI PICKER ──────────────────────────────────────
+const popup=document.getElementById("emojiPopup");
+EMOJIS.forEach(e=>{
+  const span=document.createElement("span");
+  span.className="ep-emoji"; span.textContent=e;
+  span.addEventListener("click",()=>{ if(activeFeedDocId) reaccionar(activeFeedDocId,e); popup.classList.remove("show"); });
+  popup.insertBefore(span, document.getElementById("epClose"));
+});
+document.getElementById("epClose").addEventListener("click",()=>popup.classList.remove("show"));
+document.addEventListener("click",(e)=>{ if(!popup.contains(e.target)) popup.classList.remove("show"); });
+
+function showPicker(docId, x, y){
+  activeFeedDocId=docId;
+  popup.style.left=Math.min(x, window.innerWidth-270)+"px";
+  popup.style.top=Math.max(y-180,10)+"px";
+  popup.classList.add("show");
+}
+
+async function reaccionar(docId, emoji){
+  if(!nickname) return;
+  const ref=doc(db,"feed",docId);
+  const snap=await getDoc(ref);
+  if(!snap.exists()) return;
+  const reactions=snap.data().reactions||{};
+  if(!reactions[emoji]) reactions[emoji]={};
+  if(reactions[emoji][nickname]) delete reactions[emoji][nickname];
+  else reactions[emoji][nickname]=true;
+  await updateDoc(ref,{reactions});
+}
+
+// ── FEED ──────────────────────────────────────────────
+function buildFeedItem(id, item){
+  const el=document.createElement("div");
+  el.className="feed-item"; el.dataset.id=id;
+  const t=item.ts?.toDate?new Date(item.ts.toDate()).toLocaleTimeString("es",{hour:"2-digit",minute:"2-digit"}):"-";
+  const nivelCSS=item.nivel==="baja"?"nivel-baja":item.nivel==="media"?"nivel-media":"nivel-alta";
+  const hsLabel=item.hs==="full"?"🎯 HS":item.hs==="mid"?"⚡ MID":"";
+  const dpiLine=item.dpi?"\n🔵 DPI: "+item.dpi:"";
+  const reactions=item.reactions||{};
+  const chips=Object.entries(reactions).filter(([,u])=>Object.keys(u).length>0).map(([emoji,users])=>{
+    const count=Object.keys(users).length;
+    const mine=users[nickname]?"mine":"";
+    return `<span class="r-chip ${mine}" data-emoji="${emoji}" data-docid="${id}">${emoji}<span class="rc">${count}</span></span>`;
+  }).join("");
+
+  el.innerHTML=`
+    <div class="feed-header"><span class="feed-user">☠️ ${item.nickname||"User"}</span><span class="feed-time">${t}</span></div>
+    <div class="feed-msg">📱 ${item.marca} ${item.modelo}</div>
+    <span class="feed-nivel ${nivelCSS}">${NL[item.nivel]||""} ${hsLabel}</span>
+    <div class="feed-result">🎮 General: ${item.general}\n🔴 Mira Rojo: ${item.rojo}\n🔭 Mira 2X: ${item.x2}\n🔬 Mira 4X: ${item.x4}\n🎯 Francotirador: ${item.franco}\n📷 Cámara 360°: ${item.camara}\n🔫 Botón Disparo: ${item.boton}${dpiLine}</div>
+    <div class="reactions-bar" id="rbar-${id}">${chips}</div>
+    <div class="hold-hint">mantén presionado para reaccionar</div>
+  `;
+
+  // Long press móvil
+  let pressTimer, moved=false;
+  el.addEventListener("touchstart",(e)=>{ moved=false; pressTimer=setTimeout(()=>{ if(!moved) showPicker(id,e.touches[0].clientX,e.touches[0].clientY); },600); },{passive:true});
+  el.addEventListener("touchmove",()=>{ moved=true; clearTimeout(pressTimer); },{passive:true});
+  el.addEventListener("touchend",()=>clearTimeout(pressTimer),{passive:true});
+  // Desktop
+  el.addEventListener("contextmenu",(e)=>{ e.preventDefault(); showPicker(id,e.clientX,e.clientY); });
+
+  // Click en chips existentes
+  el.querySelectorAll(".r-chip").forEach(chip=>{
+    chip.addEventListener("click",(e)=>{ e.stopPropagation(); reaccionar(chip.dataset.docid,chip.dataset.emoji); });
+  });
+
+  return el;
+}
+
+const feedQ=query(collection(db,"feed"),orderBy("ts","desc"),limit(40));
+onSnapshot(feedQ,snap=>{
+  const feed=document.getElementById("feedPanel");
+  const wasAtBottom=feed.scrollHeight-feed.scrollTop-feed.clientHeight<60;
+  feed.innerHTML="";
+  [...snap.docs].reverse().forEach(d=>feed.appendChild(buildFeedItem(d.id,d.data())));
+  if(wasAtBottom) feed.scrollTop=feed.scrollHeight;
+  document.getElementById("onlineCount").textContent=Math.max(1,Math.min(snap.docs.length+Math.floor(Math.random()*3)+1,30));
+});
+
+// ── MI CHAT ───────────────────────────────────────────
+function addMyMsg(from,text,opts={}){
+  const container=document.getElementById("myChatMessages");
+  const wrap=document.createElement("div"); wrap.className="msg-wrap "+from;
+  const bub=document.createElement("div"); bub.className="bubble "+(opts.isAdmin?"admin-pm":from);
+  bub.textContent=text;
+  if(opts.copyText){
+    const btn=document.createElement("button"); btn.className="copy-btn"; btn.textContent="📋 COPIAR SENSIBILIDAD";
+    btn.addEventListener("click",()=>{
+      const el=document.createElement("textarea"); el.value=opts.copyText; el.style.cssText="position:fixed;opacity:0;";
+      document.body.appendChild(el); el.select(); document.execCommand("copy"); document.body.removeChild(el);
+      btn.textContent="✅ COPIADO"; btn.classList.add("copied");
+      setTimeout(()=>{ btn.textContent="📋 COPIAR SENSIBILIDAD"; btn.classList.remove("copied"); },2000);
+    });
+    bub.appendChild(btn);
+  }
+  wrap.appendChild(bub);
+  if(opts.buttons){
+    const btns=document.createElement("div"); btns.className="btns";
+    opts.buttons.forEach(b=>{
+      const btn=document.createElement("button"); btn.className="opt-btn"; btn.textContent=b;
+      btn.addEventListener("click",()=>handleBtn(b,btns)); btns.appendChild(btn);
+    });
+    wrap.appendChild(btns);
+  }
+  container.appendChild(wrap);
+  container.scrollTop=container.scrollHeight;
+}
+
+function handleBtn(btn,btnsEl){
+  btnsEl.querySelectorAll(".opt-btn").forEach(b=>b.disabled=true);
+  if(step==="nivel"){
+    const nivel=btn.includes("Baja")?"baja":btn.includes("Media")?"media":"alta";
+    data.nivel=nivel; addMyMsg("user",btn); step="dpi";
+    setTimeout(()=>addMyMsg("bot","¿Con DPI calibrado?",{buttons:["✅ Sí, con DPI","❌ Sin DPI"]}),300);
+  } else if(step==="dpi"){
+    data.dpi=btn.includes("Sí"); addMyMsg("user",btn);
+    setTimeout(async()=>{
+      const r=generarSensi(data.marca,data.modelo,data.nivel,data.dpi);
+      myCount++; saveSession(); updateCounter();
+      const hs=r.hs==="full"?"🎯 HEADSHOT CONFIG":r.hs==="mid"?"⚡ HEADSHOT MID":"";
+      const dpiL=r.dpi?"\n🔵 DPI: "+r.dpi:"";
+      const txt="✅ SENSIBILIDAD GENERADA\n📱 "+data.marca+" "+data.modelo+"\n"+NL[r.nivel]+" "+hs+"\n\n🎮 General: "+r.general+"\n🔴 Mira Rojo: "+r.rojo+"\n🔭 Mira 2X: "+r.x2+"\n🔬 Mira 4X: "+r.x4+"\n🎯 Francotirador: "+r.franco+"\n📷 Cámara 360°: "+r.camara+"\n🔫 Botón Disparo: "+r.boton+dpiL+"\n\n— SENSIS GOOD FF ☠️⚡";
+      addMyMsg("bot",txt,{copyText:txt});
+      // guardar en Firestore
+      await addDoc(collection(db,"feed"),{nickname,marca:data.marca,modelo:data.modelo,nivel:r.nivel,hs:r.hs,general:r.general,rojo:r.rojo,x2:r.x2,x4:r.x4,franco:r.franco,camara:r.camara,boton:r.boton,dpi:r.dpi||null,reactions:{},ts:serverTimestamp()});
+      // stats usuario
+      const uRef=doc(db,"usuarios",nickname);
+      const uSnap=await getDoc(uRef);
+      const prev=uSnap.exists()?uSnap.data():{};
+      await setDoc(uRef,{nickname,totalSensi:(prev.totalSensi||0)+1,lastSeen:serverTimestamp(),banned:prev.banned||false,maxOverride:prev.maxOverride||null},{merge:true});
+
+      const rem=myMax-myCount;
+      setTimeout(()=>{
+        if(rem>0) addMyMsg("bot","Te quedan "+rem+" sensibilidad"+(rem!==1?"es":"")+" hoy.\n\n¿Quieres otra? Escribe tu marca y modelo.");
+        else addMyMsg("bot","⛔ Llegaste al límite de hoy.\n\nVuelve mañana. ☠️⚡");
+        step="idle";
+      },400);
+    },300);
+  }
+}
+
+function handleSend(){
+  const input=document.getElementById("msgInput");
+  const msg=input.value.trim(); if(!msg) return; input.value="";
+  if(step!=="idle"){ addMyMsg("user",msg); return; }
+  if(myCount>=myMax){ addMyMsg("user",msg); setTimeout(()=>addMyMsg("bot","⛔ Llegaste al límite de hoy.\n\nVuelve mañana. ☠️⚡"),300); return; }
+  const marca=detectarMarca(msg); addMyMsg("user",msg);
+  if(marca){
+    const modelo=extraerModelo(msg,marca);
+    data={marca,modelo,nivel:"",dpi:false}; step="nivel";
+    setTimeout(()=>addMyMsg("bot","📱 "+marca+" "+modelo+"\n\n¿Qué nivel de sensibilidad?",{buttons:["🟢 Baja","🔵 Media","🔴 Alta"]}),300);
+  } else {
+    setTimeout(()=>addMyMsg("bot","No reconocí la marca. Ej:\n📱 Honor X5C Plus\n📱 Samsung Galaxy A54\n📱 Xiaomi Redmi Note 12"),300);
+  }
+}
+
+// ── TABS ──────────────────────────────────────────────
+function switchTab(tab){
+  document.getElementById("tabFeed").classList.toggle("active",tab==="feed");
+  document.getElementById("tabMio").classList.toggle("active",tab==="mio");
+  document.getElementById("feedPanel").style.display=tab==="feed"?"flex":"none";
+  document.getElementById("myPanel").style.display=tab==="mio"?"flex":"none";
+  if(tab==="feed"){ const f=document.getElementById("feedPanel"); setTimeout(()=>f.scrollTop=f.scrollHeight,50); }
+  if(tab==="mio"){ const m=document.getElementById("myChatMessages"); setTimeout(()=>m.scrollTop=m.scrollHeight,50); }
+}
+
+// ── CONFIG MODAL ──────────────────────────────────────
+document.getElementById("configBtn").addEventListener("click",()=>{
+  document.getElementById("newNickInput").value=nickname;
+  document.getElementById("configModal").classList.add("show");
+});
+document.getElementById("configClose").addEventListener("click",()=>document.getElementById("configModal").classList.remove("show"));
+document.getElementById("changeNickBtn").addEventListener("click",()=>{
+  const n=document.getElementById("newNickInput").value.trim();
+  if(!n||n.length<2){ alert("Mínimo 2 letras"); return; }
+  nickname=n; saveSession(); updateCounter();
+  document.getElementById("configModal").classList.remove("show");
+  addMyMsg("bot","✅ Nombre cambiado a: "+nickname);
+});
+document.getElementById("clearSessionBtn").addEventListener("click",()=>{
+  if(confirm("¿Borrar tu sesión? Perderás tu nombre y conteo de hoy.")) clearSession();
+});
+document.querySelectorAll(".bg-opt").forEach(opt=>{
+  opt.addEventListener("click",()=>applyBg(opt.dataset.bg));
+});
+
+// ── ENTRAR ────────────────────────────────────────────
+async function entrar(){
+  const n=document.getElementById("nicknameInput").value.trim();
+  if(!n||n.length<2){ alert("Pon un nombre de al menos 2 letras"); return; }
+
+  // ADMIN
+  if(n===ADMIN_CODE){
+    window.location.href="#admin";
+    showAdminPanel(); return;
+  }
+
+  // Check ban
+  const uRef=doc(db,"usuarios",n);
+  const uSnap=await getDoc(uRef);
+  if(uSnap.exists()){
+    const ud=uSnap.data();
+    if(ud.banned){
+      const until=ud.bannedUntil;
+      if(!until || until.toDate()>new Date()){
+        alert("⛔ Tu cuenta ha sido suspendida."); return;
+      }
+    }
+    if(ud.maxOverride!==null&&ud.maxOverride!==undefined) myMax=ud.maxOverride;
+  }
+
+  nickname=n;
+  const sess=loadSession();
+  myCount=(sess&&sess.nickname===n)?sess.count:0;
+  saveSession();
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("chatScreen").style.display="flex";
+  updateCounter();
+  switchTab("mio");
+  addMyMsg("bot","⚡ Hola "+nickname+"!\n\nDime tu marca y modelo para generar tu sensibilidad.\n\nEj: Honor X5C Plus");
+
+  // Escuchar mensajes privados del admin
+  onSnapshot(query(collection(db,"privados"),where("to","==",nickname),orderBy("ts","desc"),limit(5)),snap=>{
+    snap.docChanges().forEach(change=>{
+      if(change.type==="added"){
+        const d=change.doc.data();
+        addMyMsg("bot","📩 MENSAJE DEL ADMIN:\n"+d.msg,{isAdmin:true});
+      }
+    });
+  });
+}
+
+// ── ADMIN PANEL ───────────────────────────────────────
+function showAdminPanel(){
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("chatScreen").style.display="none";
+  const panel=document.createElement("div");
+  panel.style.cssText="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;";
+  panel.innerHTML=`
+    <div style="text-align:center;padding:10px 0;">
+      <div style="font-size:16px;font-weight:900;letter-spacing:3px;color:#FF5566;">👑 PANEL ADMIN</div>
+      <div style="font-size:10px;letter-spacing:2px;color:rgba(255,85,102,0.5);margin-top:3px;">SENSIS GOOD FF</div>
+    </div>
+    <div id="adminStats" style="background:rgba(255,85,102,0.05);border:1px solid rgba(255,85,102,0.2);border-radius:14px;padding:14px;">
+      <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:rgba(255,85,102,0.7);margin-bottom:10px;">📊 ESTADÍSTICAS</div>
+      <div id="statsContent" style="font-size:13px;color:#E4F2FF;line-height:2;">Cargando...</div>
+    </div>
+    <div style="background:rgba(4,14,45,0.95);border:1px solid rgba(56,190,255,0.15);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px;">
+      <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:rgba(160,215,255,0.5);">👤 GESTIONAR USUARIO</div>
+      <input class="modal-input" id="adminUserInput" placeholder="Nombre de usuario..."/>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="modal-btn btn-ghost" style="margin:0;" id="adminViewBtn">👁️ VER INFO</button>
+        <button class="modal-btn btn-danger" style="margin:0;border:1px solid rgba(255,85,102,0.3);" id="adminBanBtn">⛔ BANEAR</button>
+        <button class="modal-btn btn-ghost" style="margin:0;" id="adminUnbanBtn">✅ DESBANEAR</button>
+        <button class="modal-btn btn-ghost" style="margin:0;" id="adminTempBanBtn">⏱️ BAN TEMP</button>
+      </div>
+      <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:rgba(160,215,255,0.5);margin-top:4px;">LÍMITE DIARIO</div>
+      <div style="display:flex;gap:8px;">
+        <input class="modal-input" id="adminMaxInput" placeholder="Número (ej: 10)" type="number" style="flex:1;"/>
+        <button class="modal-btn btn-primary" style="margin:0;flex:1;" id="adminSetMaxBtn">APLICAR</button>
+      </div>
+      <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:rgba(160,215,255,0.5);margin-top:4px;">MENSAJE PRIVADO</div>
+      <textarea class="modal-input" id="adminPmInput" placeholder="Escribe el mensaje..." rows="3" style="resize:none;"></textarea>
+      <button class="modal-btn btn-primary" style="margin:0;" id="adminSendPmBtn">📩 ENVIAR MENSAJE PRIVADO</button>
+      <div id="adminUserInfo" style="font-size:12px;color:#E4F2FF;line-height:1.8;margin-top:4px;"></div>
+    </div>
+    <div style="background:rgba(4,14,45,0.95);border:1px solid rgba(56,190,255,0.15);border-radius:14px;padding:14px;">
+      <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:rgba(160,215,255,0.5);margin-bottom:10px;">📋 USUARIOS REGISTRADOS</div>
+      <div id="adminUserList" style="font-size:12px;color:#E4F2FF;line-height:2;">Cargando...</div>
+    </div>
+  `;
+  document.getElementById("app").appendChild(panel);
+
+  // Stats
+  async function loadStats(){
+    const feedSnap=await getDocs(collection(db,"feed"));
+    const userSnap=await getDocs(collection(db,"usuarios"));
+    let total=feedSnap.size, users=userSnap.size;
+    document.getElementById("statsContent").innerHTML=
+      `🎮 Sensibilidades generadas: <b>${total}</b>\n👥 Usuarios registrados: <b>${users}</b>`;
+
+    let list="";
+    userSnap.forEach(d=>{
+      const u=d.data();
+      const banned=u.banned?"⛔":"✅";
+      list+=`${banned} <b>${u.nickname}</b> — ${u.totalSensi||0} sensis\n`;
+    });
+    document.getElementById("adminUserList").innerHTML=list||"Sin usuarios aún.";
+  }
+  loadStats();
+
+  function getAdminUser(){ return document.getElementById("adminUserInput").value.trim(); }
+
+  document.getElementById("adminViewBtn").addEventListener("click",async()=>{
+    const u=getAdminUser(); if(!u) return;
+    const snap=await getDoc(doc(db,"usuarios",u));
+    if(!snap.exists()){ document.getElementById("adminUserInfo").textContent="Usuario no encontrado."; return; }
+    const d=snap.data();
+    document.getElementById("adminUserInfo").innerHTML=`👤 ${d.nickname}\n🎮 Total sensis: ${d.totalSensi||0}\n⚠️ Baneado: ${d.banned?"SÍ":"NO"}\n🔢 Límite: ${d.maxOverride!==null&&d.maxOverride!==undefined?d.maxOverride:"Default (5)"}`;
+  });
+
+  document.getElementById("adminBanBtn").addEventListener("click",async()=>{
+    const u=getAdminUser(); if(!u||!confirm("¿Banear a "+u+"?")) return;
+    await setDoc(doc(db,"usuarios",u),{banned:true,bannedUntil:null},{merge:true});
+    alert("Usuario baneado permanentemente.");
+  });
+
+  document.getElementById("adminUnbanBtn").addEventListener("click",async()=>{
+    const u=getAdminUser(); if(!u) return;
+    await setDoc(doc(db,"usuarios",u),{banned:false,bannedUntil:null},{merge:true});
+    alert("Usuario desbaneado.");
+  });
+
+  document.getElementById("adminTempBanBtn").addEventListener("click",async()=>{
+    const u=getAdminUser(); if(!u) return;
+    const hrs=prompt("¿Cuántas horas de ban temporal?");
+    if(!hrs||isNaN(hrs)) return;
+    const until=new Date(Date.now()+parseInt(hrs)*3600000);
+    await setDoc(doc(db,"usuarios",u),{banned:true,bannedUntil:until},{merge:true});
+    alert("Ban temporal de "+hrs+"h aplicado a "+u+".");
+  });
+
+  document.getElementById("adminSetMaxBtn").addEventListener("click",async()=>{
+    const u=getAdminUser(); const max=parseInt(document.getElementById("adminMaxInput").value);
+    if(!u||isNaN(max)) return;
+    await setDoc(doc(db,"usuarios",u),{maxOverride:max},{merge:true});
+    alert("Límite de "+max+" aplicado a "+u+".");
+  });
+
+  document.getElementById("adminSendPmBtn").addEventListener("click",async()=>{
+    const u=getAdminUser(); const msg=document.getElementById("adminPmInput").value.trim();
+    if(!u||!msg) return;
+    await addDoc(collection(db,"privados"),{to:u,msg,ts:serverTimestamp()});
+    document.getElementById("adminPmInput").value="";
+    alert("Mensaje enviado a "+u+".");
+  });
+}
+
+// ── AUTO LOGIN ────────────────────────────────────────
+const sess=loadSession();
+if(sess&&sess.nickname){ document.getElementById("nicknameInput").value=sess.nickname; }
+if(sess&&sess.bg) applyBg(sess.bg);
+
+// ── EVENTOS ───────────────────────────────────────────
+document.getElementById("loginBtn").addEventListener("click",entrar);
+document.getElementById("nicknameInput").addEventListener("keydown",e=>{ if(e.key==="Enter") entrar(); });
+document.getElementById("sendBtn").addEventListener("click",handleSend);
+document.getElementById("msgInput").addEventListener("keydown",e=>{ if(e.key==="Enter") handleSend(); });
+document.getElementById("tabFeed").addEventListener("click",()=>switchTab("feed"));
+document.getElementById("tabMio").addEventListener("click",()=>switchTab("mio"));
+</script>
+</body>
+</html>

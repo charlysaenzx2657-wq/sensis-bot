@@ -1,1 +1,8 @@
-
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.sensisbotff.app",
+        "sha256_cert_fingerprints": ["07:05:1E:37:F3:28:6F:8D:15:58:36:52:7E:B3:FA:26:AE:CF:C6:EC:56:C0:8D:1E:CD:AC:02:90:63:2B:35:3D"]
+      }
+    }]

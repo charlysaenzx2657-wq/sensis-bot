@@ -1,8 +1,13 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "com.sensisbotff.app",
-        "sha256_cert_fingerprints": ["07:05:1E:37:F3:28:6F:8D:15:58:36:52:7E:B3:FA:26:AE:CF:C6:EC:56:C0:8D:1E:CD:AC:02:90:63:2B:35:3D"]
-      }
-    }]
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.sensis.bot",
+      "sha256_cert_fingerprints": [
+        "07:05:1E:37:F3:28:6F:8D:15:58:36:52:7E:B3:FA:26:AE:CF:C6:EC:56:C0:8D:1E:CD:AC:02:90:63:2B:35:3D",
+        "47:C4:83:F8:B1:41:EA:BD:E3:81:F6:D2:A1:AC:3E:A3:14:B5:14:8A:6B:5E:B5:A2:26:6E:D7:C0:CE:F6:1B:16"
+      ]
+    }
+  }
+]

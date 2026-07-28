@@ -216,9 +216,9 @@ button:focus-visible,.cbtn:focus-visible,.obtn:focus-visible{outline:none;}
 @keyframes slideUp{from{transform:translateY(60px);opacity:0;}to{transform:translateY(0);opacity:1;}}
 .mtitle{font-size:12px;font-weight:900;letter-spacing:3px;color:#38BEFF;text-align:center;margin-bottom:16px;text-transform:uppercase;}
 .mlabel{font-size:9px;font-weight:800;letter-spacing:2px;color:rgba(160,215,255,0.45);text-transform:uppercase;margin-bottom:6px;margin-top:12px;}
-.msec{background:rgba(4,12,32,0.35);border:1px solid rgba(56,190,255,0.06);border-radius:16px;padding:12px 14px 14px;margin-bottom:12px;}
+.msec{background:rgba(4,12,32,0.4);border:1px solid rgba(56,190,255,0.08);border-radius:16px;padding:14px 14px 16px;margin-bottom:14px;}
 .msec .mlabel{margin-top:0;}
-.msec .mlabel:not(:first-child){margin-top:14px;}
+.msec .mlabel:not(:first-child){margin-top:16px;padding-top:14px;border-top:1px solid rgba(56,190,255,0.06);}
 .mclose{display:block;text-align:center;margin-top:10px;color:rgba(160,215,255,0.3);font-size:11px;cursor:pointer;padding:8px;letter-spacing:2px;}
 
 /* Config buttons */
@@ -228,15 +228,17 @@ button:focus-visible,.cbtn:focus-visible,.obtn:focus-visible{outline:none;}
 .cbtn-g{background:rgba(56,190,255,0.08);border:1px solid rgba(56,190,255,0.18)!important;color:#38BEFF;}
 
 /* Theme grid */
-.tgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px;}
+.tgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:12px;}
 .topt{padding:12px 6px;border-radius:12px;border:1px solid rgba(56,190,255,0.12);background:rgba(4,16,48,0.5);color:rgba(160,215,255,0.6);font-size:11px;font-weight:700;cursor:pointer;text-align:center;transition:all 0.2s;line-height:1.6;}
 .topt:hover{border-color:rgba(56,190,255,0.35);color:#38BEFF;}
-.topt.sel{border-color:#38BEFF;background:rgba(56,190,255,0.14);color:#38BEFF;}
+.topt.sel{border-color:#38BEFF!important;background:rgba(56,190,255,0.22)!important;color:#38BEFF!important;box-shadow:0 0 0 2px rgba(56,190,255,0.4),0 0 16px rgba(56,190,255,0.35)!important;position:relative;}
+.topt.sel::after{content:"✓";position:absolute;top:4px;right:6px;width:16px;height:16px;background:#38BEFF;color:#03070D;border-radius:50%;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.4);}
+body.glass .topt.sel{border-color:#38BEFF!important;background:rgba(56,190,255,0.28)!important;}
 
 /* Color accent grid */
-.cgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:10px;}
+.cgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;}
 .copt{width:100%;aspect-ratio:1;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:all 0.2s;}
-.copt.sel{border-color:#fff;transform:scale(1.15);}
+.copt.sel{border-color:#fff!important;transform:scale(1.15);box-shadow:0 0 0 2px rgba(255,255,255,0.55),0 0 14px rgba(255,255,255,0.5);}
 
 /* ── ADMIN ── */
 #adminScreen{flex:1;display:none;flex-direction:column;overflow:hidden;}
@@ -386,7 +388,7 @@ button:focus-visible,.cbtn:focus-visible,.obtn:focus-visible{outline:none;}
     </div>
 
     <div class="msec">
-      <div class="mlabel">🎨 Apariencia · Fondo</div>
+      <div class="mlabel">🖼️ Fondo</div>
       <div class="tgrid" id="themeGrid">
         <div class="topt sel" data-t="default"><span class="tprev tprev-default"></span>🌌<br>OSCURO</div>
         <div class="topt" data-t="matrix"><canvas class="tprev-canvas" data-t="matrix" width="150" height="62"></canvas>💻<br>MATRIX</div>
@@ -400,8 +402,10 @@ button:focus-visible,.cbtn:focus-visible,.obtn:focus-visible{outline:none;}
         <div class="topt" data-t="mint"><canvas class="tprev-canvas" data-t="mint" width="150" height="62"></canvas>🍃<br>MINT</div>
       </div>
       <button class="cbtn cbtn-p" id="applyThemeBtn">✅ APLICAR FONDO</button>
+    </div>
 
-      <div class="mlabel">Color de acento</div>
+    <div class="msec">
+      <div class="mlabel">🎯 Color de acento</div>
       <div class="cgrid" id="colorGrid">
         <div class="copt sel" data-c="#38BEFF" style="background:#38BEFF;"></div>
         <div class="copt" data-c="#3DFF8F" style="background:#3DFF8F;"></div>
@@ -411,13 +415,15 @@ button:focus-visible,.cbtn:focus-visible,.obtn:focus-visible{outline:none;}
         <div class="copt" data-c="#FF8844" style="background:#FF8844;"></div>
       </div>
       <button class="cbtn cbtn-p" id="applyColorBtn">✅ APLICAR COLOR</button>
+    </div>
 
-      <div class="mlabel">Efectos visuales</div>
+    <div class="msec">
+      <div class="mlabel">✨ Efectos visuales</div>
       <div class="swrow">
         <span>💧 Efecto Liquid Glass</span>
         <label class="sw"><input type="checkbox" id="glassToggle" checked><span class="sw-slider"></span></label>
       </div>
-      <div class="swrow">
+      <div class="swrow" style="margin-bottom:0;">
         <span>🎨 Colores aleatorios cada 5s</span>
         <label class="sw"><input type="checkbox" id="randomColorToggle"><span class="sw-slider"></span></label>
       </div>
@@ -1409,7 +1415,7 @@ function _miniFire(ctx,w,h,key){
 
 // ── PANEL: ÚNETE AL CANAL DE WHATSAPP ──
 const WA_LINK="https://chat.whatsapp.com/JyP3YpcUC683P7kMe41dGF?s=cl&p=a&ilr=0";
-let _waClickTs=null;
+let _waTimerId=null;
 function maybeShowWhatsAppPromo(){
   if(localStorage.getItem("sg_wa_followed")==="1") return;
   setTimeout(()=>{
@@ -1418,27 +1424,30 @@ function maybeShowWhatsAppPromo(){
 }
 document.getElementById("waCloseX").addEventListener("click",()=>{
   document.getElementById("waModal").classList.remove("show");
+  if(_waTimerId){ clearInterval(_waTimerId); _waTimerId=null; }
 });
-document.getElementById("waJoinBtn").addEventListener("click",()=>{
-  _waClickTs=Date.now();
+document.getElementById("waJoinBtn").addEventListener("click",function(){
+  const btn=this;
+  const statusEl=document.getElementById("waStatusMsg");
   window.open(WA_LINK,"_blank");
-  document.getElementById("waStatusMsg").textContent="⏳ Vuelve aquí en unos segundos...";
-});
-document.addEventListener("visibilitychange",()=>{
-  if(document.visibilityState==="visible" && _waClickTs){
-    const elapsed=Date.now()-_waClickTs;
-    const statusEl=document.getElementById("waStatusMsg");
-    if(elapsed>=3000){
-      localStorage.setItem("sg_wa_followed","1");
-      if(statusEl) statusEl.textContent="✅ ¡Gracias por unirte!";
-      setTimeout(()=>document.getElementById("waModal").classList.remove("show"), 1200);
-      _waClickTs=null;
+  // Cuenta regresiva real de 3s (no depende de detectar si volviste a la pestaña,
+  // que en muchos navegadores móviles no es confiable).
+  if(_waTimerId) clearInterval(_waTimerId);
+  let secondsLeft=3;
+  btn.disabled=true; btn.style.opacity="0.6";
+  statusEl.textContent="⏳ Espera "+secondsLeft+"s (tiempo de unirte al canal)...";
+  _waTimerId=setInterval(()=>{
+    secondsLeft--;
+    if(secondsLeft>0){
+      statusEl.textContent="⏳ Espera "+secondsLeft+"s (tiempo de unirte al canal)...";
     } else {
-      // Volvió demasiado rápido: probablemente no llegó a unirse, lo dejamos reintentar
-      if(statusEl) statusEl.textContent="👀 Parece que volviste muy rápido, ¿ya te uniste? Inténtalo de nuevo.";
-      _waClickTs=null;
+      clearInterval(_waTimerId); _waTimerId=null;
+      localStorage.setItem("sg_wa_followed","1");
+      statusEl.textContent="✅ ¡Gracias por unirte!";
+      btn.disabled=false; btn.style.opacity="1";
+      setTimeout(()=>document.getElementById("waModal").classList.remove("show"), 1200);
     }
-  }
+  },1000);
 });
 
 document.getElementById("cfgBtn").addEventListener("click",()=>{

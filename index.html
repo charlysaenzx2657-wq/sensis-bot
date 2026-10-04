@@ -1022,8 +1022,8 @@ body.glass .topt.sel{border-color:var(--ac)!important;background:rgba(var(--ac-r
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, doc, setDoc, getDoc, updateDoc, deleteDoc, serverTimestamp, where, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, doc, setDoc, getDoc, updateDoc, deleteDoc, serverTimestamp, where, getDocs, runTransaction, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Cliente de Supabase: SOLO se usa para las sensibilidades publicadas al feed
@@ -1031,6 +1031,18 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SB_URL = "https://ffbtdvaevcphpuxiojte.supabase.co";
 const SB_KEY = "sb_publishable_jbf9UKY-3FndEYA9APWWjw_i_tZ4dxA";
 const sb = createClient(SB_URL, SB_KEY);
+// Escrituras del feed: pasan por la Edge Function "feed", que verifica tu sesión de Firebase
+async function _feedCall(action,nick,body){
+  try{
+    const u=await ensureAuth(); if(!u) return false;
+    const tok=await u.getIdToken();
+    const r=await fetch(SB_URL+"/functions/v1/feed",{method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok,"apikey":SB_KEY},
+      body:JSON.stringify({action,nickname:nick,...(body||{})})});
+    if(!r.ok){ console.error("feed:",action,r.status,await r.text().catch(()=>"")); return false; }
+    return true;
+  }catch(e){ console.error("feed:",action,e); return false; }
+}
 
 const FB = {
   apiKey:"AIzaSyBbQYpPdRH_rVeZmMLwU8vBvIX_9-EBnO8",
@@ -1043,6 +1055,22 @@ const FB = {
 const _fbApp = initializeApp(FB);
 const db = getFirestore(_fbApp);
 const auth = getAuth(_fbApp);
+// ── SEGURIDAD: toda petición lleva una sesión de Firebase (anónima o Google) ──
+const ADMIN_EMAIL="carlossaebzx@gmail.com"; // <- cámbialo por TU Gmail (el mismo que en firestore.rules)
+let _authReadyP=null;
+function ensureAuth(){
+  if(_authReadyP) return _authReadyP;
+  _authReadyP=new Promise((resolve)=>{
+    const un=onAuthStateChanged(auth,async u=>{
+      if(u){ un(); resolve(u); return; }
+      try{ await signInAnonymously(auth); }
+      catch(e){ console.error("No se pudo iniciar sesión anónima (¿activaste 'Anónimo' en Firebase Auth?):",e); un(); resolve(null); }
+    });
+  });
+  return _authReadyP;
+}
+// Todo lo que sigue (listeners, feed, etc.) espera a tener sesión
+try{ await Promise.race([ensureAuth(),new Promise(r=>setTimeout(r,10000))]); }catch(e){ console.error(e); }
 const _gProvider = new GoogleAuthProvider();
 _gProvider.addScope("email");
 _gProvider.addScope("profile");
@@ -1079,8 +1107,6 @@ function censurarTexto(txt){
 const _xe=(s,k)=>btoa(s.split("").map((c,i)=>(c.charCodeAt(0)^(k+i)).toString()).join(","));
 const _C={f:()=>_xd("ODEsOTMsOTIsOTQ=",0x37),u:()=>_xd("NjYsNzUsNzYsOTEsNzMsODUsODIsNzc=",0x37),l:()=>_xd("OTEsODEsODQsODMsNzksODksNzg=",0x37),p:()=>_xd("NzEsNzQsODAsNzYsOTAsODgsODIsNzc=",0x37)};
 function _hsh(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=(h*0x01000193)>>>0;}return h.toString(36);}
-const _AK="MTI3LDEwNSwxMDUsMTAwLDk5LDEwMSwxMDM=";
-function _chkA(i){try{return _xd(_AK,0x4F)===i;}catch{return false;}}
 function _signUID(u){return _xe(_hsh(u)+"_"+u.slice(-4),0x2A);}
 function _verifyUID(s,u){try{const d=_xd(s,0x2A);return d.endsWith("_"+u.slice(-4));}catch{return false;}}
 const EMOJIS=["☠️","⚡","⚙️","📂","🎁","🤫","📲","🔥","😱","🫡","👹","👺","👋","👍"];
@@ -1103,7 +1129,7 @@ const _DAY_MS=24*60*60*1000;
 let _boostsList=[]; // lista cruda cacheada de Firestore; se evalúa EN VIVO contra Date.now() en cada llamada
 let _premiumPending=false; // reflejo en RAM del flag persistido en Firestore
 
-function _ownerKey(){ return googleUser?googleUser.uid:("fp_"+DEVICE_ID); }
+function _ownerKey(){ return auth.currentUser?auth.currentUser.uid:("fp_"+DEVICE_ID); }
 // Evalúa en vivo, cada vez que se llama, cuáles boosts siguen vigentes -> así
 // cada uno se "aplica" mientras dure y se "desaplica" solo al vencer, sin
 // importar si otro boost más fuerte (o más débil) vence antes o después.
@@ -1133,16 +1159,12 @@ function _fmtRemaining(ms){
 async function _loadBoost(){
   try{
     const snap=await getDoc(doc(db,_C.l(),_ownerKey()+"_boost"));
-    _boostsList=snap.exists()?(snap.data().boosts||[]):[];
+    const b=snap.exists()?snap.data():null;
+    const until=b&&b.until&&b.until.toMillis?b.until.toMillis():0;
+    _boostsList=(b&&until>Date.now())?[{max:b.max||0,until,unlimited:!!b.unlimited}]:[];
   }catch(e){ console.error("No se pudo cargar el boost:",e); _boostsList=[]; }
   updateCounter();
-  // Refresco periódico SOLO de la UI: el chequeo real de límite en la generación
-  // siempre recalcula contra Date.now() en el momento (ver _effectiveMax), así
-  // que el límite se respeta igual aunque este timer no corra; esto es solo
-  // para que el contador se "desaplique" visualmente sin requerir interacción.
   if(!window._boostTicker) window._boostTicker=setInterval(updateCounter,20000);
-  // Cargar también si quedó un premium pendiente de una sesión anterior (código
-  // canjeado pero el usuario recargó antes de generar la sensi con el bonus)
   try{
     const pSnap=await getDoc(doc(db,_C.l(),_ownerKey()+"_premium"));
     _premiumPending=pSnap.exists()&&pSnap.data().pending===true;
@@ -1150,34 +1172,14 @@ async function _loadBoost(){
 }
 async function _setPremiumPending(val){
   _premiumPending=val;
-  try{ await setDoc(doc(db,_C.l(),_ownerKey()+"_premium"),{pending:val,ts:serverTimestamp()}); }
+  if(val) return; // activarlo solo es posible canjeando el código (ver redeemCode)
+  try{ await setDoc(doc(db,_C.l(),_ownerKey()+"_premium"),{pending:false,ts:serverTimestamp()}); }
   catch(e){ console.error("No se pudo guardar el estado premium:",e); }
-}
-async function _applyBoost(max,durationMs,unlimited){
-  const until=Date.now()+durationMs;
-  const ref=doc(db,_C.l(),_ownerKey()+"_boost");
-  // Transacción: LEE la lista actual y AGREGA la entrada nueva (nunca sobreescribe
-  // ni pisa un boost que ya estuviera corriendo, sea más fuerte o más débil).
-  let finalList=[];
-  await runTransaction(db,async(tx)=>{
-    const snap=await tx.get(ref);
-    const boosts=snap.exists()?(snap.data().boosts||[]):[];
-    const alive=boosts.filter(b=>b.until>Date.now()); // limpia vencidos para que el doc no crezca sin límite
-    alive.push({max,until,unlimited:!!unlimited,addedAt:Date.now()});
-    finalList=alive;
-    tx.set(ref,{boosts:alive});
-  });
-  _boostsList=finalList;
-  updateCounter();
 }
 const CODE_RESET_MS=3*24*60*60*1000; // los códigos se pueden volver a canjear cada 3 días (por persona)
 async function redeemCode(code){
   const info=REDEEM_CODES[code];
   if(!info){ addMsg("bot","❌ Código inválido."); return; }
-  // ── EXCLUSIVIDAD: mientras tengas CUALQUIER código en uso (un boost por
-  // tiempo todavía corriendo, o un Premium pendiente de tu próxima sensi),
-  // no se puede canjear otro distinto hasta que el primero termine/se
-  // consuma. Evita apilar/pisar beneficios entre sí.
   const nowCheck=Date.now();
   const aliveBoost=_boostsList.some(b=>b.until>nowCheck);
   if(aliveBoost||_premiumPending){
@@ -1186,46 +1188,43 @@ async function redeemCode(code){
     addMsg("bot","⏳ Ya tenés un código en uso"+remainTxt+". Esperá a que termine (o generes tu sensi, si es Premium) para canjear otro.");
     return;
   }
-  const uid=localStorage.getItem("sg_uid")||_ownerKey();
-  // ANTES: el doc era POR PERSONA pero de un solo uso PARA SIEMPRE (una vez
-  // canjeado, ese código nunca más servía para vos). Ahora se guarda CUÁNDO
-  // se canjeó, y se puede volver a usar pasados CODE_RESET_MS (3 días).
-  const ref=doc(db,"redeemCodeUses",code+"_"+uid);
+  const uid=auth.currentUser.uid;
+  const useRef=doc(db,"redeemCodeUses",code+"_"+uid);
   try{
-    await runTransaction(db,async(tx)=>{
-      const snap=await tx.get(ref);
-      if(snap.exists()){
-        const prevMs=snap.data().ts?.toMillis?snap.data().ts.toMillis():0;
-        if(Date.now()-prevMs<CODE_RESET_MS) throw new Error("used");
+    const prev=await getDoc(useRef);
+    if(prev.exists()){
+      const prevMs=prev.data().ts?.toMillis?prev.data().ts.toMillis():0;
+      if(Date.now()-prevMs<CODE_RESET_MS){
+        addMsg("bot","❌ Ya canjeaste este código. Vuelve a estar disponible en "+_fmtRemaining(CODE_RESET_MS-(Date.now()-prevMs))+".");
+        return;
       }
-      tx.set(ref,{code,uid,usedByNick:nickname,type:info.type,ts:serverTimestamp()});
-    });
-  }catch(e){
-    if(e.message==="used"){
-      let remainTxt="un tiempo";
-      try{
-        const snap2=await getDoc(ref);
-        const prevMs=snap2.exists()&&snap2.data().ts?.toMillis?snap2.data().ts.toMillis():Date.now();
-        remainTxt=_fmtRemaining(CODE_RESET_MS-(Date.now()-prevMs));
-      }catch(_){}
-      addMsg("bot","❌ Ya canjeaste este código. Vuelve a estar disponible en "+remainTxt+".");
     }
-    else { addMsg("bot","❌ No se pudo validar el código. Intenta de nuevo."); console.error(e); }
-    return;
-  }
-  // Código validado y marcado como usado (para esta persona) -> aplicar efecto
+  }catch(e){ console.error(e); }
+  // Un solo lote: marca de canje + beneficio. Las reglas de Firestore validan TODO en el servidor.
+  const durMs={boost10_2d:2*_DAY_MS,boost10_1d:1*_DAY_MS,unlimited_1h:60*60*1000}[info.type];
+  const b=writeBatch(db);
+  b.set(useRef,{code,uid,usedByNick:nickname,type:info.type,ts:serverTimestamp()});
   if(info.type==="premium"){
-    await _setPremiumPending(true);
+    b.set(doc(db,_C.l(),uid+"_premium"),{pending:true,code,ts:serverTimestamp()});
+  } else {
+    b.set(doc(db,_C.l(),uid+"_boost"),{
+      max:info.type==="unlimited_1h"?0:10,
+      until:Timestamp.fromMillis(Date.now()+durMs),
+      unlimited:info.type==="unlimited_1h",
+      code,type:info.type
+    });
+  }
+  try{ await b.commit(); }
+  catch(e){ console.error(e); addMsg("bot","❌ No se pudo validar el código. Intenta de nuevo."); return; }
+  if(info.type==="premium"){
+    _premiumPending=true;
     addMsg("bot","✅ Código canjeado: "+info.label+"\n\nTu próxima sensi será PREMIUM: funciona para cualquier modelo y no se publica en el chat en vivo (feed). Escribe tu marca y modelo cuando quieras.");
-  } else if(info.type==="boost10_2d"){
-    await _applyBoost(10,2*_DAY_MS,false);
-    addMsg("bot","✅ Código canjeado: "+info.label+"\n\nTu límite subió de "+MAX_DEF+" a 10 sensis por día durante 2 días.");
-  } else if(info.type==="boost10_1d"){
-    await _applyBoost(10,1*_DAY_MS,false);
-    addMsg("bot","✅ Código canjeado: "+info.label+"\n\nTu límite subió de "+MAX_DEF+" a 10 sensis por día durante 1 día.");
-  } else if(info.type==="unlimited_1h"){
-    await _applyBoost(0,60*60*1000,true);
-    addMsg("bot","✅ Código canjeado: "+info.label+"\n\nSensis ILIMITADAS durante la próxima hora. ⚡");
+  } else {
+    _boostsList=[{max:info.type==="unlimited_1h"?0:10,until:Date.now()+durMs,unlimited:info.type==="unlimited_1h"}];
+    updateCounter();
+    if(info.type==="boost10_2d") addMsg("bot","✅ Código canjeado: "+info.label+"\n\nTu límite subió de "+MAX_DEF+" a 10 sensis por día durante 2 días.");
+    else if(info.type==="boost10_1d") addMsg("bot","✅ Código canjeado: "+info.label+"\n\nTu límite subió de "+MAX_DEF+" a 10 sensis por día durante 1 día.");
+    else addMsg("bot","✅ Código canjeado: "+info.label+"\n\nSensis ILIMITADAS durante la próxima hora. ⚡");
   }
 }
 
@@ -1325,7 +1324,7 @@ const DEVICE_ID=await getDeviceId();
 function getLimitKey(today){
   // Google users: límite por UID de Google (persiste en todos sus dispositivos)
   // Sin Google: límite por fingerprint del dispositivo
-  const base=googleUser?googleUser.uid:("fp_"+DEVICE_ID);
+  const base=auth.currentUser?auth.currentUser.uid:("fp_"+DEVICE_ID);
   return base+"_"+today;
 }
 // Resuelve el nombre ACTUAL de un usuario a partir de su UID estable
@@ -1351,18 +1350,24 @@ async function _resolveCurrentNickByUid(uid){
   return null;
 }
 
+function getQuotaDay(){ const d=new Date(Date.now()-6*3600*1000); return d.getUTCFullYear()+"-"+(d.getUTCMonth()+1)+"-"+d.getUTCDate(); } // día en UTC-6 (igual que firestore.rules)
 async function getServerCount(nick){
-  const today=getToday();
-  const ref=doc(db,_C.l(),getLimitKey(today));
+  const ref=doc(db,_C.l(),getLimitKey(getQuotaDay()));
   const snap=await getDoc(ref);
   return snap.exists()?snap.data().count:0;
 }
 async function incServerCount(nick){
-  const today=getToday();
+  const today=getQuotaDay();
   const ref=doc(db,_C.l(),getLimitKey(today));
-  const snap=await getDoc(ref);
+  const uRef=doc(db,_C.u(),nick);
+  const [snap,uSnap]=await Promise.all([getDoc(ref),getDoc(uRef)]);
   const prev=snap.exists()?snap.data().count:0;
-  await setDoc(ref,{count:prev+1,nick,did:DEVICE_ID,googleUid:googleUser?.uid||null,day:today,ts:serverTimestamp()});
+  const prevTotal=uSnap.exists()?(uSnap.data().totalSensi||0):0;
+  // Un solo lote: las reglas exigen que ambos suban +1 juntos
+  const b=writeBatch(db);
+  b.set(ref,{count:prev+1,nick,day:today,ts:serverTimestamp()});
+  b.update(uRef,{totalSensi:prevTotal+1,lastSeen:serverTimestamp()});
+  await b.commit();
   return prev+1;
 }
 
@@ -3345,13 +3350,7 @@ async function reaccionar(docId,emoji){
   const el=document.querySelector(`.feed-item[data-id="${docId}"]`);
   const src=el?el.dataset.src:"fs";
   if(src==="sb"){
-    const {data:row}=await sb.from("feed_sensis").select("reactions").eq("id",docId).single();
-    if(!row) return;
-    const reactions=row.reactions||{};
-    let prev=null;
-    Object.keys(reactions).forEach(em=>{ if(reactions[em]&&reactions[em][nickname]){ prev=em; delete reactions[em][nickname]; } });
-    if(prev!==emoji){ if(!reactions[emoji]) reactions[emoji]={}; reactions[emoji][nickname]=true; }
-    await sb.from("feed_sensis").update({reactions}).eq("id",docId);
+    await _feedCall("react",nickname,{id:String(docId),emoji});
     return;
   }
   const ref=doc(db,_C.f(),docId);
@@ -3619,7 +3618,7 @@ document.getElementById("hudPublishBtn").addEventListener("click",async()=>{
     const _uRef=doc(db,_C.u(),nickname);
     const uSnap=await getDoc(_uRef).catch(()=>null);
     const isCreator=uSnap&&uSnap.exists()&&uSnap.data().creatorVerified===true;
-    await addDoc(collection(db,_C.f()),{type:"hud",nickname,uid:localStorage.getItem("sg_uid")||null,code:codeRaw,fingers,creatorVerified:isCreator,streak:window._myStreak||0,ts:serverTimestamp()});
+    await addDoc(collection(db,_C.f()),{type:"hud",nickname,uid:auth.currentUser.uid,code:codeRaw,fingers,creatorVerified:isCreator,streak:window._myStreak||0,ts:serverTimestamp()});
     statusEl.style.color="#3DFF8F"; statusEl.textContent="✅ ¡HUD publicado!";
     setTimeout(()=>{ document.getElementById("hudModal").classList.remove("show"); },700);
   }catch(e){
@@ -3715,30 +3714,15 @@ function onBtn(lbl,bd){
           const uSnap2=await getDoc(_uRef).catch(()=>null);
           const isCreator=uSnap2&&uSnap2.exists()&&uSnap2.data().creatorVerified===true;
           // Migrado a Supabase: las sensibilidades publicadas al feed ya no van a Firestore
-          const _feedPayload={
-            nickname, uid:localStorage.getItem("sg_uid")||null,
+          const _okFeed=await _feedCall("publish",nickname,{payload:{
             marca:data.marca, modelo:data.modelo, nivel:r.nivel, hs:r.hs,
             general:r.general, rojo:r.rojo, x2:r.x2, x4:r.x4, franco:r.franco,
-            camara:r.camara, boton:r.boton, dpi:r.dpi||null,
-            reactions:{}, creator_verified:isCreator, streak:window._myStreak||0
-          };
-          let {error:_feedErr}=await sb.from("feed_sensis").insert(_feedPayload);
-          if(_feedErr){
-            console.error("Error publicando sensi en Supabase (con streak):",_feedErr);
-            // Fallback: si la tabla de Supabase todavía no tiene la columna
-            // "streak", reintenta sin ese campo para que la publicación no
-            // se pierda por completo.
-            const {streak:_omit,...payloadNoStreak}=_feedPayload;
-            const {error:_feedErr2}=await sb.from("feed_sensis").insert(payloadNoStreak);
-            if(_feedErr2){
-              console.error("Error publicando sensi en Supabase (sin streak):",_feedErr2);
-              addMsg("bot","⚠️ No se pudo publicar tu sensibilidad en el feed. Intenta de nuevo en un momento.");
-            }
+            camara:r.camara, boton:r.boton, dpi:r.dpi||null
+          }});
+          if(!_okFeed){
+            addMsg("bot","⚠️ No se pudo publicar tu sensibilidad en el feed. Intenta de nuevo en un momento.");
           }
         }
-        const uS2=await getDoc(_uRef).catch(()=>null);
-        const prev=uS2&&uS2.exists()?uS2.data():{};
-        await setDoc(_uRef,{nickname,totalSensi:(prev.totalSensi||0)+1,lastSeen:serverTimestamp(),banned:prev.banned||false,maxOverride:prev.maxOverride??null,did:DEVICE_ID},{merge:true});
         const rem=_effectiveMax()-myCount;
         setTimeout(()=>{
           if(rem>0) addMsg("bot","Te quedan "+rem+" sensibilidad"+(rem!==1?"es":"")+" hoy.\n\n¿Quieres otra? Escribe tu marca y modelo.");
@@ -3779,7 +3763,7 @@ async function handleFeedSend(){
     const _uRef=doc(db,_C.u(),nickname);
     const uSnap2=await getDoc(_uRef).catch(()=>null);
     const isCreator=uSnap2&&uSnap2.exists()&&uSnap2.data().creatorVerified===true;
-    await addDoc(collection(db,_C.f()),{type:"chat",nickname,uid:localStorage.getItem("sg_uid")||null,text,creatorVerified:isCreator,streak:window._myStreak||0,ts:serverTimestamp()});
+    await addDoc(collection(db,_C.f()),{type:"chat",nickname,uid:auth.currentUser.uid,text,creatorVerified:isCreator,streak:window._myStreak||0,ts:serverTimestamp()});
   }catch(e){ console.error("No se pudo enviar el mensaje:",e); }
 }
 
@@ -4057,7 +4041,7 @@ async function _renderCodesList(){
     c.innerHTML="<div style='font-size:12px;color:rgba(160,215,255,0.4);text-align:center;padding:20px;'>Sin códigos disponibles por ahora.</div>";
     return;
   }
-  const uid=localStorage.getItem("sg_uid")||_ownerKey();
+  const uid=_ownerKey();
   // Traer, en paralelo, cuándo se canjeó (si acaso) cada código por esta persona.
   const usedAt={};
   await Promise.all(codes.map(async code=>{
@@ -4251,7 +4235,7 @@ document.getElementById("changeNickBtn").addEventListener("click",async()=>{
     }
 
     // Crear nuevo doc conservando UID, sensis, límite, etc. + marca de tiempo del cambio
-    await setDoc(newRef,{...oldData, nickname:n, lastSeen:serverTimestamp(), lastRenameTs:serverTimestamp()});
+    await setDoc(newRef,{...oldData, nickname:n, renamedFrom:nickname, lastSeen:serverTimestamp(), lastRenameTs:serverTimestamp()});
 
     // Migrar también el estatus del Programa de Creadores (si lo tenía) para que no se desincronice
     try{
@@ -4316,7 +4300,7 @@ document.getElementById("cfgBtn")?.addEventListener("click",async()=>{
 document.getElementById("clearSessBtn").addEventListener("click",()=>{
   if(confirm("¿Cerrar sesión? Solo se borra tu nombre guardado, el límite diario se mantiene.")){
     localStorage.removeItem(_xd("ODEsODQ=",0x36));
-    signOut(auth).catch(()=>{}).finally(()=>location.reload());
+    (googleUser?signOut(auth):Promise.resolve()).catch(()=>{}).finally(()=>location.reload()); // la sesión anónima se conserva: es tu identidad
   }
 });
 
@@ -5014,8 +4998,6 @@ function showBanScreen(msg, untilDate){
       const ms=untilDate-new Date();
       if(ms<=0){
         // Ban temporal expirado: borrar fingerprint y recargar
-        try{ await setDoc(doc(db,_C.u(),"_banned_fp_"+DEVICE_ID),{banned:false},{merge:true}); }catch(e){}
-        try{ await setDoc(doc(db,_C.u(),nickname||""),{banned:false,bannedUntil:null},{merge:true}); }catch(e){}
         location.reload(); return;
       }
       const h=Math.floor(ms/3600000);
@@ -5027,21 +5009,16 @@ function showBanScreen(msg, untilDate){
     tick();
   }
   document.getElementById("app").appendChild(bs);
-  // Guardar fingerprint baneado en Firestore para bloquear otros nombres
-  if(typeof DEVICE_ID!=="undefined"){
-    // Solo guardar fingerprint ban si es PERMANENTE
-    if(!untilDate){
-      setDoc(doc(db,_C.u(),"_banned_fp_"+DEVICE_ID),{fp:DEVICE_ID,banned:true,ts:serverTimestamp()},{merge:true}).catch(()=>{});
-    }
-  }
 }
 
 // Verificar si el fingerprint está baneado (aunque usen otro nombre)
 async function checkFingerprintBan(){
   try{
-    const fpRef=doc(db,_C.u(),"_banned_fp_"+DEVICE_ID);
-    const fpSnap=await getDoc(fpRef);
-    if(fpSnap.exists()&&fpSnap.data().banned){
+    await ensureAuth();
+    const qs=await getDocs(query(collection(db,_C.u()),where("did","==",DEVICE_ID),where("banned","==",true),limit(5)));
+    let perm=false;
+    qs.forEach(d=>{ if(!d.data().bannedUntil) perm=true; });
+    if(perm){
       showBanScreen("⛔ Este dispositivo fue suspendido.\n\n🚫 Ban permanente del dispositivo.\n\nNo puedes usar otro nombre.", null);
       return true;
     }
@@ -5053,27 +5030,16 @@ async function checkFingerprintBan(){
 async function entrar(googleUID=null){
   const n=document.getElementById("nickIn").value.trim();
   if(!n||n.length<2){ alert("Mínimo 2 letras"); return; }
-  if(_chkA(n)){ showAdmin(); return; }
+  await ensureAuth();
   // Verificar ban por fingerprint y leer doc de usuario en paralelo (antes eran 2 viajes seguidos)
   const uRef=doc(db,_C.u(),n);
   const [fpBanned,uS]=await Promise.all([checkFingerprintBan(), getDoc(uRef)]);
   if(fpBanned) return;
 
-  const _rawUID=localStorage.getItem("sg_uid"); const _sigUID=localStorage.getItem("sg_suid"); const _savedUIDRaw=(_rawUID&&_sigUID&&_verifyUID(_sigUID,_rawUID))?_rawUID:null; if(_rawUID&&!_savedUIDRaw) localStorage.removeItem("sg_uid");
-  // BUG CRÍTICO CORREGIDO: antes, un uid que había quedado guardado por un
-  // login CON Google se reutilizaba igual si luego la persona entraba SIN
-  // Google (solo nombre) -> la "cuenta nueva" terminaba enlazada al mismo
-  // uid de la cuenta de Google (mismo límite, mismos códigos canjeados,
-  // etc.), porque ambos flujos guardaban en la misma llave "sg_uid" sin
-  // distinguir su origen. Ahora se marca el origen ("google" o "local") y
-  // un uid de origen Google JAMÁS se hereda en un login sin Google: en ese
-  // caso se genera un uid local nuevo, de verdad, para la cuenta nueva.
-  const _uidSrc=localStorage.getItem("sg_uid_src");
-  const savedUID=(_savedUIDRaw&&!(_uidSrc==="google"&&!googleUID))?_savedUIDRaw:null;
-  // Clave de identidad ESTABLE (no depende del nombre): UID de Google si hay,
-  // si no, el UID guardado localmente, si no, el fingerprint del dispositivo.
-  // El límite diario personalizado se guarda/lee SIEMPRE con esta clave.
-  const limitOwnerKey=(googleUID||savedUID)?(googleUID||savedUID):("fp_"+DEVICE_ID);
+  // Identidad = uid de Firebase (anónimo o Google). Ya no se confía en localStorage.
+  const authUID=auth.currentUser.uid;
+  const savedUID=authUID;
+  const limitOwnerKey=authUID;
   let _udForMax=null;
 
   if(uS.exists()){
@@ -5081,7 +5047,11 @@ async function entrar(googleUID=null){
     _udForMax=ud;
     // nombre tomado por otra cuenta — verificar correctamente
     const incomingUID = googleUID || savedUID;
-    const storedUID   = ud.uid;
+    let storedUID   = ud.uid;
+    // Migración de cuentas viejas (solo funciona mientras config/migration.open sea true en Firestore)
+    if(storedUID && storedUID!==authUID && !ud.googleAccount){
+      try{ await updateDoc(uRef,{uid:authUID}); storedUID=authUID; ud.uid=authUID; }catch(_e){}
+    }
     // Si el nombre tiene un UID y el que entra tiene otro UID diferente...
     if(storedUID && incomingUID && storedUID !== incomingUID){
       // Excepción: si el nombre estaba en uso SIN Google y ahora entra CON Google
@@ -5113,35 +5083,20 @@ async function entrar(googleUID=null){
         }
         showBanScreen(banMsg, untilDate);
         return;
-      } else { await setDoc(uRef,{banned:false,bannedUntil:null},{merge:true}); }
+      } /* ban vencido: las reglas ya lo ignoran, no hace falta escribir */
     }
   }
 
   // Generar UID único si no tiene
   // Si tiene Google UID, usarlo (más seguro y atado a cuenta Google)
-  let myUID=googleUID||savedUID;
-  if(!myUID){ myUID="u"+Date.now()+Math.random().toString(36).slice(2,8); localStorage.setItem("sg_uid",myUID); localStorage.setItem("sg_suid",_signUID(myUID)); localStorage.setItem("sg_uid_src","local"); }
-  else if(googleUID){ localStorage.setItem("sg_uid",googleUID); localStorage.setItem("sg_suid",_signUID(googleUID)); localStorage.setItem("sg_uid_src","google"); }
+  const myUID=authUID; localStorage.setItem("sg_uid",myUID);
 
   const isGoogleUser=!!googleUID;
 
   // Límite diario: SIEMPRE por ID (UID de Google o fingerprint del dispositivo),
   // nunca por el nombre. Así, si cambiás de nombre o volvés a entrar con un
   // nombre anterior, tu límite personalizado no se pierde ni se resetea.
-  myMax=MAX_DEF;
-  try{
-    const maxSnap=await getDoc(doc(db,_C.l(),limitOwnerKey+"_max"));
-    if(maxSnap.exists() && maxSnap.data().maxOverride!=null){
-      myMax=maxSnap.data().maxOverride;
-    } else if(_udForMax && _udForMax.maxOverride!=null){
-      // Compatibilidad: aún no migrado a la clave por ID -> lo tomamos del doc viejo
-      // y lo guardamos ya mismo bajo la clave por ID para la próxima vez.
-      myMax=_udForMax.maxOverride;
-      setDoc(doc(db,_C.l(),limitOwnerKey+"_max"),{maxOverride:myMax},{merge:true}).catch(()=>{});
-    }
-  }catch(e){
-    if(_udForMax && _udForMax.maxOverride!=null) myMax=_udForMax.maxOverride;
-  }
+  myMax=(_udForMax && typeof _udForMax.maxOverride==="number")?_udForMax.maxOverride:MAX_DEF;
 
   // ID de encuentro: código corto de 6 dígitos numéricos para que un admin
   // pueda ubicar al usuario fácilmente. Se guarda SOLO en Firestore (ligado
@@ -5164,7 +5119,9 @@ async function entrar(googleUID=null){
   window._myStreak=_myStreak;
   const _sf=document.getElementById("streakFloat");
   if(_sf){ _sf.style.display=_myStreak>0?"flex":"none"; document.getElementById("streakFloatNum").textContent=_myStreak; }
-  await setDoc(uRef,{nickname:n, uid:myUID, did:DEVICE_ID, googleAccount:isGoogleUser, lastSeen:serverTimestamp(), online:true, banned:false, meetId, streak:_myStreak, lastLoginDay:_todayKey},{merge:true});
+  const _baseDoc={nickname:n, uid:myUID, did:DEVICE_ID, googleAccount:isGoogleUser, lastSeen:serverTimestamp(), online:true, meetId, streak:_myStreak, lastLoginDay:_todayKey};
+  if(!(uSnapForMeet&&uSnapForMeet.exists())) await setDoc(uRef,{..._baseDoc,banned:false,createdAt:serverTimestamp()});
+  else await setDoc(uRef,_baseDoc,{merge:true});
 
   // Tutorial de bienvenida: se guarda en Firestore (tutorialSeen), no en localStorage,
   // para que se muestre una sola vez a cada usuario sin importar el dispositivo.
@@ -5187,14 +5144,18 @@ async function entrar(googleUID=null){
         const refDocRef=doc(db,"referrals",n);
         const refSnap=await getDoc(refDocRef);
         if(refSnap.exists()) return; // ya se cobró este referido antes, no duplicar
-        await setDoc(refDocRef,{referrer:_refCode,referred:n,ts:serverTimestamp()});
         const rUserRef=doc(db,_C.u(),_refCode);
         const rSnap=await getDoc(rUserRef);
-        if(rSnap.exists()){
-          const newMax=(rSnap.data().maxOverride??MAX_DEF)+1;
-          await setDoc(rUserRef,{maxOverride:newMax},{merge:true});
-          await addDoc(collection(db,"inbox"),{to:_refCode,msg:"🎉 ¡"+n+" se unió usando tu link de invitación!\n\nGanaste +1 sensi/día PERMANENTE. Tu límite diario ahora es "+newMax+".",type:"reward",reward:"+1 sensi/día permanente por invitar a "+n,newLimit:null,claimed:true,read:false,ts:serverTimestamp()});
-        }
+        if(!rSnap.exists()) return;
+        const _cur=(typeof rSnap.data().maxOverride==="number")?rSnap.data().maxOverride:MAX_DEF;
+        if(_cur>=25) return; // tope de bonus por invitaciones
+        const newMax=_cur+1;
+        // Un solo lote: candado + bonus + aviso. Las reglas validan que todo sea legítimo.
+        const _rb=writeBatch(db);
+        _rb.set(refDocRef,{referrer:_refCode,referred:n,ts:serverTimestamp()});
+        _rb.update(rUserRef,{maxOverride:newMax,lastRefFrom:n});
+        _rb.set(doc(db,"inbox","ref_"+n),{to:_refCode,referred:n,msg:"🎉 ¡"+n+" se unió usando tu link de invitación!\n\nGanaste +1 sensi/día PERMANENTE. Tu límite diario ahora es "+newMax+".",type:"reward",reward:"+1 sensi/día permanente por invitar a "+n,newLimit:null,claimed:true,read:false,ts:serverTimestamp()});
+        await _rb.commit();
       }catch(e){ console.error("Error procesando referido:",e); }
     })();
   }
@@ -5316,6 +5277,7 @@ async function entrarConGoogle(){
   try{
     const result=await signInWithPopup(auth,_gProvider);
     googleUser=result.user;
+    if(googleUser.email===ADMIN_EMAIL){ showAdmin(); return; } // admin = tu Google (las reglas lo verifican en el servidor)
     const savedN=localStorage.getItem(_xd("ODEsODQ=",0x36));
     // Si no hay nombre guardado en este dispositivo (p.ej. justo después de
     // cerrar sesión), buscamos primero si esta cuenta de Google YA tiene un
@@ -5435,7 +5397,8 @@ document.getElementById("tMio").addEventListener("click",()=>switchTab("mio"));
 // condición de carrera que antes podía hacer que, tras cambiar de nombre,
 // la app te reingresara con el nombre viejo por timing de red.
 let _autoLoginStarted=false;
-onAuthStateChanged(auth, async user=>{
+onAuthStateChanged(auth, async _u=>{
+  const user=(_u&&!_u.isAnonymous)?_u:null; // la sesión anónima NO cuenta como Google
   googleUser=user;
   if(_alreadyEntered()) return;
   if(_autoLoginStarted) return;
@@ -5503,9 +5466,11 @@ document.getElementById("inboxList").addEventListener("click",async e=>{
     claimBtn.disabled=true; claimBtn.textContent="⏳ Reclamando...";
     const nick=localStorage.getItem(_xd("ODEsODQ=",0x36));
     try{
-      await setDoc(doc(db,_C.u(),nick),{maxOverride:newLimit},{merge:true});
-      _mirrorMaxOverrideByNick(nick,newLimit);
-      await setDoc(doc(db,"inbox",docId),{claimed:true,read:true},{merge:true});
+      // Un solo lote: las reglas comprueban que el límite sea el del doc que creó el admin
+      const _cb=writeBatch(db);
+      _cb.update(doc(db,_C.u(),nick),{maxOverride:newLimit,lastClaimId:docId});
+      _cb.update(doc(db,"inbox",docId),{claimed:true,read:true});
+      await _cb.commit();
       claimBtn.textContent="✅ ¡Reclamado! "+newLimit+" sensis/día";
       claimBtn.style.color="#3DFF8F";
       addMsg("bot","🎁 ¡Recompensa reclamada! Tu nuevo límite es "+newLimit+" sensis/día.");
@@ -5803,7 +5768,7 @@ document.getElementById("creatorSubmitBtn").addEventListener("click",async()=>{
       photoB64=_compressImage(img2,650,0.7);
     }
     prog.textContent="📤 Guardando en Firebase...";
-    const _creatorUID=localStorage.getItem("sg_uid");
+    const _creatorUID=auth.currentUser.uid;
     await setDoc(doc(db,"creators",_creatorUID||nick),{
       nickname:nick, plataforma:_selectedPlat, channelUrl:url,
       photo:photoB64, video1:vid1Link, video2:vid2Link,

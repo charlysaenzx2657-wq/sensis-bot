@@ -1792,7 +1792,7 @@ async function _lookupDeviceSpecs(marca,modelo){
         body:JSON.stringify({marca,modelo})
       }),16000,"timeout");
       const data=await resp.json();
-      console.log("📱 [device_specs] Worker respondió:",data);
+      console.log("📱 [device_specs] Worker respondió:",JSON.stringify(data));
       // Revalidamos los rangos también acá (defensa extra, además de la
       // que ya hace el Worker) antes de aceptar y guardar cualquier valor.
       // IMPORTANTE: antes se exigía que los 3 datos (diagonal, aspecto Y

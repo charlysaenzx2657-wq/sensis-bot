@@ -630,7 +630,7 @@ body{--metal:radial-gradient(130% 150% at 12% 0%,color-mix(in srgb,var(--ac) 44%
       <h1>BOT SENSIS GOOD FF</h1>
       <div class="hsub">
         <span class="hinfo"><span class="dot"></span><span id="onlineN">0</span> EN LÍNEA</span>
-        <span class="hinfo" id="ctrLabel">5/5 SENSIS HOY</span>
+        <span class="hinfo" id="ctrLabel">5/5 SENSIS/5H</span>
       </div>
     </div>
     <button class="icon-btn" id="menuBtn" title="Menú" style="position:relative;display:none;">☰<span id="menuDot" style="display:none;position:absolute;top:4px;right:4px;width:7px;height:7px;background:#FF5566;border-radius:50%;"></span></button>
@@ -967,7 +967,7 @@ body{--metal:radial-gradient(130% 150% at 12% 0%,color-mix(in srgb,var(--ac) 44%
     <div style="text-align:center;font-size:36px;margin:6px 0 4px;">🎁</div>
     <div style="text-align:center;font-size:16px;font-weight:900;color:var(--ac);margin-bottom:6px;">OBTENER MÁS CRÉDITOS</div>
     <div style="text-align:center;font-size:12px;color:rgba(160,215,255,0.65);line-height:1.6;margin-bottom:18px;">
-      Comparte tu link con un amigo. Cuando entre <b>por primera vez</b> con ese link, ganas <b style="color:var(--ac);">+1 sensi/día PERMANENTE</b> para siempre. Sin límite de cuántos amigos invites.
+      Comparte tu link con un amigo. Cuando entre <b>por primera vez</b> con ese link, ganas <b style="color:var(--ac);">+1 sensi/5h PERMANENTE</b> para siempre. Sin límite de cuántos amigos invites.
     </div>
     <div class="atitle blue" style="margin-bottom:6px;">🔗 Tu link de invitación</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
@@ -1072,7 +1072,7 @@ body{--metal:radial-gradient(130% 150% at 12% 0%,color-mix(in srgb,var(--ac) 44%
     <div style="background:rgba(255,200,0,0.06);border:1px solid rgba(255,200,0,0.15);border-radius:16px;padding:14px;margin-bottom:16px;">
       <div style="font-size:10px;font-weight:900;letter-spacing:2px;color:#FFC800;margin-bottom:10px;">⭐ BENEFICIOS EXCLUSIVOS</div>
       <div style="font-size:12px;color:rgba(160,215,255,0.7);line-height:2;">
-        🎯 Límite diario aumentado (hasta 20 sensis/día)<br>
+        🎯 Límite aumentado (hasta 20 sensis/5h)<br>
         ⚡ Badge especial de creador verificado<br>
         📩 Soporte prioritario del admin<br>
         🔓 Acceso anticipado a nuevas funciones
@@ -1224,8 +1224,8 @@ const MAX_DEF=5;
 // borrando datos del navegador ni reusarlo desde otro dispositivo.
 const REDEEM_CODES={
   "482913":{type:"premium",  label:"✨ SENSI PREMIUM"},
-  "119284":{type:"boost10_2d",label:"🔓 LÍMITE 10/DÍA · 2 DÍAS"},
-  "556071":{type:"boost10_1d",label:"🔓 LÍMITE 10/DÍA · 1 DÍA"},
+  "119284":{type:"boost10_2d",label:"🔓 LÍMITE 10/5H · 2 DÍAS"},
+  "556071":{type:"boost10_1d",label:"🔓 LÍMITE 10/5H · 1 DÍA"},
   "930447":{type:"unlimited_1h",label:"♾️ SENSIS ILIMITADAS · 1H"}
 };
 const _DAY_MS=24*60*60*1000;
@@ -1325,8 +1325,8 @@ async function redeemCode(code){
   } else {
     _boostsList=[{max:info.type==="unlimited_1h"?0:10,until:Date.now()+durMs,unlimited:info.type==="unlimited_1h"}];
     updateCounter();
-    if(info.type==="boost10_2d") addMsg("bot","✅ Código canjeado: "+info.label+"\n\nTu límite subió de "+MAX_DEF+" a 10 sensis por día durante 2 días.");
-    else if(info.type==="boost10_1d") addMsg("bot","✅ Código canjeado: "+info.label+"\n\nTu límite subió de "+MAX_DEF+" a 10 sensis por día durante 1 día.");
+    if(info.type==="boost10_2d") addMsg("bot","✅ Código canjeado: "+info.label+"\n\nTu límite subió de "+MAX_DEF+" a 10 sensis cada 5 horas durante 2 días.");
+    else if(info.type==="boost10_1d") addMsg("bot","✅ Código canjeado: "+info.label+"\n\nTu límite subió de "+MAX_DEF+" a 10 sensis cada 5 horas durante 1 día.");
     else addMsg("bot","✅ Código canjeado: "+info.label+"\n\nSensis ILIMITADAS durante la próxima hora. ⚡");
   }
 }
@@ -1453,25 +1453,34 @@ async function _resolveCurrentNickByUid(uid){
   return null;
 }
 
-function getQuotaDay(){ const d=new Date(Date.now()-6*3600*1000); return d.getUTCFullYear()+"-"+(d.getUTCMonth()+1)+"-"+d.getUTCDate(); } // día en UTC-6 (igual que firestore.rules)
+var _winReset=0; const WIN_MS=5*60*60*1000; // 5 sensis cada 5 horas: la ventana empieza con la primera sensi y se reinicia sola
+function _winKey(){ return auth.currentUser.uid+"_win"; }
+function _winLeft(){ const l=_winReset-Date.now(); return l>0?_fmtRemaining(l):"unos minutos"; }
+function _winTick(){ if(_winReset&&Date.now()>=_winReset){ myCount=0; _winReset=0; } }
 async function getServerCount(nick){
-  const ref=doc(db,_C.l(),getLimitKey(getQuotaDay()));
-  const snap=await getDoc(ref);
-  return snap.exists()?snap.data().count:0;
+  const snap=await getDoc(doc(db,_C.l(),_winKey()));
+  if(!snap.exists()) return 0;
+  const st=snap.data().start&&snap.data().start.toMillis?snap.data().start.toMillis():0;
+  if(Date.now()<st+WIN_MS){ _winReset=st+WIN_MS; return snap.data().count||0; }
+  return 0;
 }
 async function incServerCount(nick){
-  const today=getQuotaDay();
-  const ref=doc(db,_C.l(),getLimitKey(today));
-  const uRef=doc(db,_C.u(),nick);
+  const ref=doc(db,_C.l(),_winKey()), uRef=doc(db,_C.u(),nick);
   const [snap,uSnap]=await Promise.all([getDoc(ref),getDoc(uRef)]);
-  const prev=snap.exists()?snap.data().count:0;
+  const d=snap.exists()?snap.data():null;
+  const st=d&&d.start&&d.start.toMillis?d.start.toMillis():0;
   const prevTotal=uSnap.exists()?(uSnap.data().totalSensi||0):0;
-  // Un solo lote: las reglas exigen que ambos suban +1 juntos
-  const b=writeBatch(db);
-  b.set(ref,{count:prev+1,nick,day:today,ts:serverTimestamp()});
-  b.update(uRef,{totalSensi:prevTotal+1,lastSeen:serverTimestamp()});
-  await b.commit();
-  return prev+1;
+  // Un solo lote: contador de la ventana + total. Las reglas de Firestore validan ambos.
+  const attempt=async(same)=>{
+    const b=writeBatch(db), c=same?(d.count||0)+1:1;
+    b.set(ref,{count:c,nick,start:same?d.start:serverTimestamp(),ts:serverTimestamp()});
+    b.update(uRef,{totalSensi:prevTotal+1,lastSeen:serverTimestamp()});
+    await b.commit(); return c;
+  };
+  const sameFirst=!!d&&Date.now()<st+WIN_MS;
+  let n; try{ n=await attempt(sameFirst); }catch(e){ if(!d) throw e; n=await attempt(!sameFirst); } // reintento por si el reloj del celular está desfasado
+  _winReset=(n===1)?Date.now()+WIN_MS:st+WIN_MS;
+  return n;
 }
 
 function getToday(){ const d=new Date(); return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); }
@@ -1509,9 +1518,10 @@ async function _mirrorMaxOverrideByNick(nick, max){
 function lsGet(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} }
 function lsSet(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
 function updateCounter(){
+  _winTick();
   if(_isUnlimitedNow()){ document.getElementById("ctrLabel").textContent="♾️ ILIMITADAS"; return; }
   const eff=_effectiveMax();
-  document.getElementById("ctrLabel").textContent=Math.max(0,eff-myCount)+"/"+eff+" SENSIS HOY";
+  document.getElementById("ctrLabel").textContent=Math.max(0,eff-myCount)+"/"+eff+" SENSIS/5H"+((myCount>0&&_winReset>Date.now())?" · "+_fmtRemaining(_winReset-Date.now()):"");
 }
 
 // ── SENSIS LOGIC ──────────────────────────────────────
@@ -3793,7 +3803,7 @@ function onBtn(lbl,bd){
       try{
         // doble check servidor
         const srv=await getServerCount(nickname);
-        if(srv>=_effectiveMax()){ addMsg("bot","⛔ Ya usaste tu límite de hoy.\n\nVuelve mañana. ☠️⚡"); return; }
+        if(srv>=_effectiveMax()){ addMsg("bot","⛔ Ya usaste tus sensis de esta ronda.\n\nSe restablecen en "+_winLeft()+". ☠️⚡"); return; }
         const isPremiumGen=_premiumPending; if(isPremiumGen) _setPremiumPending(false); // one-shot: se consume sí o sí, se publique o no
         // Si es la primera vez que se genera con este modelo exacto, esto
         // consulta specs reales (ver DEPLOY.md) antes de calibrar — con
@@ -3830,7 +3840,7 @@ function onBtn(lbl,bd){
         const rem=_effectiveMax()-myCount;
         setTimeout(()=>{
           if(rem>0) addMsg("bot","Te quedan "+rem+" sensibilidad"+(rem!==1?"es":"")+" hoy.\n\n¿Quieres otra? Escribe tu marca y modelo.");
-          else addMsg("bot","⛔ Llegaste al límite de hoy.\n\nVuelve mañana. ☠️⚡");
+          else addMsg("bot","⛔ Llegaste al límite.\n\nSe restablece en "+_winLeft()+". ☠️⚡");
         },350);
       }catch(e){
         console.error("Error generando sensi:",e);
@@ -3848,7 +3858,7 @@ function handleSend(){
   const inp=document.getElementById("msgInput"); const msg=inp.value.trim(); if(!msg)return; inp.value="";
   if(step!=="idle"){ addMsg("user",msg); return; }
   if(/^\d{6}$/.test(msg)){ addMsg("user",msg); redeemCode(msg); return; }
-  if(myCount>=_effectiveMax()){ addMsg("user",msg); setTimeout(()=>addMsg("bot","⛔ Llegaste al límite de hoy.\n\nVuelve mañana. ☠️⚡"),300); return; }
+  _winTick(); if(myCount>=_effectiveMax()){ addMsg("user",msg); setTimeout(()=>addMsg("bot","⛔ Llegaste al límite.\n\nSe restablece en "+_winLeft()+". ☠️⚡"),300); return; }
   const marca=detectM(msg); addMsg("user",msg);
   if(marca){ const modelo=exMod(msg,marca); data={marca,modelo,nivel:"",dpi:false}; step="nivel"; setTimeout(()=>addMsg("bot","📱 "+marca+" "+modelo+"\n\n¿Qué nivel de sensibilidad?",{btns:["🟢 Baja","🔵 Media","🔴 Alta"]}),300); }
   else { setTimeout(()=>addMsg("bot","No reconocí la marca. Ej:\n📱 Honor X5C Plus\n📱 Samsung Galaxy A54\n📱 Xiaomi Redmi Note 12"),300); }
@@ -4402,7 +4412,7 @@ document.getElementById("cfgBtn")?.addEventListener("click",async()=>{
   }catch(e){}
 });
 document.getElementById("clearSessBtn").addEventListener("click",()=>{
-  if(confirm("¿Cerrar sesión? Solo se borra tu nombre guardado, el límite diario se mantiene.")){
+  if(confirm("¿Cerrar sesión? Solo se borra tu nombre guardado, tu límite se mantiene.")){
     localStorage.removeItem(_xd("ODEsODQ=",0x36));
     (googleUser?signOut(auth):Promise.resolve()).catch(()=>{}).finally(()=>location.reload()); // la sesión anónima se conserva: es tu identidad
   }
@@ -4491,7 +4501,7 @@ function _showCreatorDetail(c, docId){
     +"<a href='"+c.video2+"' target='_blank' style='display:block;font-size:10px;color:var(--ac);margin-bottom:10px;'>🎬 Video 2</a>"
     +"<div id='cpLimitInfo' style='font-size:10px;color:rgba(61,255,143,0.6);margin-bottom:8px;'>Cargando límite...</div>"
     +"<div style='display:flex;gap:6px;margin-bottom:8px;'>"
-    +"<input id='cpLimitInput' type='number' min='1' max='200' placeholder='Nuevo límite/día' class='inp' style='flex:1;font-size:11px;'/>"
+    +"<input id='cpLimitInput' type='number' min='1' max='200' placeholder='Nuevo límite/5h' class='inp' style='flex:1;font-size:11px;'/>"
     +"<button id='cpSetLimitBtn' style='flex:1;padding:8px;background:rgba(255,200,0,0.1);border:1px solid rgba(255,200,0,0.3);border-radius:11px;color:#FFC800;font-size:10px;font-weight:900;cursor:pointer;'>🔢 APLICAR</button>"
     +"</div>"
     +"<textarea id='cpMsgInput' placeholder='Mensaje o recompensa para el creador...' class='inp' style='font-size:11px;min-height:50px;margin-bottom:4px;resize:vertical;'></textarea>"
@@ -4509,7 +4519,7 @@ function _showCreatorDetail(c, docId){
     const el=document.getElementById("cpLimitInfo");
     if(!el) return;
     const lim=uSnap.exists()?uSnap.data().maxOverride??5:5;
-    el.textContent="Límite actual: "+lim+" sensis/día";
+    el.textContent="Límite actual: "+lim+" sensis/5h";
   });
 }
 
@@ -4523,7 +4533,7 @@ document.getElementById("adminCreatorsContent").addEventListener("click",async e
     if(!lim||lim<1){ alert("Ingresa un límite válido."); return; }
     await setDoc(doc(db,_C.u(),nick),{maxOverride:lim},{merge:true});
     _mirrorMaxOverrideByNick(nick,lim);
-    await addDoc(collection(db,"inbox"),{to:nick,msg:"🔢 Tu límite diario fue actualizado a "+lim+" sensis/día.",type:"admin",read:false,ts:serverTimestamp()});
+    await addDoc(collection(db,"inbox"),{to:nick,msg:"🔢 Tu límite fue actualizado a "+lim+" sensis/5h.",type:"admin",read:false,ts:serverTimestamp()});
     document.getElementById("cpLimitInput").value="";
     alert("Límite "+lim+" aplicado a "+nick+" ✅");
   }
@@ -4590,7 +4600,7 @@ async function showAdmin(){
       <button class='abtn abtn-gold' id='aTmpBtn'>⏱️ BAN TEMP</button>
       <button class='abtn abtn-blue' id='aRefreshBtn'>🔄 ACTUALIZAR</button>
     </div>
-    <div class='atitle blue' style='margin-bottom:6px;'>🔢 LÍMITE DIARIO</div>
+    <div class='atitle blue' style='margin-bottom:6px;'>🔢 LÍMITE (CADA 5H)</div>
     <div style='display:flex;gap:8px;margin-bottom:10px;'>
       <input class='inp' id='aMaxIn' placeholder='Número (ej: 10)' type='number' style='flex:1;'/>
       <button class='abtn abtn-blue' id='aSetMaxBtn' style='flex:1;'>✅ APLICAR</button>
@@ -4600,8 +4610,8 @@ async function showAdmin(){
     <div style='font-size:10px;color:rgba(160,215,255,0.6);margin-bottom:4px;'>✉️ Mensaje</div>
     <textarea class='inp' id='aPmMsg' placeholder='Escribe el mensaje... (opcional)' rows='3' style='resize:none;margin-bottom:10px;'></textarea>
     <div style='font-size:10px;color:rgba(160,215,255,0.6);margin-bottom:4px;'>🎁 Créditos / recompensa</div>
-    <input class='inp' id='aUserRewardMsg' placeholder='Descripción (ej: +10 sensis/día) (opcional)' style='margin-bottom:6px;'/>
-    <input class='inp' id='aUserRewardLimit' type='number' min='1' max='100' placeholder='Nuevo límite/día a aplicar (opcional)' style='margin-bottom:10px;'/>
+    <input class='inp' id='aUserRewardMsg' placeholder='Descripción (ej: +10 sensis/5h) (opcional)' style='margin-bottom:6px;'/>
+    <input class='inp' id='aUserRewardLimit' type='number' min='1' max='100' placeholder='Nuevo límite/5h a aplicar (opcional)' style='margin-bottom:10px;'/>
     <div style='display:flex;gap:8px;'>
       <button class='abtn abtn-blue' style='flex:1;' id='aSendPmBtn'>📩 SOLO MENSAJE</button>
       <button class='abtn abtn-green' style='flex:1;' id='aUserSendRewardBtn'>🎁 SOLO CRÉDITOS</button>
@@ -4706,7 +4716,7 @@ async function showAdmin(){
 👤 Nombre: ${d.nickname}
 ${isCreatorUser?"🎬 CREADOR VERIFICADO ✅\n":""}🎮 Sensis totales: ${d.totalSensi||0}
 ⚠️ Baneado: ${d.banned?"SÍ ⛔":"NO ✅"}
-🔢 Límite diario: ${d.maxOverride??5}
+🔢 Límite por 5h: ${d.maxOverride??5}
 📱 Device: ${(d.did||"").slice(0,16)}...</pre>`;
     });
   }
@@ -4759,7 +4769,7 @@ ${isCreatorUser?"🎬 CREADOR VERIFICADO ✅\n":""}🎮 Sensis totales: ${d.tota
         <button class='abtn' style='flex:1;background:rgba(255,85,102,0.1);border-color:rgba(255,85,102,0.3);color:#FF5566;' id='aCreatorRejectBtn'>❌ RECHAZAR</button>
       </div>
       <div style='display:flex;gap:6px;margin-bottom:8px;align-items:center;'>
-        <input class='inp' id='aCreatorLimitInput' type='number' min='1' max='100' placeholder='Nuevo límite/día' style='flex:1;font-size:11px;'/>
+        <input class='inp' id='aCreatorLimitInput' type='number' min='1' max='100' placeholder='Nuevo límite/5h' style='flex:1;font-size:11px;'/>
         <button class='abtn abtn-gold' style='flex:1;' id='aCreatorSetLimitBtn'>🔢 CAMBIAR LÍMITE</button>
       </div>
       <div style='display:flex;gap:6px;margin-bottom:8px;'>
@@ -4779,8 +4789,8 @@ ${isCreatorUser?"🎬 CREADOR VERIFICADO ✅\n":""}🎮 Sensis totales: ${d.tota
       <div style='margin-top:8px;border-top:1px solid rgba(var(--ac-rgb),0.1);padding-top:10px;'>
         <div style='font-size:9px;letter-spacing:1px;color:rgba(61,255,143,0.6);margin-bottom:6px;'>🎁 ENVIAR CRÉDITOS/RECOMPENSA (a este creador)</div>
         <div id='aCreatorRetos' style='max-height:100px;overflow-y:auto;margin-bottom:6px;font-size:10px;color:rgba(160,215,255,0.4);'>Sin retos pendientes de recompensar.</div>
-        <input class='inp' id='aChallengeReward' placeholder='Descripción recompensa (ej: +10 sensis/día)' style='margin-bottom:4px;font-size:11px;'/>
-        <input class='inp' id='aChallengeNewLimit' type='number' min='1' max='100' placeholder='Nuevo límite/día a aplicar automáticamente' style='margin-bottom:6px;font-size:11px;'/>
+        <input class='inp' id='aChallengeReward' placeholder='Descripción recompensa (ej: +10 sensis/5h)' style='margin-bottom:4px;font-size:11px;'/>
+        <input class='inp' id='aChallengeNewLimit' type='number' min='1' max='100' placeholder='Nuevo límite/5h a aplicar automáticamente' style='margin-bottom:6px;font-size:11px;'/>
         <button class='abtn abtn-green' style='width:100%;' id='aSendRewardBtn'>🎁 ENVIAR CRÉDITOS</button>
       </div>
     </div>`;
@@ -4825,7 +4835,7 @@ ${isCreatorUser?"🎬 CREADOR VERIFICADO ✅\n":""}🎮 Sensis totales: ${d.tota
     await setDoc(doc(db,_C.u(),_selCreator),{maxOverride:20,creatorVerified:true},{merge:true});
     _mirrorMaxOverrideByNick(_selCreator,20);
     // Notificar al usuario
-    await addDoc(collection(db,"inbox"),{to:_selCreator,msg:"🎬 ¡Felicidades! Tu solicitud al Programa de Creadores fue APROBADA.\n\n⭐ Beneficios activos:\n• 20 sensis/día\n• Badge de Creador Verificado en tus sensibilidades\n• Acceso a retos exclusivos\n\n¡Bienvenido al programa!",type:"admin",read:false,ts:serverTimestamp()});
+    await addDoc(collection(db,"inbox"),{to:_selCreator,msg:"🎬 ¡Felicidades! Tu solicitud al Programa de Creadores fue APROBADA.\n\n⭐ Beneficios activos:\n• 20 sensis/5h\n• Badge de Creador Verificado en tus sensibilidades\n• Acceso a retos exclusivos\n\n¡Bienvenido al programa!",type:"admin",read:false,ts:serverTimestamp()});
     document.getElementById("aCreatorDetail").style.display="none";
     alert("Creador aprobado ✅");
   });
@@ -4845,7 +4855,7 @@ ${isCreatorUser?"🎬 CREADOR VERIFICADO ✅\n":""}🎮 Sensis totales: ${d.tota
     if(!lim||lim<1||lim>100){ alert("Ingresa un límite válido (1-100)."); return; }
     await setDoc(doc(db,_C.u(),_selCreator),{maxOverride:lim},{merge:true});
     _mirrorMaxOverrideByNick(_selCreator,lim);
-    await addDoc(collection(db,"inbox"),{to:_selCreator,msg:"🔢 El admin actualizó tu límite diario a "+lim+" sensis/día.\n\nTu nuevo límite ya está activo automáticamente.",type:"admin",read:false,ts:serverTimestamp()});
+    await addDoc(collection(db,"inbox"),{to:_selCreator,msg:"🔢 El admin actualizó tu límite a "+lim+" sensis/5h.\n\nTu nuevo límite ya está activo automáticamente.",type:"admin",read:false,ts:serverTimestamp()});
     alert("Límite de "+lim+" aplicado a "+_selCreator+" ✅");
   });
 
@@ -4862,7 +4872,7 @@ ${isCreatorUser?"🎬 CREADOR VERIFICADO ✅\n":""}🎮 Sensis totales: ${d.tota
     // recompensa quedaba "reclamada" sin que el usuario hiciera nada.
     await addDoc(collection(db,"inbox"),{
       to:_selCreator,
-      msg:"🎁 ¡Recompensa recibida por completar tu reto!\n\n"+(reward||"")+(newLimit?"\n\n📬 Tienes "+newLimit+" sensis/día esperando en tu bandeja, toca RECLAMAR para activarlos.":""),
+      msg:"🎁 ¡Recompensa recibida por completar tu reto!\n\n"+(reward||"")+(newLimit?"\n\n📬 Tienes "+newLimit+" sensis/5h esperando en tu bandeja, toca RECLAMAR para activarlos.":""),
       type:"reward",
       reward:reward||"",
       newLimit:newLimit||null,
@@ -5002,7 +5012,7 @@ ${isCreatorUser?"🎬 CREADOR VERIFICADO ✅\n":""}🎮 Sensis totales: ${d.tota
       if(reward||newLimit){
         await addDoc(collection(db,"inbox"),{
           to:selectedUser,
-          msg:"🎁 ¡Créditos recibidos!\n\n"+(reward||"")+(newLimit?"\n\n📬 Tienes "+newLimit+" sensis/día esperando en tu bandeja, toca RECLAMAR para activarlos.":""),
+          msg:"🎁 ¡Créditos recibidos!\n\n"+(reward||"")+(newLimit?"\n\n📬 Tienes "+newLimit+" sensis/5h esperando en tu bandeja, toca RECLAMAR para activarlos.":""),
           type:"reward", reward:reward||"", newLimit:newLimit||null, claimed:false, read:false, ts:serverTimestamp()
         });
       }
@@ -5035,7 +5045,7 @@ ${isCreatorUser?"🎬 CREADOR VERIFICADO ✅\n":""}🎮 Sensis totales: ${d.tota
       // el usuario toque RECLAMAR en su bandeja, no se aplica al enviar.
       await addDoc(collection(db,"inbox"),{
         to:selectedUser,
-        msg:"🎁 ¡Créditos recibidos!\n\n"+(reward||"")+(newLimit?"\n\n📬 Tienes "+newLimit+" sensis/día esperando en tu bandeja, toca RECLAMAR para activarlos.":""),
+        msg:"🎁 ¡Créditos recibidos!\n\n"+(reward||"")+(newLimit?"\n\n📬 Tienes "+newLimit+" sensis/5h esperando en tu bandeja, toca RECLAMAR para activarlos.":""),
         type:"reward",
         reward:reward||"",
         newLimit:newLimit||null,
@@ -5235,7 +5245,7 @@ async function entrar(googleUID=null){
   nickname=n; localStorage.setItem(_xd("ODEsODQ=",0x36),n);
 
   // ── REFERIDOS: si entró por primera vez con un link "?ref=alguien" y ese
-  // "alguien" no es él mismo, le suma +1 sensi/día PERMANENTE a quien lo
+  // "alguien" no es él mismo, le suma +1 sensi/5h PERMANENTE a quien lo
   // invitó. Se usa un doc "referrals/{nickname del nuevo}" como candado:
   // como cada usuario nuevo solo puede tener UN doc con su propio nombre,
   // es imposible cobrar el mismo referido dos veces aunque recargue la
@@ -5258,7 +5268,7 @@ async function entrar(googleUID=null){
         const _rb=writeBatch(db);
         _rb.set(refDocRef,{referrer:_refCode,referred:n,ts:serverTimestamp()});
         _rb.update(rUserRef,{maxOverride:newMax,lastRefFrom:n});
-        _rb.set(doc(db,"inbox","ref_"+n),{to:_refCode,referred:n,msg:"🎉 ¡"+n+" se unió usando tu link de invitación!\n\nGanaste +1 sensi/día PERMANENTE. Tu límite diario ahora es "+newMax+".",type:"reward",reward:"+1 sensi/día permanente por invitar a "+n,newLimit:null,claimed:true,read:false,ts:serverTimestamp()});
+        _rb.set(doc(db,"inbox","ref_"+n),{to:_refCode,referred:n,msg:"🎉 ¡"+n+" se unió usando tu link de invitación!\n\nGanaste +1 sensi/5h PERMANENTE. Tu límite ahora es "+newMax+".",type:"reward",reward:"+1 sensi/5h permanente por invitar a "+n,newLimit:null,claimed:true,read:false,ts:serverTimestamp()});
         await _rb.commit();
       }catch(e){ console.error("Error procesando referido:",e); }
     })();
@@ -5339,7 +5349,7 @@ async function entrar(googleUID=null){
     if(ud.maxOverride!==null&&ud.maxOverride!==undefined){
       if(!_firstUserSnap&&ud.maxOverride!==myMax){
         myMax=ud.maxOverride; updateCounter();
-        addMsg("bot","⚙️ El admin cambió tu límite a "+myMax+" sensis/día.");
+        addMsg("bot","⚙️ El admin cambió tu límite a "+myMax+" sensis/5h.");
       } else {
         myMax=ud.maxOverride; updateCounter();
       }
@@ -5655,9 +5665,9 @@ document.getElementById("inboxList").addEventListener("click",async e=>{
       _cb.update(doc(db,_C.u(),nick),{maxOverride:newLimit,lastClaimId:docId});
       _cb.update(doc(db,"inbox",docId),{claimed:true,read:true});
       await _cb.commit();
-      claimBtn.textContent="✅ ¡Reclamado! "+newLimit+" sensis/día";
+      claimBtn.textContent="✅ ¡Reclamado! "+newLimit+" sensis/5h";
       claimBtn.style.color="#3DFF8F";
-      addMsg("bot","🎁 ¡Recompensa reclamada! Tu nuevo límite es "+newLimit+" sensis/día.");
+      addMsg("bot","🎁 ¡Recompensa reclamada! Tu nuevo límite es "+newLimit+" sensis/5h.");
     }catch(err){
       claimBtn.disabled=false; claimBtn.textContent="🎁 RECLAMAR";
     }
@@ -5736,9 +5746,9 @@ function _loadInbox(){
           +(didDeliver?"<div style='margin-top:8px;font-size:10px;color:rgba(var(--ac-rgb),0.6);'>📤 Entregado · esperando recompensa</div>":"")
           +(isReward&&msg.reward?"<div style='margin-top:8px;font-size:11px;color:#FFC800;font-weight:700;'><img src='"+CREDITS_ICON_IMG+"' style='width:13px;height:13px;vertical-align:-2px;margin-right:4px;'/>"+msg.reward+"</div>":"")
           +(canClaim
-            ?"<button data-docid='"+d.id+"' data-limit='"+msg.newLimit+"' class='claim-btn' style='margin-top:10px;width:100%;padding:10px;background:linear-gradient(135deg,rgba(61,255,143,0.15),rgba(0,200,100,0.08));border:1px solid rgba(61,255,143,0.35);border-radius:14px;color:#3DFF8F;font-size:11px;font-weight:900;letter-spacing:1px;cursor:pointer;'><img src='"+CREDITS_ICON_IMG+"' style='width:13px;height:13px;vertical-align:-2px;margin-right:4px;filter:brightness(0) saturate(100%) invert(70%) sepia(60%) saturate(500%) hue-rotate(80deg);'/>RECLAMAR +"+msg.newLimit+" sensis/día</button>"
+            ?"<button data-docid='"+d.id+"' data-limit='"+msg.newLimit+"' class='claim-btn' style='margin-top:10px;width:100%;padding:10px;background:linear-gradient(135deg,rgba(61,255,143,0.15),rgba(0,200,100,0.08));border:1px solid rgba(61,255,143,0.35);border-radius:14px;color:#3DFF8F;font-size:11px;font-weight:900;letter-spacing:1px;cursor:pointer;'><img src='"+CREDITS_ICON_IMG+"' style='width:13px;height:13px;vertical-align:-2px;margin-right:4px;filter:brightness(0) saturate(100%) invert(70%) sepia(60%) saturate(500%) hue-rotate(80deg);'/>RECLAMAR +"+msg.newLimit+" sensis/5h</button>"
             :"")
-          +(didClaim?"<div style='margin-top:8px;font-size:10px;color:rgba(61,255,143,0.6);'>✅ Reclamado · "+msg.newLimit+" sensis/día activos</div>":"")
+          +(didClaim?"<div style='margin-top:8px;font-size:10px;color:rgba(61,255,143,0.6);'>✅ Reclamado · "+msg.newLimit+" sensis/5h activos</div>":"")
           +(!msg.read?"<div style='margin-top:6px;width:8px;height:8px;background:var(--ac);border-radius:50%;'></div>":"");
         // Marcar como leído al tocar la card
         card.addEventListener("click",e=>{

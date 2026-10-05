@@ -1790,7 +1790,7 @@ async function _lookupDeviceSpecs(marca,modelo){
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({marca,modelo})
-      }),8000,"timeout");
+      }),16000,"timeout");
       const data=await resp.json();
       console.log("📱 [device_specs] Worker respondió:",data);
       // Revalidamos los rangos también acá (defensa extra, además de la
@@ -1811,7 +1811,7 @@ async function _lookupDeviceSpecs(marca,modelo){
       // cada vez que alguien lo vuelva a escribir) -- con la versión de
       // esquema actual, para que si en el futuro se agrega OTRO campo
       // nuevo, esta entrada también se pueda re-investigar una vez más.
-      setDoc(doc(db,"device_specs",key),{marca,modelo,...result,v:_DEVICE_SPECS_SCHEMA_V,ts:serverTimestamp()})
+      if(result.found) setDoc(doc(db,"device_specs",key),{marca,modelo,...result,v:_DEVICE_SPECS_SCHEMA_V,ts:serverTimestamp()})
         .then(()=>console.log("📱 [device_specs] Guardado en Firestore para siempre."))
         .catch(err=>console.warn("📱 [device_specs] No se pudo guardar en Firestore (revisá las reglas, paso 8 del DEPLOY.md):",err.message));
       return result;

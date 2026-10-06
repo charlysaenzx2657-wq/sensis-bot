@@ -807,6 +807,24 @@ body{--metal:radial-gradient(130% 150% at 12% 0%,color-mix(in srgb,var(--ac) 44%
         <div class="copt" data-c="#FFC800" style="background:#FFC800;"></div>
         <div class="copt" data-c="#AA44FF" style="background:#AA44FF;"></div>
         <div class="copt" data-c="#FF8844" style="background:#FF8844;"></div>
+        <div class="copt" data-c="#FF4FD8" style="background:#FF4FD8;"></div>
+        <div class="copt" data-c="#00E5CC" style="background:#00E5CC;"></div>
+        <div class="copt" data-c="#8A7CFF" style="background:#8A7CFF;"></div>
+        <div class="copt" data-c="#B8FF3D" style="background:#B8FF3D;"></div>
+        <div class="copt" data-c="#FF6A00" style="background:#FF6A00;"></div>
+        <div class="copt" data-c="#FFE14D" style="background:#FFE14D;"></div>
+        <div class="copt" data-c="#2F6BFF" style="background:#2F6BFF;"></div>
+        <div class="copt" data-c="#19D96C" style="background:#19D96C;"></div>
+        <div class="copt" data-c="#FF3D7F" style="background:#FF3D7F;"></div>
+        <div class="copt" data-c="#C77DFF" style="background:#C77DFF;"></div>
+        <div class="copt" data-c="#FF7F50" style="background:#FF7F50;"></div>
+        <div class="copt" data-c="#D4AF37" style="background:#D4AF37;"></div>
+        <div class="copt" data-c="#00FFB3" style="background:#00FFB3;"></div>
+        <div class="copt" data-c="#B22BFF" style="background:#B22BFF;"></div>
+        <div class="copt" data-c="#FF1744" style="background:#FF1744;"></div>
+        <div class="copt" data-c="#00B8D4" style="background:#00B8D4;"></div>
+        <div class="copt" data-c="#C0CAD8" style="background:#C0CAD8;"></div>
+        <div class="copt" data-c="#536DFE" style="background:#536DFE;"></div>
       </div>
       <button class="cbtn cbtn-p" id="applyColorBtn">✅ APLICAR COLOR</button>
     </div>
@@ -3306,8 +3324,10 @@ function _rcStop(){
 function _rcStep(){
   if(!_rcOn) return;
   // saturación 78-100%, luminosidad 52-62% (siempre vívido) y salto de ≥25° de hue
-  _lastRandomHue=(_lastRandomHue+25+Math.random()*310)%360;
-  const rc=hslToHex(_lastRandomHue, 78+Math.random()*22, 52+Math.random()*10);
+  // 50% un color de la paleta de acentos (24) y 50% un matiz nuevo generado (rango más amplio)
+  let rc;
+  if(Math.random()<0.5){ const pool=[...document.querySelectorAll(".copt")].map(o=>o.dataset.c).filter(c=>c.toLowerCase()!==String(currentColor).toLowerCase()); rc=pool[Math.floor(Math.random()*pool.length)]; }
+  else{ _lastRandomHue=(_lastRandomHue+25+Math.random()*310)%360; rc=hslToHex(_lastRandomHue, 65+Math.random()*35, 45+Math.random()*21); }
   const m=rc.slice(1).match(/../g).map(h=>parseInt(h,16)).join(",");
   const next=()=>{ if(_rcOn) _rcT=setTimeout(_rcStep,5000); };
   const paint=()=>{ applyColor(rc); document.querySelectorAll(".copt").forEach(x=>x.classList.remove("sel")); };

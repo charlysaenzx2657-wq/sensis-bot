@@ -626,6 +626,13 @@ body{--metal:radial-gradient(130% 150% at 12% 0%,color-mix(in srgb,var(--ac) 44%
 #novDots{display:flex;justify-content:center;gap:6px;}
 #novDots i{width:8px;height:8px;border-radius:8px;background:rgba(255,255,255,.25);transition:all .3s;}
 #novDots i.on{width:22px;background:var(--ac);}
+/* ── CARGA INICIAL (igual que la verificación del login) ── */
+#splashScreen .lg-ring{opacity:1;animation:lgSpin .8s linear infinite;}
+#spImg:not([src]){visibility:hidden;}
+#splashScreen .sp-t{margin:6px 0 0;color:var(--ac);font-size:18px;font-weight:900;letter-spacing:2px;animation:lgIn .5s .15s cubic-bezier(.16,1,.3,1) backwards;}
+#splashScreen .sp-s{margin:0;color:rgba(160,215,255,.55);font-size:12px;animation:lgIn .5s .25s cubic-bezier(.16,1,.3,1) backwards;}
+#spBar{width:min(260px,70%);height:3px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;}
+#spBar i{display:block;height:100%;width:40%;border-radius:3px;background:linear-gradient(90deg,var(--ac),#fff);animation:lgBar 1s ease-in-out infinite;}
 </style>
 
 </head>
@@ -653,7 +660,10 @@ body{--metal:radial-gradient(130% 150% at 12% 0%,color-mix(in srgb,var(--ac) 44%
 
   <!-- SPLASH: se muestra mientras se verifica si hay sesión guardada -->
   <div id="splashScreen" style="display:none;">
-    <div class="splash-spinner"></div>
+    <div class="login-logo"><i class="lg-ring"></i><img id="spImg" alt=""></div>
+    <h2 class="sp-t">VERIFICANDO...</h2>
+    <p class="sp-s">Validando credenciales...</p>
+    <div id="spBar"><i></i></div>
   </div>
 
   <!-- LOGIN -->
@@ -1199,6 +1209,7 @@ const _xd=(b,k)=>atob(b).split(",").map(Number).map((n,i)=>String.fromCharCode(n
 // si hay una sesión guardada, mostramos el splash (spinner) en vez del login,
 // para que el usuario nunca vea el login "parpadear" antes de entrar solo.
 (function(){
+  const _si=document.getElementById("spImg"),_li=document.querySelector("#loginScreen .login-logo img"); if(_si&&_li) _si.src=_li.src; // mismo logo que el login
   const _earlyNick=localStorage.getItem(_xd("ODEsODQ=",0x36));
   const loginEl=document.getElementById("loginScreen");
   const splashEl=document.getElementById("splashScreen");
@@ -3284,27 +3295,37 @@ function hslToHex(h,s,l){
   return "#"+toHex(f(0))+toHex(f(8))+toHex(f(4));
 }
 let _lastRandomHue=Math.random()*360;
-function setRandomColors(on){
-  if(_randomColorInterval){ clearInterval(_randomColorInterval); _randomColorInterval=null; }
-  if(on){
-    _randomColorInterval=setInterval(()=>{
-      // ANTES: saturación 55-100% pero luminosidad 38-78% (demasiado ancho) ->
-      // salían colores lavados/pastel (l alto) u oscuros/apagados (l bajo) que
-      // se veían "poco llamativos", sobre todo porque --ac-rgb se usa a baja
-      // opacidad (0.08-0.22) en casi todo el glass. Ahora se acota a un rango
-      // vívido y consistente (saturación 78-100%, luminosidad 52-62%), muy
-      // similar a los acentos de sistema de iOS: siempre neón/vivo, nunca
-      // lavado ni oscuro, sin perder la variedad de matices (sigue saltando
-      // ≥25° de hue cada vez).
-      _lastRandomHue=(_lastRandomHue+25+Math.random()*310)%360;
-      const rc=hslToHex(_lastRandomHue, 78+Math.random()*22, 52+Math.random()*10);
-      applyColor(rc);
-      document.querySelectorAll(".copt").forEach(x=>x.classList.remove("sel"));
-    },5000);
-  }
+// Color aleatorio con OLA: una onda del color nuevo se expande, el color cambia al pasar la ola
+// y el contador de 5 s empieza recién cuando la ola termina.
+let _rcT=null,_rcW=null,_rcOn=false;
+function _rcStop(){
+  _rcOn=false; clearTimeout(_rcT); _rcT=null;
+  if(_rcW){ try{_rcW.cancel();}catch(e){} _rcW=null; }
+  document.querySelectorAll(".rc-wave").forEach(e=>e.remove());
+}
+function _rcStep(){
+  if(!_rcOn) return;
+  // saturación 78-100%, luminosidad 52-62% (siempre vívido) y salto de ≥25° de hue
+  _lastRandomHue=(_lastRandomHue+25+Math.random()*310)%360;
+  const rc=hslToHex(_lastRandomHue, 78+Math.random()*22, 52+Math.random()*10);
+  const m=rc.slice(1).match(/../g).map(h=>parseInt(h,16)).join(",");
+  const next=()=>{ if(_rcOn) _rcT=setTimeout(_rcStep,5000); };
+  const paint=()=>{ applyColor(rc); document.querySelectorAll(".copt").forEach(x=>x.classList.remove("sel")); };
+  if(matchMedia("(prefers-reduced-motion:reduce)").matches){ paint(); next(); return; }
+  const w=document.createElement("div"); w.className="rc-wave";
+  w.style.cssText="position:fixed;left:"+(20+Math.random()*60)+"%;top:"+(20+Math.random()*60)+"%;width:260vmax;height:260vmax;margin:-130vmax 0 0 -130vmax;border-radius:50%;pointer-events:none;z-index:9000;will-change:transform,opacity;background:radial-gradient(circle,rgba("+m+",.16) 0,rgba("+m+",.16) 40%,rgba("+m+",.55) 47%,rgba("+m+",0) 56%)";
+  document.body.appendChild(w);
+  const a=w.animate([{transform:"scale(0)",opacity:1},{transform:"scale(1)",opacity:0}],{duration:1400,easing:"cubic-bezier(.3,.6,.4,1)"});
+  _rcW=a;
+  setTimeout(()=>{ if(_rcOn) paint(); },420); // el color cambia cuando el frente de la ola cruza la pantalla
+  a.onfinish=()=>{ w.remove(); _rcW=null; next(); }; // el contador de 5 s arranca al terminar la ola
+}
+function setRandomColors(on,imm){
+  _rcStop(); _randomColorInterval=on?1:null;
+  if(on){ _rcOn=true; if(imm) _rcStep(); else _rcT=setTimeout(_rcStep,5000); }
   savePrefs();
 }
-document.getElementById("randomColorToggle").addEventListener("change",e=>setRandomColors(e.target.checked));
+document.getElementById("randomColorToggle").addEventListener("change",e=>setRandomColors(e.target.checked,true));
 
 // ── TUTORIAL DE BIENVENIDA (spotlight sobre la interfaz real; se guarda en Firestore, no en localStorage) ──
 const TUTORIAL_STEPS=[

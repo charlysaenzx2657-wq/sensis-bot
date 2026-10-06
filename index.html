@@ -614,6 +614,18 @@ body{--metal:radial-gradient(130% 150% at 12% 0%,color-mix(in srgb,var(--ac) 44%
 @keyframes ptWave{0%,100%{transform:translateX(-6%) scaleY(.8);}50%{transform:translateX(6%) scaleY(1.15);}}
 #cfgModal .msec{--slide-x:0px;--slide-y:12px;animation:panelFadeIn .4s cubic-bezier(.16,1,.3,1);will-change:transform,opacity;}
 #rankingList{transition:opacity .2s;}
+/* ── NOVEDADES (cuadro con imagen) ── */
+#novOv{position:fixed;inset:0;z-index:9500;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.78);opacity:0;transition:opacity .3s;}
+#novOv.on{opacity:1;}
+#novCard{position:relative;width:100%;max-width:460px;max-height:92vh;display:flex;flex-direction:column;gap:12px;transform:translateY(24px) scale(.9);transition:transform .5s cubic-bezier(.34,1.56,.64,1);}
+#novOv.on #novCard{transform:none;}
+#novCard img{width:100%;max-height:72vh;object-fit:contain;border-radius:20px;border:1.5px solid rgba(255,255,255,.18);box-shadow:0 18px 50px rgba(0,0,0,.6);}
+#novX{position:absolute;top:-10px;right:-6px;width:34px;height:34px;border-radius:50%;border:1.5px solid rgba(255,255,255,.3);background:var(--metal);color:#fff;font-size:15px;cursor:pointer;z-index:2;}
+#novImg{transition:opacity .25s;}
+#novTxt{margin:0;text-align:center;color:#e9f2ff;font-size:14px;line-height:1.45;font-weight:600;text-shadow:0 1px 6px rgba(0,0,0,.6);}
+#novDots{display:flex;justify-content:center;gap:6px;}
+#novDots i{width:8px;height:8px;border-radius:8px;background:rgba(255,255,255,.25);transition:all .3s;}
+#novDots i.on{width:22px;background:var(--ac);}
 </style>
 
 </head>
@@ -5277,6 +5289,7 @@ async function entrar(googleUID=null){
   myCount=await getServerCount(n);
   _loadBoost();
   await _lgSuccess(n);
+  setTimeout(_novShow,1300);
   const _sp=document.getElementById("splashScreen"); if(_sp) _sp.style.display="none";
   document.getElementById("loginScreen").style.display="none";
   document.getElementById("chatScreen").style.display="flex";
@@ -5475,9 +5488,9 @@ pendingTheme=currentTheme; pendingColor=currentColor;
 
 document.getElementById("googleBtn").addEventListener("click",()=>_lgRun(entrarConGoogle));
 const _I18N={
- en:{"ENTRA AL CHAT":"JOIN THE CHAT","Elige un nombre para recibir tu sensibilidad personalizada para Free Fire":"Pick a name to get your personalized Free Fire sensitivity","ENTRAR CON GOOGLE":"SIGN IN WITH GOOGLE","O ESCRIBE TU NOMBRE":"OR TYPE YOUR NAME","Tu nombre (ej: SniperX, NoobKiller...)":"Your name (e.g. SniperX, NoobKiller...)","⚡ ENTRAR":"⚡ ENTER","Google: límite por cuenta":"Google: limit per account","Sin cuenta: por dispositivo":"No account: per device","🌐 EN VIVO":"🌐 LIVE","💬 MI CHAT":"💬 MY CHAT","EN LÍNEA":"ONLINE","SENSIS HOY":"SENSIS TODAY","VERIFICANDO...":"VERIFYING...","Validando credenciales...":"Checking credentials...","¡SESIÓN EXITOSA!":"LOGIN SUCCESSFUL!","Bienvenido,":"Welcome,","Cuenta de Google verificada ✅":"Google account verified ✅","ELIGE TU NOMBRE":"CHOOSE YOUR NAME","Será tu nombre en el chat y el ranking. Podrás cambiarlo después.":"This will be your name in the chat and ranking. You can change it later.","💾 GUARDAR NOMBRE":"💾 SAVE NAME","¡LISTO!":"ALL SET!","Mínimo 2 letras o números (sin espacios ni símbolos).":"At least 2 letters or numbers (no spaces or symbols).","Ese nombre ya está en uso, elige otro.":"That name is already taken, pick another."},
- pt:{"ENTRA AL CHAT":"ENTRE NO CHAT","Elige un nombre para recibir tu sensibilidad personalizada para Free Fire":"Escolha um nome para receber sua sensibilidade personalizada de Free Fire","ENTRAR CON GOOGLE":"ENTRAR COM O GOOGLE","O ESCRIBE TU NOMBRE":"OU DIGITE SEU NOME","Tu nombre (ej: SniperX, NoobKiller...)":"Seu nome (ex: SniperX, NoobKiller...)","Google: límite por cuenta":"Google: limite por conta","Sin cuenta: por dispositivo":"Sem conta: por dispositivo","🌐 EN VIVO":"🌐 AO VIVO","💬 MI CHAT":"💬 MEU CHAT","EN LÍNEA":"ONLINE","SENSIS HOY":"SENSIS HOJE","VERIFICANDO...":"VERIFICANDO...","Validando credenciales...":"Validando credenciais...","¡SESIÓN EXITOSA!":"LOGIN CONCLUÍDO!","Bienvenido,":"Bem-vindo,","Cuenta de Google verificada ✅":"Conta Google verificada ✅","ELIGE TU NOMBRE":"ESCOLHA SEU NOME","Será tu nombre en el chat y el ranking. Podrás cambiarlo después.":"Será seu nome no chat e no ranking. Você poderá mudar depois.","💾 GUARDAR NOMBRE":"💾 SALVAR NOME","¡LISTO!":"PRONTO!","Mínimo 2 letras o números (sin espacios ni símbolos).":"Mínimo 2 letras ou números (sem espaços ou símbolos).","Ese nombre ya está en uso, elige otro.":"Esse nome já está em uso, escolha outro."},
- fr:{"ENTRA AL CHAT":"REJOINS LE CHAT","Elige un nombre para recibir tu sensibilidad personalizada para Free Fire":"Choisis un nom pour recevoir ta sensibilité Free Fire personnalisée","ENTRAR CON GOOGLE":"SE CONNECTER AVEC GOOGLE","O ESCRIBE TU NOMBRE":"OU ÉCRIS TON NOM","Tu nombre (ej: SniperX, NoobKiller...)":"Ton nom (ex : SniperX, NoobKiller...)","⚡ ENTRAR":"⚡ ENTRER","Google: límite por cuenta":"Google : limite par compte","Sin cuenta: por dispositivo":"Sans compte : par appareil","🌐 EN VIVO":"🌐 EN DIRECT","💬 MI CHAT":"💬 MON CHAT","EN LÍNEA":"EN LIGNE","SENSIS HOY":"SENSIS AUJOURD'HUI","VERIFICANDO...":"VÉRIFICATION...","Validando credenciales...":"Validation des identifiants...","¡SESIÓN EXITOSA!":"CONNEXION RÉUSSIE !","Bienvenido,":"Bienvenue,","Cuenta de Google verificada ✅":"Compte Google vérifié ✅","ELIGE TU NOMBRE":"CHOISIS TON NOM","Será tu nombre en el chat y el ranking. Podrás cambiarlo después.":"Ce sera ton nom dans le chat et le classement. Tu pourras le changer plus tard.","💾 GUARDAR NOMBRE":"💾 ENREGISTRER LE NOM","¡LISTO!":"C'EST PRÊT !","Mínimo 2 letras o números (sin espacios ni símbolos).":"Minimum 2 lettres ou chiffres (sans espaces ni symboles).","Ese nombre ya está en uso, elige otro.":"Ce nom est déjà pris, choisis-en un autre."}
+ en:{"ENTENDIDO":"GOT IT","SIGUIENTE":"NEXT","⏱️ ¡Nueva actualización! Ya no esperas un día: ahora tus sensis se restablecen cada 5 horas.":"⏱️ New update! You no longer wait a whole day: now your sensis reset every 5 hours.","🎟️ Los códigos también cambiaron: suben tu límite a 10 sensis cada 5 horas durante los días que dura el código.":"🎟️ Codes changed too: they raise your limit to 10 sensis every 5 hours for as many days as the code lasts.","ENTRA AL CHAT":"JOIN THE CHAT","Elige un nombre para recibir tu sensibilidad personalizada para Free Fire":"Pick a name to get your personalized Free Fire sensitivity","ENTRAR CON GOOGLE":"SIGN IN WITH GOOGLE","O ESCRIBE TU NOMBRE":"OR TYPE YOUR NAME","Tu nombre (ej: SniperX, NoobKiller...)":"Your name (e.g. SniperX, NoobKiller...)","⚡ ENTRAR":"⚡ ENTER","Google: límite por cuenta":"Google: limit per account","Sin cuenta: por dispositivo":"No account: per device","🌐 EN VIVO":"🌐 LIVE","💬 MI CHAT":"💬 MY CHAT","EN LÍNEA":"ONLINE","SENSIS HOY":"SENSIS TODAY","VERIFICANDO...":"VERIFYING...","Validando credenciales...":"Checking credentials...","¡SESIÓN EXITOSA!":"LOGIN SUCCESSFUL!","Bienvenido,":"Welcome,","Cuenta de Google verificada ✅":"Google account verified ✅","ELIGE TU NOMBRE":"CHOOSE YOUR NAME","Será tu nombre en el chat y el ranking. Podrás cambiarlo después.":"This will be your name in the chat and ranking. You can change it later.","💾 GUARDAR NOMBRE":"💾 SAVE NAME","¡LISTO!":"ALL SET!","Mínimo 2 letras o números (sin espacios ni símbolos).":"At least 2 letters or numbers (no spaces or symbols).","Ese nombre ya está en uso, elige otro.":"That name is already taken, pick another."},
+ pt:{"ENTENDIDO":"ENTENDI","SIGUIENTE":"PRÓXIMO","⏱️ ¡Nueva actualización! Ya no esperas un día: ahora tus sensis se restablecen cada 5 horas.":"⏱️ Nova atualização! Você não espera mais um dia: agora suas sensis são restabelecidas a cada 5 horas.","🎟️ Los códigos también cambiaron: suben tu límite a 10 sensis cada 5 horas durante los días que dura el código.":"🎟️ Os códigos também mudaram: aumentam seu limite para 10 sensis a cada 5 horas pelos dias que o código durar.","ENTRA AL CHAT":"ENTRE NO CHAT","Elige un nombre para recibir tu sensibilidad personalizada para Free Fire":"Escolha um nome para receber sua sensibilidade personalizada de Free Fire","ENTRAR CON GOOGLE":"ENTRAR COM O GOOGLE","O ESCRIBE TU NOMBRE":"OU DIGITE SEU NOME","Tu nombre (ej: SniperX, NoobKiller...)":"Seu nome (ex: SniperX, NoobKiller...)","Google: límite por cuenta":"Google: limite por conta","Sin cuenta: por dispositivo":"Sem conta: por dispositivo","🌐 EN VIVO":"🌐 AO VIVO","💬 MI CHAT":"💬 MEU CHAT","EN LÍNEA":"ONLINE","SENSIS HOY":"SENSIS HOJE","VERIFICANDO...":"VERIFICANDO...","Validando credenciales...":"Validando credenciais...","¡SESIÓN EXITOSA!":"LOGIN CONCLUÍDO!","Bienvenido,":"Bem-vindo,","Cuenta de Google verificada ✅":"Conta Google verificada ✅","ELIGE TU NOMBRE":"ESCOLHA SEU NOME","Será tu nombre en el chat y el ranking. Podrás cambiarlo después.":"Será seu nome no chat e no ranking. Você poderá mudar depois.","💾 GUARDAR NOMBRE":"💾 SALVAR NOME","¡LISTO!":"PRONTO!","Mínimo 2 letras o números (sin espacios ni símbolos).":"Mínimo 2 letras ou números (sem espaços ou símbolos).","Ese nombre ya está en uso, elige otro.":"Esse nome já está em uso, escolha outro."},
+ fr:{"ENTENDIDO":"COMPRIS","SIGUIENTE":"SUIVANT","⏱️ ¡Nueva actualización! Ya no esperas un día: ahora tus sensis se restablecen cada 5 horas.":"⏱️ Nouvelle mise à jour ! Plus besoin d'attendre un jour : tes sensis se réinitialisent maintenant toutes les 5 heures.","🎟️ Los códigos también cambiaron: suben tu límite a 10 sensis cada 5 horas durante los días que dura el código.":"🎟️ Les codes ont aussi changé : ils portent ta limite à 10 sensis toutes les 5 heures pendant la durée du code.","ENTRA AL CHAT":"REJOINS LE CHAT","Elige un nombre para recibir tu sensibilidad personalizada para Free Fire":"Choisis un nom pour recevoir ta sensibilité Free Fire personnalisée","ENTRAR CON GOOGLE":"SE CONNECTER AVEC GOOGLE","O ESCRIBE TU NOMBRE":"OU ÉCRIS TON NOM","Tu nombre (ej: SniperX, NoobKiller...)":"Ton nom (ex : SniperX, NoobKiller...)","⚡ ENTRAR":"⚡ ENTRER","Google: límite por cuenta":"Google : limite par compte","Sin cuenta: por dispositivo":"Sans compte : par appareil","🌐 EN VIVO":"🌐 EN DIRECT","💬 MI CHAT":"💬 MON CHAT","EN LÍNEA":"EN LIGNE","SENSIS HOY":"SENSIS AUJOURD'HUI","VERIFICANDO...":"VÉRIFICATION...","Validando credenciales...":"Validation des identifiants...","¡SESIÓN EXITOSA!":"CONNEXION RÉUSSIE !","Bienvenido,":"Bienvenue,","Cuenta de Google verificada ✅":"Compte Google vérifié ✅","ELIGE TU NOMBRE":"CHOISIS TON NOM","Será tu nombre en el chat y el ranking. Podrás cambiarlo después.":"Ce sera ton nom dans le chat et le classement. Tu pourras le changer plus tard.","💾 GUARDAR NOMBRE":"💾 ENREGISTRER LE NOM","¡LISTO!":"C'EST PRÊT !","Mínimo 2 letras o números (sin espacios ni símbolos).":"Minimum 2 lettres ou chiffres (sans espaces ni symboles).","Ese nombre ya está en uso, elige otro.":"Ce nom est déjà pris, choisis-en un autre."}
 };
 const _LANG=(((()=>{try{return localStorage.getItem("sg_lang");}catch(e){return null;}})()||(navigator.languages&&navigator.languages[0])||navigator.language||"es")+"").slice(0,2).toLowerCase();
 const _D=_I18N[_LANG],_K=_D?Object.keys(_D).sort((a,b)=>b.length-a.length):[];
@@ -5509,6 +5522,30 @@ document.getElementById("applyPersonaBtn")?.addEventListener("click",e=>{
   sel.animate([{transform:"scale(1)"},{transform:"scale(1.14)"},{transform:"scale(1)"}],{duration:520,easing:"cubic-bezier(.34,1.56,.64,1)"});
 });
 document.getElementById("disablePersonaBtn")?.addEventListener("click",e=>_ptWash(e.clientX,e.clientY,"#ffffff"));
+// Novedades: 2 láminas con texto corto; una vez al día durante 3 días y luego ya no
+const _NOV=[{img:"novedades/novedad1.png",txt:"⏱️ ¡Nueva actualización! Ya no esperas un día: ahora tus sensis se restablecen cada 5 horas."},{img:"novedades/novedad2.png",txt:"🎟️ Los códigos también cambiaron: suben tu límite a 10 sensis cada 5 horas durante los días que dura el código."}];
+function _novShow(){
+  try{
+    const K="sg_nov12",d=new Date(),today=d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
+    const st=JSON.parse(localStorage.getItem(K)||'{"n":0,"last":""}');
+    if(st.n>=3||st.last===today||document.getElementById("novOv")) return;
+    const ov=document.createElement("div"); ov.id="novOv";
+    ov.innerHTML='<div id="novCard"><button id="novX" aria-label="Cerrar">✕</button><img id="novImg" alt="Novedades"><p id="novTxt"></p><div id="novDots"></div><button class="btn-main" id="novOk"></button></div>';
+    const img=ov.querySelector("#novImg"),txt=ov.querySelector("#novTxt"),ok=ov.querySelector("#novOk"),dots=ov.querySelector("#novDots");
+    let i=0,shown=false;
+    const close=()=>{ ov.classList.remove("on"); setTimeout(()=>ov.remove(),350); };
+    const go=k=>{ i=k; img.style.opacity=0; img.src=_NOV[k].img; txt.textContent=_NOV[k].txt; ok.textContent=k<_NOV.length-1?"SIGUIENTE":"ENTENDIDO"; dots.innerHTML=_NOV.map((_,j)=>"<i"+(j===k?' class="on"':"")+"></i>").join(""); };
+    img.onload=()=>{
+      img.style.opacity=1; if(shown) return; shown=true;
+      document.body.appendChild(ov); _trTree(ov);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>ov.classList.add("on")));
+      localStorage.setItem(K,JSON.stringify({n:st.n+1,last:today}));
+    };
+    img.onerror=()=>{ if(i<_NOV.length-1) go(i+1); };
+    ov.onclick=e=>{ const id=e.target.id; if(e.target===ov||id==="novX") close(); else if(id==="novOk"){ if(i<_NOV.length-1) go(i+1); else close(); } };
+    go(0);
+  }catch(e){}
+}
 function _lgRun(fn){
   const sc=document.getElementById("loginScreen"),b=document.getElementById("loginBtn"),h=sc.querySelector("h2"),p=sc.querySelector("p"),th=h.textContent,tp=p.textContent;
   if(b.disabled) return;

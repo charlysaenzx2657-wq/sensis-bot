@@ -1043,7 +1043,7 @@ body.tut-on .btn-main::after,body.tut-on .btn-google::after{animation:none!impor
 
 <!-- TUTORIAL GUIADO (spotlight sobre la interfaz real) -->
 <div id="tutSpotlight" style="position:fixed;inset:0;z-index:399;pointer-events:none;display:none;border-radius:19px;will-change:transform;box-shadow:0 0 0 9999px rgba(0,0,10,0.78);"></div>
-<div id="tutTooltip" style="position:fixed;z-index:401;display:none;max-width:300px;width:88vw;background:linear-gradient(135deg,#040e28,#02081c);border:1px solid rgba(var(--ac-rgb),0.3);border-radius:22px;padding:16px;box-shadow:0 8px 30px rgba(0,0,0,0.6);transition:top .38s cubic-bezier(0.65,0,0.35,1),left .38s cubic-bezier(0.65,0,0.35,1);">
+<div id="tutTooltip" style="position:fixed;z-index:401;display:none;max-width:300px;width:88vw;background:linear-gradient(135deg,#040e28,#02081c);border:1px solid rgba(var(--ac-rgb),0.3);border-radius:22px;padding:16px;box-shadow:0 8px 30px rgba(0,0,0,0.6);transition:top .2s cubic-bezier(0.65,0,0.35,1),left .2s cubic-bezier(0.65,0,0.35,1);">
   <span id="tutSkipX" title="Saltar tutorial" style="position:absolute;top:8px;right:12px;font-size:10px;color:rgba(160,215,255,0.5);cursor:pointer;letter-spacing:0.5px;">SALTAR ✕</span>
   <div id="tutSlideIcon" style="font-size:26px;margin-bottom:4px;"></div>
   <div id="tutSlideTitle" style="font-size:14px;font-weight:900;color:var(--ac);margin-bottom:6px;"></div>
@@ -3371,7 +3371,7 @@ const TUTORIAL_STEPS=[
   {icon:"📬",title:"Bandeja",body:"Aquí recibes mensajes, retos y recompensas que te envíe el admin.",target:"#inboxBtn",before:async()=>{ document.getElementById("menuModal").classList.add("show"); await _tutWait(560); }},
   {icon:"🎁",title:"Productos Gratis",body:"Descargas gratuitas (comandos, modificaciones, sensibilidades) alojadas en MediaFire. Se actualiza de vez en cuando.",target:"#freeProductsBtn",before:async()=>{ document.getElementById("menuModal").classList.add("show"); await _tutWait(560); }},
   {icon:"🎟️",title:"Códigos",body:"Acá ves todos los códigos activos del momento. Toca <b>Canjear</b> en el que quieras usar — cada código es de un solo uso por persona.",target:"#codesBtn",before:async()=>{ document.getElementById("menuModal").classList.add("show"); await _tutWait(560); }},
-  {icon:"⚙️",title:"Configuración",body:"Todo lo personalizable del bot vive detrás de este botón. Vamos a abrirlo.",target:"#cfgBtn",before:async()=>{ document.getElementById("menuModal").classList.remove("show"); document.getElementById("cfgModal").classList.remove("show"); await _tutWait(120); }},
+  {icon:"⚙️",title:"Configuración",body:"Todo lo personalizable del bot vive detrás de este botón. Vamos a abrirlo.",target:"#cfgBtn",before:async()=>{ const m=document.getElementById("menuModal"),was=m.classList.contains("show"); m.classList.add("show"); document.getElementById("cfgModal").classList.remove("show"); await _tutWait(was?60:560); }},
   {icon:"🆔",title:"Tu ID de Encuentro",body:"Este código de 6 dígitos es único y tuyo. Compártelo con un admin para que te encuentre fácilmente. Tócalo para copiarlo.",target:"#meetIdDisplay",before:async()=>{ document.getElementById("cfgBtn").click(); await _tutWait(560); document.querySelector(".cfgnav-btn[data-sec='cfgSecSession']")?.click(); await _tutWait(150); }},
   {icon:"🎨",title:"Colores del bot",body:"Elige un color fijo, o activa <b>Colores aleatorios</b> para que cambie solo cada 5 segundos.",target:"[data-sec='cfgSecColor']",before:async()=>{ openCfgSection("cfgSecColor"); await _tutWait(560); }},
   {icon:"✨",title:"Efectos visuales",body:"Activa/desactiva el <b>Liquid Glass</b> (vidrio translúcido) y las <b>Luces RGB</b> (borde animado). El RGB se aplica por separado a la barra de escribir, mensajes y botones.",target:"[data-sec='cfgSecEffects']",before:async()=>{ openCfgSection("cfgSecEffects"); await _tutWait(560); }},
@@ -3430,6 +3430,7 @@ function _positionSpotlight(sel,instant){
     const r=target.getBoundingClientRect();
     const pad=8;
     const _p=(spot.style.display==="block"&&!instant)?spot.getBoundingClientRect():null;
+    spot.getAnimations().forEach(a=>a.cancel());
     spot.style.display="block";
     spot.style.left=(r.left-pad)+"px";
     spot.style.top=(r.top-pad)+"px";
@@ -3439,7 +3440,7 @@ function _positionSpotlight(sel,instant){
     spot.style.outline="2px solid var(--ac)";
     if(_p&&_p.width&&!matchMedia("(prefers-reduced-motion:reduce)").matches){ // movimiento por transform (GPU), no por layout
       const n=spot.getBoundingClientRect();
-      spot.animate([{transformOrigin:"0 0",transform:"translate("+(_p.left-n.left)+"px,"+(_p.top-n.top)+"px) scale("+(_p.width/n.width)+","+(_p.height/n.height)+")"},{transformOrigin:"0 0",transform:"none"}],{duration:380,easing:"cubic-bezier(.65,0,.35,1)"});
+      spot.animate([{transformOrigin:"0 0",transform:"translate("+(_p.left-n.left)+"px,"+(_p.top-n.top)+"px) scale("+(_p.width/n.width)+","+(_p.height/n.height)+")"},{transformOrigin:"0 0",transform:"none"}],{duration:220,easing:"cubic-bezier(.65,0,.35,1)"});
     }
     // Colocar el tooltip arriba o abajo del elemento, según el espacio disponible
     const tipH=tip.offsetHeight||220, tipW=Math.min(300,window.innerWidth*0.88);

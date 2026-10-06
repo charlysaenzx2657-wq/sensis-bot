@@ -634,9 +634,10 @@ body{--metal:radial-gradient(130% 150% at 12% 0%,color-mix(in srgb,var(--ac) 44%
 #spBar{width:min(260px,70%);height:3px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;}
 #spBar i{display:block;height:100%;width:40%;border-radius:3px;background:linear-gradient(90deg,var(--ac),#fff);animation:lgBar 1s ease-in-out infinite;}
 /* ── QUITAR COLOR: liquid glass neutro ── */
-.copt.copt-none{grid-column:1/-1;aspect-ratio:auto;height:42px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;letter-spacing:1.5px;color:#fff;border:1.5px solid rgba(255,255,255,.18);background:linear-gradient(160deg,rgba(255,255,255,.2),rgba(255,255,255,.03) 45%),#171c26;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.32),inset 0 -1.5px 0 rgba(0,0,0,.28),inset 1px 0 0 rgba(255,255,255,.1),inset -1px 0 0 rgba(0,0,0,.16),0 4px 14px rgba(0,0,0,.24);}
+.copt.copt-none{grid-column:1/-1;aspect-ratio:auto;height:42px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;letter-spacing:1.5px;color:#fff;border:1.5px solid rgba(255,255,255,.18);background:linear-gradient(160deg,rgba(255,255,255,.2),rgba(255,255,255,.03) 45%),#18191c;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.32),inset 0 -1.5px 0 rgba(0,0,0,.28),inset 1px 0 0 rgba(255,255,255,.1),inset -1px 0 0 rgba(0,0,0,.16),0 4px 14px rgba(0,0,0,.24);}
 .copt.copt-none.sel{transform:scale(1.02);}
-body.nocolor{--metal:radial-gradient(130% 150% at 12% 0%,rgba(255,255,255,.2),transparent 62%),radial-gradient(130% 150% at 92% 100%,rgba(255,255,255,.1),transparent 64%),#171c26;}
+body.glass .copt.copt-none{border-radius:16px!important;}
+body.nocolor{--metal:radial-gradient(130% 150% at 12% 0%,rgba(255,255,255,.2),transparent 62%),radial-gradient(130% 150% at 92% 100%,rgba(255,255,255,.1),transparent 64%),#18191c;}
 /* ── AVISO modo aleatorio + tutorial ligero ── */
 #rcWarn{position:fixed;inset:0;z-index:9600;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.78);opacity:0;transition:opacity .25s;}
 #rcWarn.on{opacity:1;}
@@ -837,7 +838,7 @@ body.tut-on .btn-main::after,body.tut-on .btn-google::after{animation:none!impor
         <div class="copt" data-c="#D4AF37" style="background:#D4AF37;"></div>
         <div class="copt" data-c="#CD7F32" style="background:#CD7F32;"></div>
         <div class="copt" data-c="#D9908A" style="background:#D9908A;"></div>
-        <div class="copt copt-none" data-c="#DDE6F3">🚫 QUITAR COLOR</div>
+        <div class="copt copt-none" data-c="#E6E6E6">🚫 QUITAR COLOR</div>
       </div>
       <button class="cbtn cbtn-p" id="applyColorBtn">✅ APLICAR COLOR</button>
     </div>
@@ -2813,7 +2814,7 @@ function startVideoOrFallback(name, fallbackFn){
 
 function applyColor(c){
   currentColor=c;
-  document.body.classList.toggle("nocolor",String(c).toUpperCase()==="#DDE6F3"); // "Quitar color": acento neutro + liquid glass blanco
+  document.body.classList.toggle("nocolor",String(c).toUpperCase()==="#E6E6E6"); // "Quitar color": acento neutro + liquid glass blanco
   // CSS var (--ac para colores sólidos/gradientes; --ac-rgb para los rgba()
   // usados en bordes/fondos translúcidos en toda la app)
   document.documentElement.style.setProperty("--ac",c);
@@ -3340,7 +3341,7 @@ function _rcStep(){
   // saturación 78-100%, luminosidad 52-62% (siempre vívido) y salto de ≥25° de hue
   // 50% un color de la paleta de acentos (24) y 50% un matiz nuevo generado (rango más amplio)
   let rc;
-  if(Math.random()<0.5){ const pool=[...document.querySelectorAll(".copt")].map(o=>o.dataset.c).filter(c=>c.toLowerCase()!==String(currentColor).toLowerCase()&&c.toUpperCase()!=="#DDE6F3"); rc=pool[Math.floor(Math.random()*pool.length)]; }
+  if(Math.random()<0.5){ const pool=[...document.querySelectorAll(".copt")].map(o=>o.dataset.c).filter(c=>c.toLowerCase()!==String(currentColor).toLowerCase()&&c.toUpperCase()!=="#E6E6E6"); rc=pool[Math.floor(Math.random()*pool.length)]; }
   else{ _lastRandomHue=(_lastRandomHue+25+Math.random()*310)%360; rc=hslToHex(_lastRandomHue, 65+Math.random()*35, 45+Math.random()*21); }
   const m=rc.slice(1).match(/../g).map(h=>parseInt(h,16)).join(",");
   const next=()=>{ if(_rcOn) _rcT=setTimeout(_rcStep,5000); };
@@ -4387,7 +4388,7 @@ document.querySelectorAll(".copt").forEach(o=>o.addEventListener("click",()=>{
 
 document.getElementById("applyThemeBtn").addEventListener("click",()=>{ applyTheme(pendingTheme); document.getElementById("cfgModal").classList.remove("show"); addMsg("bot","✅ Fondo aplicado."); });
 document.getElementById("applyColorBtn").addEventListener("click",()=>{
-  const _go=()=>{ if(_randomColorInterval){ setRandomColors(false); document.getElementById("randomColorToggle").checked=false; } applyColor(pendingColor); document.getElementById("cfgModal").classList.remove("show"); addMsg("bot","✅ Color aplicado."); };
+  const _go=()=>{ if(_randomColorInterval){ setRandomColors(false); document.getElementById("randomColorToggle").checked=false; } applyColor(pendingColor); document.getElementById("cfgModal").classList.remove("show"); addMsg("bot",String(pendingColor).toUpperCase()==="#E6E6E6"?"✅ Color quitado.":"✅ Color aplicado."); };
   if(_randomColorInterval) _rcWarn(_go); else _go();
 });
 // ── MOTOR DE SENSI: actual vs mejorado (guarda solo la preferencia; ─────

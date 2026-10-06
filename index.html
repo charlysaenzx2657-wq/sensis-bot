@@ -633,6 +633,21 @@ body{--metal:radial-gradient(130% 150% at 12% 0%,color-mix(in srgb,var(--ac) 44%
 #splashScreen .sp-s{margin:0;color:rgba(160,215,255,.55);font-size:12px;animation:lgIn .5s .25s cubic-bezier(.16,1,.3,1) backwards;}
 #spBar{width:min(260px,70%);height:3px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;}
 #spBar i{display:block;height:100%;width:40%;border-radius:3px;background:linear-gradient(90deg,var(--ac),#fff);animation:lgBar 1s ease-in-out infinite;}
+/* ── QUITAR COLOR: liquid glass neutro ── */
+.copt.copt-none{grid-column:1/-1;aspect-ratio:auto;height:42px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;letter-spacing:1.5px;color:#fff;border:1.5px solid rgba(255,255,255,.18);background:linear-gradient(160deg,rgba(255,255,255,.2),rgba(255,255,255,.03) 45%),#171c26;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.32),inset 0 -1.5px 0 rgba(0,0,0,.28),inset 1px 0 0 rgba(255,255,255,.1),inset -1px 0 0 rgba(0,0,0,.16),0 4px 14px rgba(0,0,0,.24);}
+.copt.copt-none.sel{transform:scale(1.02);}
+body.nocolor{--metal:radial-gradient(130% 150% at 12% 0%,rgba(255,255,255,.2),transparent 62%),radial-gradient(130% 150% at 92% 100%,rgba(255,255,255,.1),transparent 64%),#171c26;}
+/* ── AVISO modo aleatorio + tutorial ligero ── */
+#rcWarn{position:fixed;inset:0;z-index:9600;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.78);opacity:0;transition:opacity .25s;}
+#rcWarn.on{opacity:1;}
+#rcWarnCard{width:100%;max-width:360px;padding:22px 18px 18px;border-radius:24px;text-align:center;display:flex;flex-direction:column;gap:10px;background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,0) 45%),var(--metal);border:1.5px solid rgba(255,255,255,.14);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.32),inset 0 -1.5px 0 rgba(0,0,0,.28),0 18px 50px rgba(0,0,0,.6);transform:translateY(20px) scale(.9);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
+#rcWarn.on #rcWarnCard{transform:none;}
+#rcWarnCard .rw-i{font-size:34px;}
+#rcWarnCard h3{margin:0;color:#fff;font-size:16px;font-weight:900;letter-spacing:1px;}
+#rcWarnCard p{margin:0 0 4px;color:rgba(230,240,255,.8);font-size:13px;line-height:1.45;}
+#rwNo{height:42px;border-radius:16px;border:1.5px solid rgba(255,255,255,.18);background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.02) 45%),#171c26;color:#fff;font-weight:800;font-size:12px;letter-spacing:1.5px;cursor:pointer;}
+body.tut-on .rc-wave{display:none!important;}
+body.tut-on .btn-main::after,body.tut-on .btn-google::after{animation:none!important;}
 </style>
 
 </head>
@@ -822,6 +837,7 @@ body{--metal:radial-gradient(130% 150% at 12% 0%,color-mix(in srgb,var(--ac) 44%
         <div class="copt" data-c="#D4AF37" style="background:#D4AF37;"></div>
         <div class="copt" data-c="#CD7F32" style="background:#CD7F32;"></div>
         <div class="copt" data-c="#D9908A" style="background:#D9908A;"></div>
+        <div class="copt copt-none" data-c="#DDE6F3">🚫 QUITAR COLOR</div>
       </div>
       <button class="cbtn cbtn-p" id="applyColorBtn">✅ APLICAR COLOR</button>
     </div>
@@ -1026,7 +1042,7 @@ body{--metal:radial-gradient(130% 150% at 12% 0%,color-mix(in srgb,var(--ac) 44%
 </div>
 
 <!-- TUTORIAL GUIADO (spotlight sobre la interfaz real) -->
-<div id="tutSpotlight" style="position:fixed;inset:0;z-index:399;pointer-events:none;display:none;border-radius:19px;transition:left .38s cubic-bezier(0.65,0,0.35,1),top .38s cubic-bezier(0.65,0,0.35,1),width .38s cubic-bezier(0.65,0,0.35,1),height .38s cubic-bezier(0.65,0,0.35,1),border-radius .38s cubic-bezier(0.65,0,0.35,1);box-shadow:0 0 0 9999px rgba(0,0,10,0.78);"></div>
+<div id="tutSpotlight" style="position:fixed;inset:0;z-index:399;pointer-events:none;display:none;border-radius:19px;will-change:transform;box-shadow:0 0 0 9999px rgba(0,0,10,0.78);"></div>
 <div id="tutTooltip" style="position:fixed;z-index:401;display:none;max-width:300px;width:88vw;background:linear-gradient(135deg,#040e28,#02081c);border:1px solid rgba(var(--ac-rgb),0.3);border-radius:22px;padding:16px;box-shadow:0 8px 30px rgba(0,0,0,0.6);transition:top .38s cubic-bezier(0.65,0,0.35,1),left .38s cubic-bezier(0.65,0,0.35,1);">
   <span id="tutSkipX" title="Saltar tutorial" style="position:absolute;top:8px;right:12px;font-size:10px;color:rgba(160,215,255,0.5);cursor:pointer;letter-spacing:0.5px;">SALTAR ✕</span>
   <div id="tutSlideIcon" style="font-size:26px;margin-bottom:4px;"></div>
@@ -2797,6 +2813,7 @@ function startVideoOrFallback(name, fallbackFn){
 
 function applyColor(c){
   currentColor=c;
+  document.body.classList.toggle("nocolor",String(c).toUpperCase()==="#DDE6F3"); // "Quitar color": acento neutro + liquid glass blanco
   // CSS var (--ac para colores sólidos/gradientes; --ac-rgb para los rgba()
   // usados en bordes/fondos translúcidos en toda la app)
   document.documentElement.style.setProperty("--ac",c);
@@ -3323,7 +3340,7 @@ function _rcStep(){
   // saturación 78-100%, luminosidad 52-62% (siempre vívido) y salto de ≥25° de hue
   // 50% un color de la paleta de acentos (24) y 50% un matiz nuevo generado (rango más amplio)
   let rc;
-  if(Math.random()<0.5){ const pool=[...document.querySelectorAll(".copt")].map(o=>o.dataset.c).filter(c=>c.toLowerCase()!==String(currentColor).toLowerCase()); rc=pool[Math.floor(Math.random()*pool.length)]; }
+  if(Math.random()<0.5){ const pool=[...document.querySelectorAll(".copt")].map(o=>o.dataset.c).filter(c=>c.toLowerCase()!==String(currentColor).toLowerCase()&&c.toUpperCase()!=="#DDE6F3"); rc=pool[Math.floor(Math.random()*pool.length)]; }
   else{ _lastRandomHue=(_lastRandomHue+25+Math.random()*310)%360; rc=hslToHex(_lastRandomHue, 65+Math.random()*35, 45+Math.random()*21); }
   const m=rc.slice(1).match(/../g).map(h=>parseInt(h,16)).join(",");
   const next=()=>{ if(_rcOn) _rcT=setTimeout(_rcStep,5000); };
@@ -3364,7 +3381,7 @@ const TUTORIAL_STEPS=[
   {icon:"🎯",title:"Lógica de calibración mejorada",body:"Además de la lógica de siempre, ahora puedes activar <b>Mejorado</b>: usa la física real de tu pantalla (tamaño, proporción y velocidad táctil de tu modelo exacto cuando se conoce) junto con los 12 movimientos del personaje para calcular una sensi más ajustada a tu celular específico.",target:"[data-sec='cfgSecValores']",before:async()=>{ openCfgSection("cfgSecValores"); await _tutWait(560); }},
   {icon:"✅",title:"¡Listo!",body:"Ya conoces todas las funciones principales. Puedes volver a este tutorial cuando quieras desde Configuración → Sesión. ¡Disfruta SENSIS BOT Creación de SENSIS GOOD FF!",target:null,before:async()=>{ document.getElementById("cfgModal").classList.remove("show"); await _tutWait(150); }},
 ];
-let _tutStep=0;
+let _tutStep=0,_tutBusy=false,_tutRaf=0;
 function _tutWait(ms){ return new Promise(r=>setTimeout(r,ms)); }
 async function renderTutorialStep(){
   const s=TUTORIAL_STEPS[_tutStep];
@@ -3381,8 +3398,21 @@ async function renderTutorialStep(){
     dots.appendChild(d);
   });
   _positionSpotlight(s.target);
+  _tutTrack(s.target);
 }
-function _positionSpotlight(sel){
+// Sigue al elemento unos instantes: los menús y secciones se animan al abrirse y el elemento se mueve
+function _tutTrack(sel){
+  cancelAnimationFrame(_tutRaf);
+  const t=sel?document.querySelector(sel):null; if(!t) return;
+  const t0=performance.now(); let last="";
+  const loop=()=>{
+    const r=t.getBoundingClientRect(), k=[r.left|0,r.top|0,r.width|0,r.height|0].join();
+    if(k!==last){ last=k; _positionSpotlight(sel,true); }
+    if(performance.now()-t0<900) _tutRaf=requestAnimationFrame(loop);
+  };
+  _tutRaf=requestAnimationFrame(loop);
+}
+function _positionSpotlight(sel,instant){
   const spot=document.getElementById("tutSpotlight");
   const tip=document.getElementById("tutTooltip");
   const target=sel?document.querySelector(sel):null;
@@ -3396,9 +3426,10 @@ function _positionSpotlight(sel){
     // el tutorial trabado sin ninguna forma de avanzar ni cerrar.
     // Fix: forzar que el elemento quede visible en pantalla ANTES de medir
     // su posición.
-    target.scrollIntoView({block:"center",inline:"nearest"});
+    if(!instant) target.scrollIntoView({block:"center",inline:"nearest"});
     const r=target.getBoundingClientRect();
     const pad=8;
+    const _p=(spot.style.display==="block"&&!instant)?spot.getBoundingClientRect():null;
     spot.style.display="block";
     spot.style.left=(r.left-pad)+"px";
     spot.style.top=(r.top-pad)+"px";
@@ -3406,6 +3437,10 @@ function _positionSpotlight(sel){
     spot.style.height=(r.height+pad*2)+"px";
     spot.style.borderRadius=Math.max(10,Math.min(r.width,r.height)/2)+"px";
     spot.style.outline="2px solid var(--ac)";
+    if(_p&&_p.width&&!matchMedia("(prefers-reduced-motion:reduce)").matches){ // movimiento por transform (GPU), no por layout
+      const n=spot.getBoundingClientRect();
+      spot.animate([{transformOrigin:"0 0",transform:"translate("+(_p.left-n.left)+"px,"+(_p.top-n.top)+"px) scale("+(_p.width/n.width)+","+(_p.height/n.height)+")"},{transformOrigin:"0 0",transform:"none"}],{duration:380,easing:"cubic-bezier(.65,0,.35,1)"});
+    }
     // Colocar el tooltip arriba o abajo del elemento, según el espacio disponible
     const tipH=tip.offsetHeight||220, tipW=Math.min(300,window.innerWidth*0.88);
     let top=r.bottom+16;
@@ -3424,7 +3459,7 @@ function _positionSpotlight(sel){
   tip.style.display="block";
 }
 function showTutorial(){
-  _tutStep=0;
+  _tutStep=0; document.body.classList.add("tut-on");
   document.getElementById("tutTooltip").style.display="block";
   renderTutorialStep();
   window.addEventListener("resize",_tutOnResize);
@@ -3434,6 +3469,7 @@ function _tutOnResize(){
   if(s) _positionSpotlight(s.target);
 }
 async function closeTutorial(){
+  document.body.classList.remove("tut-on"); cancelAnimationFrame(_tutRaf);
   document.getElementById("tutSpotlight").style.display="none";
   document.getElementById("tutTooltip").style.display="none";
   document.getElementById("cfgModal").classList.remove("show");
@@ -3443,11 +3479,12 @@ async function closeTutorial(){
   }catch(e){}
 }
 document.getElementById("tutNextBtn").addEventListener("click",async()=>{
-  if(_tutStep<TUTORIAL_STEPS.length-1){ _tutStep++; await renderTutorialStep(); }
-  else closeTutorial();
+  if(_tutBusy) return; _tutBusy=true;
+  try{ if(_tutStep<TUTORIAL_STEPS.length-1){ _tutStep++; await renderTutorialStep(); } else closeTutorial(); } finally{ _tutBusy=false; }
 });
 document.getElementById("tutBackBtn").addEventListener("click",async()=>{
-  if(_tutStep>0){ _tutStep--; await renderTutorialStep(); }
+  if(_tutBusy) return; _tutBusy=true;
+  try{ if(_tutStep>0){ _tutStep--; await renderTutorialStep(); } } finally{ _tutBusy=false; }
 });
 document.getElementById("tutSkipX").addEventListener("click",closeTutorial);
 document.getElementById("reopenTutBtn")?.addEventListener("click",()=>{
@@ -4348,7 +4385,10 @@ document.querySelectorAll(".copt").forEach(o=>o.addEventListener("click",()=>{
 }));
 
 document.getElementById("applyThemeBtn").addEventListener("click",()=>{ applyTheme(pendingTheme); document.getElementById("cfgModal").classList.remove("show"); addMsg("bot","✅ Fondo aplicado."); });
-document.getElementById("applyColorBtn").addEventListener("click",()=>{ applyColor(pendingColor); document.getElementById("cfgModal").classList.remove("show"); addMsg("bot","✅ Color aplicado."); });
+document.getElementById("applyColorBtn").addEventListener("click",()=>{
+  const _go=()=>{ if(_randomColorInterval){ setRandomColors(false); document.getElementById("randomColorToggle").checked=false; } applyColor(pendingColor); document.getElementById("cfgModal").classList.remove("show"); addMsg("bot","✅ Color aplicado."); };
+  if(_randomColorInterval) _rcWarn(_go); else _go();
+});
 // ── MOTOR DE SENSI: actual vs mejorado (guarda solo la preferencia; ─────
 // ── la lógica de generación sigue siendo 100% la actual, sin tocar) ─────
 (function(){
@@ -5526,9 +5566,9 @@ pendingTheme=currentTheme; pendingColor=currentColor;
 
 document.getElementById("googleBtn").addEventListener("click",()=>_lgRun(entrarConGoogle));
 const _I18N={
- en:{"ENTENDIDO":"GOT IT","SIGUIENTE":"NEXT","⏱️ ¡Nueva actualización! Ya no esperas un día: ahora tus sensis se restablecen cada 5 horas.":"⏱️ New update! You no longer wait a whole day: now your sensis reset every 5 hours.","🎟️ Los códigos también cambiaron: suben tu límite a 10 sensis cada 5 horas durante los días que dura el código.":"🎟️ Codes changed too: they raise your limit to 10 sensis every 5 hours for as many days as the code lasts.","ENTRA AL CHAT":"JOIN THE CHAT","Elige un nombre para recibir tu sensibilidad personalizada para Free Fire":"Pick a name to get your personalized Free Fire sensitivity","ENTRAR CON GOOGLE":"SIGN IN WITH GOOGLE","O ESCRIBE TU NOMBRE":"OR TYPE YOUR NAME","Tu nombre (ej: SniperX, NoobKiller...)":"Your name (e.g. SniperX, NoobKiller...)","⚡ ENTRAR":"⚡ ENTER","Google: límite por cuenta":"Google: limit per account","Sin cuenta: por dispositivo":"No account: per device","🌐 EN VIVO":"🌐 LIVE","💬 MI CHAT":"💬 MY CHAT","EN LÍNEA":"ONLINE","SENSIS HOY":"SENSIS TODAY","VERIFICANDO...":"VERIFYING...","Validando credenciales...":"Checking credentials...","¡SESIÓN EXITOSA!":"LOGIN SUCCESSFUL!","Bienvenido,":"Welcome,","Cuenta de Google verificada ✅":"Google account verified ✅","ELIGE TU NOMBRE":"CHOOSE YOUR NAME","Será tu nombre en el chat y el ranking. Podrás cambiarlo después.":"This will be your name in the chat and ranking. You can change it later.","💾 GUARDAR NOMBRE":"💾 SAVE NAME","¡LISTO!":"ALL SET!","Mínimo 2 letras o números (sin espacios ni símbolos).":"At least 2 letters or numbers (no spaces or symbols).","Ese nombre ya está en uso, elige otro.":"That name is already taken, pick another."},
- pt:{"ENTENDIDO":"ENTENDI","SIGUIENTE":"PRÓXIMO","⏱️ ¡Nueva actualización! Ya no esperas un día: ahora tus sensis se restablecen cada 5 horas.":"⏱️ Nova atualização! Você não espera mais um dia: agora suas sensis são restabelecidas a cada 5 horas.","🎟️ Los códigos también cambiaron: suben tu límite a 10 sensis cada 5 horas durante los días que dura el código.":"🎟️ Os códigos também mudaram: aumentam seu limite para 10 sensis a cada 5 horas pelos dias que o código durar.","ENTRA AL CHAT":"ENTRE NO CHAT","Elige un nombre para recibir tu sensibilidad personalizada para Free Fire":"Escolha um nome para receber sua sensibilidade personalizada de Free Fire","ENTRAR CON GOOGLE":"ENTRAR COM O GOOGLE","O ESCRIBE TU NOMBRE":"OU DIGITE SEU NOME","Tu nombre (ej: SniperX, NoobKiller...)":"Seu nome (ex: SniperX, NoobKiller...)","Google: límite por cuenta":"Google: limite por conta","Sin cuenta: por dispositivo":"Sem conta: por dispositivo","🌐 EN VIVO":"🌐 AO VIVO","💬 MI CHAT":"💬 MEU CHAT","EN LÍNEA":"ONLINE","SENSIS HOY":"SENSIS HOJE","VERIFICANDO...":"VERIFICANDO...","Validando credenciales...":"Validando credenciais...","¡SESIÓN EXITOSA!":"LOGIN CONCLUÍDO!","Bienvenido,":"Bem-vindo,","Cuenta de Google verificada ✅":"Conta Google verificada ✅","ELIGE TU NOMBRE":"ESCOLHA SEU NOME","Será tu nombre en el chat y el ranking. Podrás cambiarlo después.":"Será seu nome no chat e no ranking. Você poderá mudar depois.","💾 GUARDAR NOMBRE":"💾 SALVAR NOME","¡LISTO!":"PRONTO!","Mínimo 2 letras o números (sin espacios ni símbolos).":"Mínimo 2 letras ou números (sem espaços ou símbolos).","Ese nombre ya está en uso, elige otro.":"Esse nome já está em uso, escolha outro."},
- fr:{"ENTENDIDO":"COMPRIS","SIGUIENTE":"SUIVANT","⏱️ ¡Nueva actualización! Ya no esperas un día: ahora tus sensis se restablecen cada 5 horas.":"⏱️ Nouvelle mise à jour ! Plus besoin d'attendre un jour : tes sensis se réinitialisent maintenant toutes les 5 heures.","🎟️ Los códigos también cambiaron: suben tu límite a 10 sensis cada 5 horas durante los días que dura el código.":"🎟️ Les codes ont aussi changé : ils portent ta limite à 10 sensis toutes les 5 heures pendant la durée du code.","ENTRA AL CHAT":"REJOINS LE CHAT","Elige un nombre para recibir tu sensibilidad personalizada para Free Fire":"Choisis un nom pour recevoir ta sensibilité Free Fire personnalisée","ENTRAR CON GOOGLE":"SE CONNECTER AVEC GOOGLE","O ESCRIBE TU NOMBRE":"OU ÉCRIS TON NOM","Tu nombre (ej: SniperX, NoobKiller...)":"Ton nom (ex : SniperX, NoobKiller...)","⚡ ENTRAR":"⚡ ENTRER","Google: límite por cuenta":"Google : limite par compte","Sin cuenta: por dispositivo":"Sans compte : par appareil","🌐 EN VIVO":"🌐 EN DIRECT","💬 MI CHAT":"💬 MON CHAT","EN LÍNEA":"EN LIGNE","SENSIS HOY":"SENSIS AUJOURD'HUI","VERIFICANDO...":"VÉRIFICATION...","Validando credenciales...":"Validation des identifiants...","¡SESIÓN EXITOSA!":"CONNEXION RÉUSSIE !","Bienvenido,":"Bienvenue,","Cuenta de Google verificada ✅":"Compte Google vérifié ✅","ELIGE TU NOMBRE":"CHOISIS TON NOM","Será tu nombre en el chat y el ranking. Podrás cambiarlo después.":"Ce sera ton nom dans le chat et le classement. Tu pourras le changer plus tard.","💾 GUARDAR NOMBRE":"💾 ENREGISTRER LE NOM","¡LISTO!":"C'EST PRÊT !","Mínimo 2 letras o números (sin espacios ni símbolos).":"Minimum 2 lettres ou chiffres (sans espaces ni symboles).","Ese nombre ya está en uso, elige otro.":"Ce nom est déjà pris, choisis-en un autre."}
+ en:{"ENTENDIDO":"GOT IT","MODO ALEATORIO ACTIVO":"RANDOM MODE ACTIVE","Para poner un color de acento debes desactivar el modo aleatorio de colores.":"To set an accent color you must turn off the random color mode.","DESACTIVAR Y APLICAR COLOR":"TURN OFF AND APPLY COLOR","CANCELAR":"CANCEL","🚫 QUITAR COLOR":"🚫 REMOVE COLOR","SIGUIENTE":"NEXT","⏱️ ¡Nueva actualización! Ya no esperas un día: ahora tus sensis se restablecen cada 5 horas.":"⏱️ New update! You no longer wait a whole day: now your sensis reset every 5 hours.","🎟️ Los códigos también cambiaron: suben tu límite a 10 sensis cada 5 horas durante los días que dura el código.":"🎟️ Codes changed too: they raise your limit to 10 sensis every 5 hours for as many days as the code lasts.","ENTRA AL CHAT":"JOIN THE CHAT","Elige un nombre para recibir tu sensibilidad personalizada para Free Fire":"Pick a name to get your personalized Free Fire sensitivity","ENTRAR CON GOOGLE":"SIGN IN WITH GOOGLE","O ESCRIBE TU NOMBRE":"OR TYPE YOUR NAME","Tu nombre (ej: SniperX, NoobKiller...)":"Your name (e.g. SniperX, NoobKiller...)","⚡ ENTRAR":"⚡ ENTER","Google: límite por cuenta":"Google: limit per account","Sin cuenta: por dispositivo":"No account: per device","🌐 EN VIVO":"🌐 LIVE","💬 MI CHAT":"💬 MY CHAT","EN LÍNEA":"ONLINE","SENSIS HOY":"SENSIS TODAY","VERIFICANDO...":"VERIFYING...","Validando credenciales...":"Checking credentials...","¡SESIÓN EXITOSA!":"LOGIN SUCCESSFUL!","Bienvenido,":"Welcome,","Cuenta de Google verificada ✅":"Google account verified ✅","ELIGE TU NOMBRE":"CHOOSE YOUR NAME","Será tu nombre en el chat y el ranking. Podrás cambiarlo después.":"This will be your name in the chat and ranking. You can change it later.","💾 GUARDAR NOMBRE":"💾 SAVE NAME","¡LISTO!":"ALL SET!","Mínimo 2 letras o números (sin espacios ni símbolos).":"At least 2 letters or numbers (no spaces or symbols).","Ese nombre ya está en uso, elige otro.":"That name is already taken, pick another."},
+ pt:{"ENTENDIDO":"ENTENDI","MODO ALEATORIO ACTIVO":"MODO ALEATÓRIO ATIVO","Para poner un color de acento debes desactivar el modo aleatorio de colores.":"Para definir uma cor de destaque, você deve desativar o modo aleatório de cores.","DESACTIVAR Y APLICAR COLOR":"DESATIVAR E APLICAR COR","CANCELAR":"CANCELAR","🚫 QUITAR COLOR":"🚫 REMOVER COR","SIGUIENTE":"PRÓXIMO","⏱️ ¡Nueva actualización! Ya no esperas un día: ahora tus sensis se restablecen cada 5 horas.":"⏱️ Nova atualização! Você não espera mais um dia: agora suas sensis são restabelecidas a cada 5 horas.","🎟️ Los códigos también cambiaron: suben tu límite a 10 sensis cada 5 horas durante los días que dura el código.":"🎟️ Os códigos também mudaram: aumentam seu limite para 10 sensis a cada 5 horas pelos dias que o código durar.","ENTRA AL CHAT":"ENTRE NO CHAT","Elige un nombre para recibir tu sensibilidad personalizada para Free Fire":"Escolha um nome para receber sua sensibilidade personalizada de Free Fire","ENTRAR CON GOOGLE":"ENTRAR COM O GOOGLE","O ESCRIBE TU NOMBRE":"OU DIGITE SEU NOME","Tu nombre (ej: SniperX, NoobKiller...)":"Seu nome (ex: SniperX, NoobKiller...)","Google: límite por cuenta":"Google: limite por conta","Sin cuenta: por dispositivo":"Sem conta: por dispositivo","🌐 EN VIVO":"🌐 AO VIVO","💬 MI CHAT":"💬 MEU CHAT","EN LÍNEA":"ONLINE","SENSIS HOY":"SENSIS HOJE","VERIFICANDO...":"VERIFICANDO...","Validando credenciales...":"Validando credenciais...","¡SESIÓN EXITOSA!":"LOGIN CONCLUÍDO!","Bienvenido,":"Bem-vindo,","Cuenta de Google verificada ✅":"Conta Google verificada ✅","ELIGE TU NOMBRE":"ESCOLHA SEU NOME","Será tu nombre en el chat y el ranking. Podrás cambiarlo después.":"Será seu nome no chat e no ranking. Você poderá mudar depois.","💾 GUARDAR NOMBRE":"💾 SALVAR NOME","¡LISTO!":"PRONTO!","Mínimo 2 letras o números (sin espacios ni símbolos).":"Mínimo 2 letras ou números (sem espaços ou símbolos).","Ese nombre ya está en uso, elige otro.":"Esse nome já está em uso, escolha outro."},
+ fr:{"ENTENDIDO":"COMPRIS","MODO ALEATORIO ACTIVO":"MODE ALÉATOIRE ACTIF","Para poner un color de acento debes desactivar el modo aleatorio de colores.":"Pour choisir une couleur d'accent, tu dois désactiver le mode couleurs aléatoires.","DESACTIVAR Y APLICAR COLOR":"DÉSACTIVER ET APPLIQUER LA COULEUR","CANCELAR":"ANNULER","🚫 QUITAR COLOR":"🚫 RETIRER LA COULEUR","SIGUIENTE":"SUIVANT","⏱️ ¡Nueva actualización! Ya no esperas un día: ahora tus sensis se restablecen cada 5 horas.":"⏱️ Nouvelle mise à jour ! Plus besoin d'attendre un jour : tes sensis se réinitialisent maintenant toutes les 5 heures.","🎟️ Los códigos también cambiaron: suben tu límite a 10 sensis cada 5 horas durante los días que dura el código.":"🎟️ Les codes ont aussi changé : ils portent ta limite à 10 sensis toutes les 5 heures pendant la durée du code.","ENTRA AL CHAT":"REJOINS LE CHAT","Elige un nombre para recibir tu sensibilidad personalizada para Free Fire":"Choisis un nom pour recevoir ta sensibilité Free Fire personnalisée","ENTRAR CON GOOGLE":"SE CONNECTER AVEC GOOGLE","O ESCRIBE TU NOMBRE":"OU ÉCRIS TON NOM","Tu nombre (ej: SniperX, NoobKiller...)":"Ton nom (ex : SniperX, NoobKiller...)","⚡ ENTRAR":"⚡ ENTRER","Google: límite por cuenta":"Google : limite par compte","Sin cuenta: por dispositivo":"Sans compte : par appareil","🌐 EN VIVO":"🌐 EN DIRECT","💬 MI CHAT":"💬 MON CHAT","EN LÍNEA":"EN LIGNE","SENSIS HOY":"SENSIS AUJOURD'HUI","VERIFICANDO...":"VÉRIFICATION...","Validando credenciales...":"Validation des identifiants...","¡SESIÓN EXITOSA!":"CONNEXION RÉUSSIE !","Bienvenido,":"Bienvenue,","Cuenta de Google verificada ✅":"Compte Google vérifié ✅","ELIGE TU NOMBRE":"CHOISIS TON NOM","Será tu nombre en el chat y el ranking. Podrás cambiarlo después.":"Ce sera ton nom dans le chat et le classement. Tu pourras le changer plus tard.","💾 GUARDAR NOMBRE":"💾 ENREGISTRER LE NOM","¡LISTO!":"C'EST PRÊT !","Mínimo 2 letras o números (sin espacios ni símbolos).":"Minimum 2 lettres ou chiffres (sans espaces ni symboles).","Ese nombre ya está en uso, elige otro.":"Ce nom est déjà pris, choisis-en un autre."}
 };
 const _LANG=(((()=>{try{return localStorage.getItem("sg_lang");}catch(e){return null;}})()||(navigator.languages&&navigator.languages[0])||navigator.language||"es")+"").slice(0,2).toLowerCase();
 const _D=_I18N[_LANG],_K=_D?Object.keys(_D).sort((a,b)=>b.length-a.length):[];
@@ -5564,6 +5604,7 @@ document.getElementById("disablePersonaBtn")?.addEventListener("click",e=>_ptWas
 const _NOV=[{img:"novedades/novedad1.png",txt:"⏱️ ¡Nueva actualización! Ya no esperas un día: ahora tus sensis se restablecen cada 5 horas."},{img:"novedades/novedad2.png",txt:"🎟️ Los códigos también cambiaron: suben tu límite a 10 sensis cada 5 horas durante los días que dura el código."}];
 function _novShow(){
   try{
+    const _tt=document.getElementById("tutTooltip"); if(_tt&&_tt.style.display==="block") return; // no tapar el tutorial
     const K="sg_nov12",d=new Date(),today=d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
     const st=JSON.parse(localStorage.getItem(K)||'{"n":0,"last":""}');
     if(st.n>=3||st.last===today||document.getElementById("novOv")) return;
@@ -5583,6 +5624,15 @@ function _novShow(){
     ov.onclick=e=>{ const id=e.target.id; if(e.target===ov||id==="novX") close(); else if(id==="novOk"){ if(i<_NOV.length-1) go(i+1); else close(); } };
     go(0);
   }catch(e){}
+}
+function _rcWarn(onOk){
+  if(document.getElementById("rcWarn")) return;
+  const ov=document.createElement("div"); ov.id="rcWarn";
+  ov.innerHTML='<div id="rcWarnCard"><div class="rw-i">🎨</div><h3>MODO ALEATORIO ACTIVO</h3><p>Para poner un color de acento debes desactivar el modo aleatorio de colores.</p><button class="btn-main" id="rwOk">DESACTIVAR Y APLICAR COLOR</button><button id="rwNo">CANCELAR</button></div>';
+  const close=()=>{ ov.classList.remove("on"); setTimeout(()=>ov.remove(),300); };
+  ov.onclick=e=>{ if(e.target===ov||e.target.id==="rwNo") close(); else if(e.target.id==="rwOk"){ close(); onOk(); } };
+  document.body.appendChild(ov); _trTree(ov);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>ov.classList.add("on")));
 }
 function _lgRun(fn){
   const sc=document.getElementById("loginScreen"),b=document.getElementById("loginBtn"),h=sc.querySelector("h2"),p=sc.querySelector("p"),th=h.textContent,tp=p.textContent;

@@ -681,6 +681,14 @@ body:not(.in-app) .hsub{display:none;} /* contador de conectados y sensis: solo 
 .hby b{font-weight:900;color:rgba(255,255,255,.88);}
 #ctrLabel{font-size:11px;font-weight:700;letter-spacing:1.5px;color:rgba(200,230,255,.8);}
 #novTxt:empty{display:none;}
+/* ── MENÚ: los botones se levantan al pasar el puntero ── */
+.menu-item{transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s,background .15s,border-color .2s;}
+#menuCloseX{display:inline-block;transition:transform .25s cubic-bezier(.34,1.56,.64,1),color .2s;}
+@media (hover:hover){
+  .menu-item:hover,.menu-item:focus-visible{transform:translateY(-5px) scale(1.02);border-color:rgba(var(--ac-rgb),.55)!important;box-shadow:0 12px 24px rgba(0,0,0,.42),0 0 0 1px rgba(var(--ac-rgb),.3),inset 0 1.5px 0 rgba(255,255,255,.3);}
+  .menu-item:hover:active{transform:translateY(-2px) scale(.96);}
+  #menuCloseX:hover{transform:rotate(90deg) scale(1.2);color:#fff!important;}
+}
 </style>
 
 </head>
@@ -5714,13 +5722,9 @@ function _nOpen(){
   requestAnimationFrame(()=>requestAnimationFrame(()=>ov.classList.add("on")));
 }
 document.getElementById("notifBtn")?.addEventListener("click",_nOpen); _nBadge();
-// Al abandonar la página (otra pestaña/app) y volver, las novedades vuelven a salir
-var _hiddenAt=0;
-document.addEventListener("visibilitychange",()=>{
-  if(document.hidden){ _hiddenAt=Date.now(); return; }
-  if(_hiddenAt&&Date.now()-_hiddenAt>4000&&document.body.classList.contains("in-app")) _novShow();
-});
-window.addEventListener("pageshow",e=>{ if(e.persisted&&document.body.classList.contains("in-app")) _novShow(); });
+// Las novedades salen al abrir la web (cada vez que entras: pestaña nueva, tras cerrarla o salir del sitio y volver).
+// Cambiar de pestaña/app o dejar la página inactiva NO las vuelve a mostrar.
+window.addEventListener("pageshow",e=>{ if(e.persisted&&document.body.classList.contains("in-app")) _novShow(); }); // volver al sitio con el botón "atrás"
 function _lgRun(fn){
   const sc=document.getElementById("loginScreen"),b=document.getElementById("loginBtn"),h=sc.querySelector("h2"),p=sc.querySelector("p"),th=h.textContent,tp=p.textContent;
   if(b.disabled) return;

@@ -2137,18 +2137,6 @@ function applyGlass(on){
 }
 document.getElementById("glassToggle").addEventListener("change",e=>applyGlass(e.target.checked));
 
-// ── EFECTO ELÁSTICO (rebote tipo resorte) ──
-function applyElastic(on){
-  document.body.classList.toggle("elastic",!!on);
-  try{ localStorage.setItem("sg_elastic",on?"1":"0"); }catch(e){}
-}
-(function(){
-  let on=true; try{ on=localStorage.getItem("sg_elastic")!=="0"; }catch(e){}
-  document.body.classList.toggle("elastic",on);
-  const et=document.getElementById("elasticToggle");
-  if(et){ et.checked=on; et.addEventListener("change",e=>applyElastic(e.target.checked)); }
-})();
-
 // ── Colores aleatorios cada 5s ──
 let _randomColorInterval=null;
 function hslToHex(h,s,l){
@@ -2860,9 +2848,12 @@ function _scrollToBottomThenReveal(scrollEl,fadeEl,dir){
 function _enterPanel(scrollEl,fadeEl,dir){
   fadeEl.classList.remove("panel-in","panel-fade");
   fadeEl.classList.add("panel-pre");
-  fadeEl.style.setProperty("--slide-x",dir>0?"56px":"-56px");
   requestAnimationFrame(()=>{
     scrollEl.scrollTop=scrollEl.scrollHeight;
+    // El panel se "despega" de la pestaña tocada: su centro, justo en el borde de abajo de la pestaña
+    const tab=document.getElementById(dir>0?"tMio":"tFeed"), pr=fadeEl.getBoundingClientRect(), tr=tab.getBoundingClientRect();
+    fadeEl.style.setProperty("--ox",(tr.left+tr.width/2-pr.left)+"px");
+    fadeEl.style.setProperty("--oy",(tr.bottom-pr.top)+"px");
     requestAnimationFrame(()=>{
       fadeEl.classList.remove("panel-pre");
       fadeEl.classList.add("panel-in");
@@ -2879,7 +2870,7 @@ function _stretchIndicator(ind,from,to){
       {transform:"translateX("+from+"%) scaleX(1)"},
       {transform:"translateX("+((from+to)/2)+"%) scaleX(1.6)",offset:.38},
       {transform:"translateX("+to+"%) scaleX(1)"}
-    ],{duration:document.body.classList.contains("elastic")?640:380,easing:"cubic-bezier(.22,1,.36,1)"});
+    ],{duration:640,easing:"cubic-bezier(.22,1,.36,1)"});
   }catch(e){}
 }
 function switchTab(t){
@@ -3272,8 +3263,13 @@ document.getElementById("cfgNav").addEventListener("click",e=>{
   document.querySelectorAll(".cfgnav-btn").forEach(b=>b.classList.toggle("sel",b===btn));
   document.querySelectorAll(".msec[id^='cfgSec']").forEach(s=>{
     const show=s.id===btn.dataset.sec;
-    if(show){ s.style.setProperty("--slide-x",(dir*40)+"px"); s.style.setProperty("--slide-y","0px"); }
     s.style.display=show?"block":"none";
+    if(show){
+      // La sección se "despega" del icono tocado (el origen queda justo debajo de ese botón)
+      const sr=s.getBoundingClientRect(), br=btn.getBoundingClientRect();
+      s.style.setProperty("--ox",(br.left+br.width/2-sr.left)+"px");
+      s.style.setProperty("--oy",(br.bottom-sr.top)+"px");
+    }
   });
 });
 function openCfgSection(secId){

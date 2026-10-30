@@ -86,7 +86,7 @@ canvas#fx{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-e
    Borde con luz arriba-izquierda y sombra abajo-derecha, brillo interior y sombra con el color del acento.
    Blur SOLO en barras, ventanas y botones principales; tarjetas y burbujas llevan el mismo look sin blur propio. */
 body.glass{
-  --gl-blur:20px;
+  --gl-blur:8px;
   --gl-hi:linear-gradient(150deg,rgba(255,255,255,.20) 0%,rgba(255,255,255,.07) 38%,rgba(255,255,255,.02) 62%,rgba(255,255,255,.10) 100%);
   --gl-spec:radial-gradient(120% 80% at 0% 0%,rgba(255,255,255,.20),transparent 55%);
   --gl-noise:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
@@ -96,13 +96,15 @@ body.glass{
 body.glass .header,body.glass .tabs,body.glass .input-area,body.glass .mbox{
   background:var(--gl-noise),var(--gl-spec),var(--gl-hi),rgba(var(--ac-rgb),.13)!important;
   background-size:160px 160px,auto,auto,auto!important;
-  backdrop-filter:blur(var(--gl-blur)) saturate(170%) brightness(1.06)!important;
-  -webkit-backdrop-filter:blur(var(--gl-blur)) saturate(170%) brightness(1.06)!important;
+  backdrop-filter:blur(var(--gl-blur))!important;
+  -webkit-backdrop-filter:blur(var(--gl-blur))!important;
   border:1px solid rgba(255,255,255,.16)!important;
   box-shadow:var(--gl-edge),0 14px 34px -12px rgba(0,0,0,.6),var(--gl-glow)!important;
   contain:paint;
 }
-body.glass .header,body.glass .tabs,body.glass .input-area{transform:translateZ(0);will-change:backdrop-filter;}
+/* Ventanas: un poco más de blur que las barras; pestañas y barra de escribir sin grano (más livianas) */
+body.glass .mbox{backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;}
+body.glass .tabs,body.glass .input-area{background:var(--gl-spec),var(--gl-hi),rgba(var(--ac-rgb),.13)!important;background-size:auto!important;}
 /* Mientras se hace scroll / se cambia de pestaña se apaga SOLO el blur (el fondo animado + blur a la vez es lo que
    trababa); el vidrio se mantiene con un fondo algo más sólido para que no "salte". */
 body.glass.is-scrolling .header,body.glass.is-scrolling .tabs,
@@ -141,8 +143,6 @@ body.glass .sup-chip:not(.sel){background:var(--gl-hi),rgba(255,255,255,.03);}
 /* Botones principales: son pocos y siempre visibles -> aquí sí lleva blur. */
 body.glass .cbtn,body.glass .btn-main,body.glass .btn-google,body.glass #sendBtn,body.glass #feedSendBtn,body.glass .icon-btn{
   background-image:linear-gradient(145deg,rgba(255,255,255,.24),rgba(255,255,255,0) 55%);
-  backdrop-filter:blur(12px) saturate(165%)!important;
-  -webkit-backdrop-filter:blur(12px) saturate(165%)!important;
 }
 body.glass .cbtn,body.glass .btn-main,body.glass .btn-google{border-radius:20px!important;}
 /* Los botones principales conservan su degradado de acento y llevan encima el reflejo de vidrio */
@@ -639,44 +639,33 @@ body:not(.in-app) .hsub{display:none;} /* contador de conectados y sensis: solo 
   #menuCloseX:hover{transform:rotate(90deg) scale(1.2);color:#fff!important;}
 }
 
-/* ═════════════════════ v2 · RESORTES (efecto elástico) ═════════════════════ */
-:root{--ease-pop:cubic-bezier(.16,1,.3,1);--ease-spring:cubic-bezier(.22,1,.36,1);}
-body.elastic{--ease-pop:cubic-bezier(.3,1.25,.5,1);--ease-spring:cubic-bezier(.34,1.56,.64,1);}
+/* ═════════ v2 · ELÁSTICO: algo que se desprende de otra cosa ═════════
+   SOLO en: Configuración (ventana y secciones), chat (MI CHAT) y feed (EN VIVO). Siempre activo.
+   Cada pieza arranca aplastada y estirada desde el punto del que sale (el botón o pestaña tocada,
+   o la barra de escribir) y se despega con rebote de resorte. Solo transform + opacity. */
+:root{--ease-soft:cubic-bezier(.3,1.25,.5,1);--ease-spring:cubic-bezier(.34,1.56,.64,1);}
 @supports (transition-timing-function:linear(0,1)){
-  body.elastic{--ease-pop:linear(0, 0.023, 0.085, 0.172, 0.275, 0.386, 0.496, 0.602, 0.7, 0.787, 0.863, 0.926, 0.977, 1.016, 1.045, 1.065, 1.077, 1.083, 1.083, 1.08, 1.074, 1.066, 1.057, 1.048, 1.039, 1.03, 1.022, 1.015, 1.009, 1.004, 1.001, 0.998, 0.996, 0.994, 0.993, 0.993, 0.993, 0.993, 0.994, 0.995, 0.996, 0.996, 0.997, 0.998, 1);--ease-spring:linear(0, 0.029, 0.108, 0.222, 0.36, 0.509, 0.658, 0.8, 0.927, 1.035, 1.122, 1.186, 1.228, 1.25, 1.253, 1.242, 1.219, 1.188, 1.152, 1.114, 1.076, 1.041, 1.01, 0.984, 0.964, 0.949, 0.94, 0.936, 0.936, 0.94, 0.947, 0.955, 0.964, 0.974, 0.983, 0.992, 0.999, 1.006, 1.01, 1.014, 1.016, 1.016, 1.016, 1.015, 1);}
+  :root{--ease-soft:linear(0, 0.024, 0.086, 0.175, 0.281, 0.395, 0.509, 0.62, 0.722, 0.813, 0.891, 0.956, 1.008, 1.048, 1.076, 1.094, 1.104, 1.107, 1.104, 1.097, 1.088, 1.076, 1.064, 1.052, 1.04, 1.029, 1.02, 1.011, 1.004, 0.999, 0.995, 0.992, 0.99, 0.989, 0.989, 0.989, 0.99, 0.991, 0.992, 0.993, 0.994, 0.996, 0.997, 0.998, 1);--ease-spring:linear(0, 0.029, 0.107, 0.22, 0.356, 0.502, 0.648, 0.786, 0.911, 1.016, 1.101, 1.164, 1.206, 1.228, 1.233, 1.225, 1.205, 1.178, 1.145, 1.111, 1.077, 1.045, 1.017, 0.993, 0.974, 0.96, 0.951, 0.946, 0.946, 0.948, 0.953, 0.96, 0.967, 0.975, 0.983, 0.991, 0.997, 1.002, 1.007, 1.01, 1.012, 1.013, 1.013, 1.012, 1);}
 }
-/* Paneles (EN VIVO <-> MI CHAT): solo transform + opacity, arrancan cuando el scroll ya está fijo */
-@keyframes panelIn{from{opacity:0;transform:translate3d(var(--slide-x,0px),var(--slide-y,0px),0) scale(.96);}to{opacity:1;transform:none;}}
+@keyframes detach{from{opacity:0;transform:scale(var(--sx,.3),var(--sy,.06));}to{opacity:1;transform:none;}}
+/* Chat <-> feed: el panel se despega de la pestaña tocada (origen calculado por JS) */
 .panel-pre{opacity:0!important;}
 #feedPanel,#myPanel{animation:none!important;}
-#feedPanel.panel-in,#myPanel.panel-in{animation:panelIn .65s var(--ease-pop) both!important;will-change:transform,opacity;}
-.panel-fade{animation:panelIn .6s var(--ease-pop) both;will-change:transform,opacity;}
-/* Configuración: cada sección entra con resorte desde el lado hacia donde viajas */
-@keyframes secIn{from{opacity:0;transform:translate3d(var(--slide-x,0px),10px,0) scale(.97);}to{opacity:1;transform:none;}}
-#cfgModal .msec{animation:secIn .55s var(--ease-pop) both;will-change:auto;}
+#feedPanel.panel-in,#myPanel.panel-in{--sx:.5;--sy:.08;transform-origin:var(--ox,50%) var(--oy,0px);animation:detach .8s var(--ease-soft) both!important;will-change:transform,opacity;}
+/* Chat: cada burbuja nueva se despega de la barra de escribir */
+#myMsgs>*:not(.bub-sensi){--sx:.4;--sy:.12;animation:detach .75s var(--ease-spring) both;}
+#myMsgs>.bub.bot,#myMsgs>.bub.adm{transform-origin:18% calc(100% + 64px);}
+#myMsgs>.bub.user{transform-origin:82% calc(100% + 64px);}
+/* Configuración: la ventana sube estirándose desde el borde de abajo... */
+#cfgModal .mbox{transform-origin:50% 100%;transform:scale(.84,.12);}
+#cfgModal.show .mbox{transform:none;transition:transform .85s var(--ease-soft),opacity .3s ease;}
+/* ...y cada sección se despega del icono que tocaste (origen calculado por JS) */
+#cfgModal .msec{--sx:.3;--sy:.05;transform-origin:var(--ox,50%) var(--oy,0px);animation:detach .75s var(--ease-spring) both;}
 /* Indicador de pestañas: lo anima JS (se estira como liga) */
 #tabIndicator{transition:none!important;}
-/* Ventanas y menú */
-body .overlay.show .mbox{transition:transform .75s var(--ease-pop),opacity .35s ease;}
-body #menuModal.show .mbox,body #imgScanModal.show .mbox{transition:transform .8s var(--ease-spring),opacity .3s ease;}
-/* Pulsación elástica: se hunde al tocar y vuelve con rebote */
-body.elastic .cbtn,body.elastic .btn-main,body.elastic .btn-google,body.elastic .menu-item,body.elastic .icon-btn,
-body.elastic .tab,body.elastic .cfgnav-btn,body.elastic .an-btn,body.elastic .obtn,body.elastic .r-chip,body.elastic .cpbtn,
-body.elastic .topt,body.elastic .copt,body.elastic .sup-chip,body.elastic #sendBtn,body.elastic #feedSendBtn,
-body.elastic .swrow,body.elastic .engopt,body.elastic [id$="CloseX"]{
-  transition:transform .75s var(--ease-spring),background-color .2s,border-color .2s,box-shadow .25s,color .2s,filter .2s,opacity .2s;
-}
-body.elastic .cbtn:active,body.elastic .btn-main:active,body.elastic .btn-google:active,body.elastic .menu-item:active,
-body.elastic .icon-btn:active,body.elastic .tab:active,body.elastic .cfgnav-btn:active,body.elastic .an-btn:active,
-body.elastic .obtn:active,body.elastic .r-chip:active,body.elastic .cpbtn:active,body.elastic .topt:active,
-body.elastic .copt:active,body.elastic .sup-chip:active,body.elastic #sendBtn:active,body.elastic #feedSendBtn:active,
-body.elastic .swrow:active,body.elastic .engopt:active,body.elastic [id$="CloseX"]:active{
-  transform:scale(.9);
-  transition:transform .12s ease-out,background-color .2s,border-color .2s,box-shadow .25s,color .2s,filter .2s,opacity .2s;
-}
-body.elastic #menuModal.show .menu-item{animation:miIn .85s var(--ease-spring) backwards;}
-body.elastic #myMsgs>*{animation:msgIn .75s var(--ease-spring);}
-body.elastic .sw-slider:before{transition-timing-function:var(--ease-spring);transition-duration:.55s;}
+/* Panel admin: entrada simple (sin elástico) */
+@keyframes adminIn{from{opacity:0;transform:translate3d(var(--slide-x,0px),6px,0);}to{opacity:1;transform:none;}}
+.panel-fade{animation:adminIn .35s cubic-bezier(.16,1,.3,1) both;}
 
 /* ═════════════════════ v2 · INTERFAZ MODERNA ═════════════════════ */
 html,body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
@@ -732,7 +721,7 @@ body .bub.user{border-radius:22px 6px 22px 22px;}
 .admin-header h2{font-size:14px;letter-spacing:3px;line-height:1.1;}
 .admin-header small{display:block;font-size:10px;color:rgba(255,200,200,.5);letter-spacing:.5px;margin-top:2px;font-weight:600;}
 .admin-nav{display:flex;gap:6px;padding:8px 12px;background:rgba(10,0,4,.55);border-bottom:1px solid rgba(255,85,102,.12);flex-shrink:0;}
-.an-btn{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px;border-radius:16px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.04);color:rgba(228,242,255,.55);font-size:18px;cursor:pointer;font-family:inherit;transition:transform .5s var(--ease-spring),background-color .25s,border-color .25s,color .25s,box-shadow .25s;}
+.an-btn{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px;border-radius:16px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.04);color:rgba(228,242,255,.55);font-size:18px;cursor:pointer;font-family:inherit;transition:transform .15s ease,background-color .25s,border-color .25s,color .25s,box-shadow .25s;}
 .an-btn span{font-size:9px;font-weight:900;letter-spacing:1.2px;text-transform:uppercase;}
 .an-btn.sel{color:#fff;background:linear-gradient(145deg,rgba(var(--ac-rgb),.34),rgba(var(--ac-rgb),.14));border-color:rgba(var(--ac-rgb),.55);box-shadow:0 8px 20px -8px rgba(var(--ac-rgb),.6),inset 1px 1px 0 rgba(255,255,255,.25);}
 .an-btn:active{transform:scale(.92);}

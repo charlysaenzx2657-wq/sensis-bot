@@ -736,183 +736,184 @@ function _screenProfile(marca,modelo){
   console.log("📱 [calibración] Usando estimado por gama ('"+_grp(marca)+"') para '"+marca+" "+(modelo||"")+"':",fallback);
   return fallback;
 }
-function _chipMs(touchHz){ return 1000/touchHz; } // latencia de muestreo real = periodo entre muestras
-function _movementPrecisionIndex(dpiOn,marca,modelo){
-  const s=_screenProfile(marca,modelo);
-  // _D0/_W0/_H0 escalados a la pantalla real de esa gama en vez de una
-  // constante universal: la diagonal ajusta la distancia de referencia y
-  // el aspect ratio real ajusta la proporción alto/ancho del "blanco" —
-  // esto es literalmente calibrar el ángulo hacia el centro de ESA
-  // resolución de pantalla, no una genérica igual para todos.
-  const scaleD=s.diagIn/_SCREEN_REF.diagIn;
-  const D0=_D0*scaleD, W0=_W0, H0=_H0*(s.aspect/_SCREEN_REF.aspect), HC=_HC*(s.aspect/_SCREEN_REF.aspect);
-  const baseAngH=2*Math.atan(W0/(2*D0)), baseAngV=2*Math.atan(H0/(2*D0)), baseArea=baseAngH*baseAngV;
-  let sumScore=0,sumPeso=0;
+// ══════════════════════════════════════════════════════════════════════
+//  MOTOR MEJORADO v2 · física + cálculo + estadística (sin valores fijos)
+// ══════════════════════════════════════════════════════════════════════
+// Cada valor sale de una cadena de fórmulas, no de rangos pegados a mano:
+//  1) GEOMETRÍA REAL: ancho = diagonal/√(1+a²) (Pitágoras, a = alto/ancho), alto = a·ancho,
+//     en cm (×2.54). Es el espacio físico que tiene el pulgar para mover la cámara.
+//  2) GANANCIA ANGULAR: un giro de 180° debe caber en una fracción del ancho y ±30° en una
+//     fracción del alto → g_h = 180/L_h, g_v = 60/L_v (grados por cm). Se combinan con la
+//     raíz cuadrática media ponderada G = √((w_h·g_h² + w_v·g_v²)/(w_h+w_v)), con pesos w
+//     que salen de la velocidad angular RMS de los 12 movimientos (lat/dist, vert/dist).
+//  3) LATENCIA: τ = 1000/touchHz + lag. En τ el dedo ya recorrió v·τ, se pierde la fracción
+//     λ·τ/T del gesto y la ganancia debe subir 1/(1−λτ/T).
+//  4) DPI: cm/360 = 360×2.54/(DPI×sens×yaw) → la sensi de software escala ∝ 1/DPI; el juego
+//     amortigua parte de eso, así que se aplica la RAÍZ: (DPI_ref/DPI)^½.
+//  5) Todo se resume en ln g (0 = celular de referencia). La posición dentro de la ventana de
+//     cada valor sale de una curva tanh: suave, sin amontonarse en los bordes.
+//  6) El RUIDO no es un rand() plano: es una gaussiana (Box-Muller) con σ por propagación de
+//     errores: σ² = σ_dedo² + (∂ln g/∂τ · τ · σ_lag)² (cómo apoya el dedo + incertidumbre
+//     de la latencia).
+//  7) ZOOM ÓPTICO (2x, 4x): "monitor distance matching",
+//     r(M,k) = atan(k·tan(θz/2)) / atan(k·tan(θ/2)), con tan(θz/2) = tan(θ/2)/M.
+//     El coeficiente k se despeja de la ventana física del nivel.
+//  8) ANTI-REPETICIÓN: se recuerdan los últimos valores y se elige uno a distancia mínima de
+//     ellos, así dos sensis seguidas no salen pegadas.
+const _FIS={
+  FOV:70*Math.PI/180,  // campo de visión de referencia (rad)
+  SWEEP:0.42,          // fracción del ancho que barre el pulgar en un giro de 180°
+  SWEEP_V:0.25,        // fracción del alto para ±30° verticales
+  T_FLICK:0.18,        // s: duración típica de ese barrido
+  LAMBDA:0.5,          // fracción del retraso que realmente se pierde del gesto
+  DPI_REF:560,         // DPI de referencia
+  K_REF:1.30,          // coeficiente de monitor-distance "de fábrica" del juego
+  SIG_DEDO:0.11,       // σ relativa (ln) de la longitud real del barrido de una persona
+  SIG_LAG:0.20,        // σ relativa de la latencia medida
+  EPS_DEDO:0.10,       // cm: temblor/jitter de contacto del pulgar
+  KAPPA:0.25,          // fracción del tamaño del blanco que el error angular puede ocupar
+  BETA:0.30,           // peso del techo de precisión sobre ln g
+  ESC:0.14             // escala de la tanh (unidades de ln g)
+};
+const _FIS_K={baja:[0.50,0.95],media:[0.60,1.10],alta:[0.70,1.20]}; // ventana de k por nivel
+function _gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function _sigm(z){return 0.5+0.5*Math.tanh(z);}
+function _mdm(M,k){const t=Math.tan(_FIS.FOV/2);return Math.atan(k*t/M)/Math.atan(k*t);}
+function _kDeRatio(M,r){let a=0.02,b=8;for(let i=0;i<40;i++){const m=(a+b)/2;if(_mdm(M,m)<r)a=m;else b=m;}return (a+b)/2;} // bisección: r(M,k)=r
+function _fisGeom(s){const w=s.diagIn/Math.sqrt(1+s.aspect*s.aspect)*2.54;return{W:w,H:s.aspect*w};}
+let _fisMovCache=null;
+// Usa los 12 movimientos del personaje de dos formas:
+//  · velocidad angular RMS de cada eje (lat/dist y vert/dist) -> pesos w_h, w_v
+//  · tamaño angular del blanco: α = 2·atan(x/2d) en ancho y alto (adelante/atrás cambian d,
+//    agachado cambia el alto); tamaño del movimiento = √(αW·αH) y se promedia con la media
+//    ARMÓNICA ponderada (los blancos chicos dominan la dificultad): S = Σw / Σ(w/tamaño)
+function _fisMov(){
+  if(_fisMovCache)return _fisMovCache;
+  let sh=0,sv=0,sw=0,inv=0;
   for(const m of _MOV_PROFILES){
-    const h=(m.h===_HC)?HC:H0;
-    const dist=Math.max(2,D0*(1+m.distDelta)); // "falta de distancia" = dist mayor = blanco más chico angularmente
-    const angH=2*Math.atan(W0/(2*dist)), angV=2*Math.atan(h/(2*dist));
-    // Velocidad angular real por eje (aprox. ángulo chico): v_lineal / distancia
-    const angVelH=m.lat/dist, angVelV=m.vert/dist;
-    const demandaVelocidad=Math.sqrt(angVelH*angVelH+angVelV*angVelV); // magnitud vectorial (Pitágoras)
-    // Dificultad relativa al tamaño angular del blanco vs el de referencia (quieto).
-    // Positivo = blanco más chico/difícil (pide control); negativo = blanco más
-    // grande/fácil (permite más velocidad). Ya no se recorta a 0: un blanco más
-    // fácil también debe poder "empujar" la calibración hacia el otro lado.
-    const demandaPrecision=clamp(1-((angH*angV)/baseArea),-1,1.3);
-    const score=(demandaVelocidad*14)-(demandaPrecision*0.75);
-    sumScore+=score*m.peso; sumPeso+=m.peso;
+    const dist=_D0*(1+m.distDelta),wh=m.lat/dist,wv=m.vert/dist;
+    sh+=m.peso*wh*wh;sv+=m.peso*wv*wv;sw+=m.peso;
+    const aW=2*Math.atan(_W0/(2*dist)),aH=2*Math.atan(m.h/(2*dist));
+    inv+=m.peso/Math.sqrt(aW*aH);
   }
-  let idx=clamp(sumPeso?(sumScore/sumPeso):0,-1,1); // -1 = priorizar control, +1 = priorizar velocidad
-  // Relación DPI↔sensibilidad (cm/360 = 360×2.54 ÷ (DPI×sensibilidad×yaw)): con
-  // DPI del sistema activado, el mismo giro físico del dedo ya se traduce en más
-  // recorrido de cámara, así que el software necesita menos ajuste adicional →
-  // se atenúa la influencia del índice de movimiento. Se aplica DESPUÉS del
-  // límite para que el efecto de DPI nunca quede "tapado" por el clamp.
-  if(dpiOn) idx*=0.72;
-  // Compensación por latencia táctil: antes solo se usaba el touchHz (cuántas
-  // veces por segundo el chip LEE el dedo). Ahora se le suma el retraso REAL
-  // de respuesta de pantalla (touchLagMs, investigado por la IA cuando se
-  // conoce el modelo exacto, o estimado por gama si no) — que es un dato
-  // distinto: cuánto tarda esa lectura en verse reflejada en pantalla. Se
-  // combinan ambos en una latencia total, normalizada contra la gama de
-  // referencia, y sumada DESPUÉS del clamp principal para que nunca quede
-  // tapada por él (igual que antes).
-  const chipMs=_chipMs(s.touchHz), refChipMs=_chipMs(_SCREEN_REF.touchHz);
-  const lagMs=(typeof s.touchLagMs==="number")?s.touchLagMs:_SCREEN_REF.touchLagMs;
-  const totalMs=chipMs+lagMs, refTotalMs=refChipMs+_SCREEN_REF.touchLagMs;
-  const latencyIdx=clamp((totalMs-refTotalMs)/12,-1.3,1.3)*0.24;
-  return idx+latencyIdx;
+  return(_fisMovCache={h:sh/sw,v:sv/sw,Sdeg:(sw/inv)*180/Math.PI});
 }
-// ── AJUSTE POR GAMA DE HARDWARE (marca/grupo) ────────────────────────────
-// Investigado (guías 2026 de calibración Free Fire, repetido en múltiples
-// fuentes): la respuesta real depende fuertemente del hardware — una sensi
-// que se siente fluida en un flagship se siente pesada/lenta en gama baja
-// por diferencias de touch-sampling y refresh rate. Recomendación repetida:
-// General/Rojo más ALTOS en gama baja (compensa hardware lento), más
-// MODERADOS en gama alta (el hardware ya responde rápido, no hace falta).
-// No sustituye nada: es un empujón chico adicional sobre el mismo idx,
-// que ahora ya incluye el factor de pantalla/latencia real (ver arriba).
-const _GAMA_NUDGE={A:-0.16,B:0.10,B2:-0.06,B3:0,B4:-0.04,C:0.20,D:0.06,E:-0.16,V:-0.24};
-function _gamaNudge(marca){ return _GAMA_NUDGE[_grp(marca)]||0; }
+// De qué campos del Worker hay dato REAL (y cuáles son estimado por gama).
+function _fisFuentes(marca,modelo){
+  const c=modelo?_deviceSpecsCache.get(_deviceKey(marca,modelo)):null,ok=!!(c&&c.found);
+  return{diagIn:ok&&c.diagIn!=null,aspect:ok&&c.aspect!=null,touchHz:ok&&c.touchHz!=null,touchLagMs:ok&&c.touchLagMs!=null};
+}
+function _fisGanancia(sp,dpiVal,src){
+  const mov=_fisMov();
+  const calc=(x)=>{
+    const g=_fisGeom(x),gh=180/(_FIS.SWEEP*g.W),gv=60/(_FIS.SWEEP_V*g.H);
+    const G=Math.sqrt((mov.h*gh*gh+mov.v*gv*gv)/(mov.h+mov.v));
+    const tau=(1000/x.touchHz+x.touchLagMs)/1000;
+    const perdida=Math.max(0.35,1-_FIS.LAMBDA*tau/_FIS.T_FLICK);
+    // Techo de precisión: el error del dedo ε = √(jitter² + (v·τ)²) (Pitágoras: temblor + arrastre por
+    // latencia) multiplicado por la ganancia (°/cm) no debe pasar de una fracción del blanco.
+    const v=_FIS.SWEEP*g.W/_FIS.T_FLICK,eps=Math.sqrt(_FIS.EPS_DEDO*_FIS.EPS_DEDO+Math.pow(v*tau,2));
+    return{G:G/perdida,tau,perdida,Gp:_FIS.KAPPA*mov.Sdeg/eps};
+  };
+  const a=calc(sp),r=calc(_SCREEN_REF);
+  let lng=Math.log(a.G/r.G)+_FIS.BETA*Math.log(a.Gp/r.Gp);
+  if(dpiVal)lng+=0.5*Math.log(_FIS.DPI_REF/dpiVal);
+  // Incertidumbre: si el dato viene del Worker (real) pesa poco; si es estimado por gama pesa mucho.
+  const real=src||{},dLn=(_FIS.LAMBDA/_FIS.T_FLICK)/a.perdida; // ∂ln g/∂τ
+  let v2=_FIS.SIG_DEDO*_FIS.SIG_DEDO+Math.pow(dLn*a.tau*_FIS.SIG_LAG,2);
+  const add=(x)=>{v2+=x*x;};
+  add(real.diagIn?0.008:0.045);                                              // ∂ln g/∂ln diag ≈ -1
+  add(real.aspect?0.006:0.033);                                              // ∂ln W/∂ln a ≈ -a²/(1+a²)
+  add(dLn*(1/sp.touchHz)*(real.touchHz?0.03:0.35));                          // periodo de muestreo
+  add(dLn*(sp.touchLagMs/1000)*(real.touchLagMs?0.10:0.45));                 // retraso de pantalla
+  return{lng,sigma:Math.sqrt(v2)};
+}
+function _histGet(k){try{const a=JSON.parse(localStorage.getItem(k)||"[]");return Array.isArray(a)?a.filter(Number.isFinite):[];}catch(e){return[];}}
+function _histPush(k,v,n){try{const a=_histGet(k);a.push(v);localStorage.setItem(k,JSON.stringify(a.slice(-(n||6))));}catch(e){}}
+// Elige un valor del muestreador físico que quede a >= minSep de los últimos generados.
+function _spread(name,sampler,lo,hi,minSep,nHist){
+  lo=Math.round(lo);hi=Math.round(hi);if(lo>hi){const t=lo;lo=hi;hi=t;}
+  const key="sg_hist_"+name,hist=_histGet(key).slice(-(nHist||3));
+  let best=lo,bestD=-1;
+  for(let i=0;i<60;i++){
+    const v=clamp(Math.round(sampler()),lo,hi);
+    const d=hist.length?Math.min.apply(null,hist.map(h=>Math.abs(h-v))):1e9;
+    if(d>=minSep){best=v;bestD=d;break;}
+    if(d>bestD){bestD=d;best=v;}
+  }
+  _histPush(key,best,6);
+  return best;
+}
 function genSensiMejorado(marca,modelo,nivel,dpi){
   const grp=_grp(marca),iP=(grp==="E"),p=P[grp];
-  let gLo,gHi;
-  if(iP){if(nivel==="baja"){gLo=89;gHi=120;}else if(nivel==="media"){gLo=121;gHi=169;}else{gLo=172;gHi=200;}}
-  else{if(nivel==="baja"){gLo=clamp(Math.max(p.genMin,145),145,158);gHi=clamp(Math.min(158,p.genMax),145,158);}else if(nivel==="media"){gLo=clamp(Math.max(p.genMin,159),159,174);gHi=clamp(Math.min(174,p.genMax),159,174);}else{gLo=clamp(Math.max(p.genMin,176),176,200);gHi=clamp(Math.min(200,p.genMax),176,200);}}
+  // ── Ventana de la General según el nivel (banda del nivel ∩ límites del grupo) ──
+  const BANDA={baja:[145,158],media:[159,174],alta:[176,200]},BANDA_I={baja:[89,120],media:[121,169],alta:[172,200]};
+  const bd=(iP?BANDA_I:BANDA)[nivel]||(iP?BANDA_I:BANDA).media;
+  let gLo=iP?bd[0]:clamp(Math.max(p.genMin,bd[0]),bd[0],bd[1]),gHi=iP?bd[1]:clamp(Math.min(bd[1],p.genMax),bd[0],bd[1]);
   if(gLo>gHi){gLo=p.genMin;gHi=p.genMax;}
-  // La General ahora también usa el modelo de movimiento (altura/anchura +
-  // los 12 movimientos) para decidir en qué punto de su rango seguro cae,
-  // igual que la Punto Rojo, en vez de un rand() puramente al azar.
-  // idx crudo: para la MAYORÍA de celulares reales (pantallas 6.1"-6.8",
-  // aspect parecido entre sí) el componente de física de pantalla se queda
-  // cerca de 0 -> con idx≈0 el centro cae casi justo a la mitad del rango,
-  // que es estadísticamente CASI IGUAL a lo que ya daba un rand() plano de
-  // la sensi vieja (que promedia al centro). Eso hacía que "Mejorado" se
-  // sintiera "casi idéntico" a la sensi antigua para la mayoría de
-  // celulares, aunque técnicamente estuviera usando otra fórmula.
-  // Fix: se aplica una curva de "amplificación" (potencia 0.55) que estira
-  // las señales moderadas hacia los extremos, manteniendo 0->0 y ±1->±1.
-  // Así, diferencias reales pero chicas entre modelos (touch Hz, latencia,
-  // gama) se traducen en una sensi que realmente se nota distinta, sin
-  // inventar nada: sigue siendo la misma física, solo que ya no se ahoga
-  // en el medio del rango para la mayoría de los casos.
-  const idxRaw=clamp(_movementPrecisionIndex(dpi,marca,modelo)+_gamaNudge(marca),-1,1);
-  const idx=Math.sign(idxRaw)*Math.pow(Math.abs(idxRaw),0.55); // física angular (pantalla real del modelo si se conoce, o estimada por gama + latencia táctil) + DPI + gama de hardware, amplificada
-  let general;
-  {
-    // Jitter ampliado (antes 0.12 del rango, mínimo 1) para evitar que
-    // muchos celulares con un idx parecido terminen cayendo siempre en
-    // los mismos 1-2 valores del borde superior del rango (ej. 156-157,
-    // 168-169 repetidos). Ahora el jitter cubre una porción mayor del
-    // rango y nunca es menor a 2, así que el resultado se reparte en más
-    // valores distintos sin cambiar el centro/tendencia que da el idx.
-    const centroG=gLo+((gHi-gLo)*((idx+1)/2));
-    const jitterG=rand(-Math.max(2,Math.round((gHi-gLo)*0.30)),Math.max(2,Math.round((gHi-gLo)*0.30)));
-    general=clamp(Math.round(centroG+jitterG),gLo,gHi);
-  }
+  gHi=Math.min(gHi,197); // deja sitio para que Punto Rojo siempre quede por encima
+  if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.round(c-3);gHi=Math.min(197,Math.round(c+3));} // ventana mínima: nunca un valor único
+  const FLOOR=iP?60:100; // piso de los valores (iPhone baja por debajo de 100)
   const hsR=Math.random(),hs=hsR<0.60?"full":hsR<0.90?"mid":"normal";
-  // Índice de movimiento (-1..1): decide EN QUÉ PUNTO del offset de Punto Rojo
-  // (p.rojoD) cae el valor final, en vez de un rand() puramente al azar.
-  let rojo;
-  {
-    const dLo=Math.min(p.rojoD[0],p.rojoD[1]),dHi=Math.max(p.rojoD[0],p.rojoD[1]);
-    const mn=(nivel==="baja")?2:0;
-    const centro=dLo+((dHi-dLo)*((idx+1)/2));
-    // Mismo criterio que en General: jitter mínimo más alto para que el
-    // offset de Punto Rojo no quede siempre pegado al mismo valor.
-    const jitter=rand(-Math.max(1,Math.round((dHi-dLo)*0.30)),Math.max(1,Math.round((dHi-dLo)*0.30)));
-    const off=Math.max(Math.round(centro+jitter),Math.max(dLo,mn));
-    rojo=clamp(general+off,100,200);
-  }
-  const xLo=Math.abs(p.x2D[1]),xHi=Math.abs(p.x2D[0]);
-  let x2,x4;
-  {
-    // Zoom 2x ahora también usa el idx de física real (antes solo tenía
-    // una ventana fija por nivel, elegida con rand() puro sin relación
-    // con la pantalla/latencia/DPI del celular). Igual que en Rojo: idx
-    // alto (prioriza velocidad) => offset "d" más chico (x2 más pegado a
-    // Rojo); idx bajo (prioriza control) => "d" más grande (x2 más lejos).
-    let dLoBase,dHiBase;
-    if(nivel==="baja"){dLoBase=xLo;dHiBase=Math.round(xLo+(xHi-xLo)*0.55);}
-    else if(nivel==="media"){dLoBase=Math.round(xLo+(xHi-xLo)*0.25);dHiBase=Math.round(xLo+(xHi-xLo)*0.75);}
-    else{dLoBase=xLo;dHiBase=Math.round(xLo+(xHi-xLo)*0.45);}
-    // Se invierte el idx acá: idx alto = "d" más chico (menos distancia
-    // entre Rojo y Zoom2x = más agresivo), idx bajo = "d" más grande.
-    const centroD=dHiBase-((dHiBase-dLoBase)*((idx+1)/2));
-    const jitterD=rand(-Math.max(1,Math.round((dHiBase-dLoBase)*0.30)),Math.max(1,Math.round((dHiBase-dLoBase)*0.30)));
-    const d=clamp(Math.round(centroD+jitterD),dLoBase,dHiBase);
-    x2=clamp(rojo-Math.max(d,xLo),100,rojo-xLo);
-  }
-  x4=clamp(x2+rand(20,27),100,200);
-  const fMin=Math.max(p.franMin,100),fMax=Math.min(p.franMax,200),fD=fMax-fMin;
-  let franco;
-  {
-    // Francotirador: antes rand() puro dentro de una ventana fija por
-    // nivel, sin usar el idx. Ahora el idx decide en qué punto de esa
-    // ventana cae (misma lógica que General/Rojo/Zoom2x), con jitter
-    // ampliado para no repetir siempre el mismo valor.
-    let fLoBase,fHiBase;
-    if(nivel==="baja"){fLoBase=fMin;fHiBase=Math.round(fMin+fD*0.40);}
-    else if(nivel==="media"){fLoBase=Math.round(fMin+fD*0.20);fHiBase=Math.round(fMin+fD*0.70);}
-    else{fLoBase=Math.round(fMin+fD*0.48);fHiBase=fMax;}
-    const centroF=fLoBase+((fHiBase-fLoBase)*((idx+1)/2));
-    const jitterF=rand(-Math.max(1,Math.round((fHiBase-fLoBase)*0.30)),Math.max(1,Math.round((fHiBase-fLoBase)*0.30)));
-    franco=clamp(Math.round(centroF+jitterF),fMin,fMax);
-  }
-  const cD=p.camaraD[1]-p.camaraD[0];
-  let cLo,cHi;
-  if(nivel==="baja"){cLo=p.camaraD[0];cHi=Math.round(p.camaraD[0]+cD*0.38);}else if(nivel==="media"){cLo=Math.round(p.camaraD[0]+cD*0.22);cHi=Math.round(p.camaraD[0]+cD*0.72);}else{cLo=Math.round(p.camaraD[0]+cD*0.50);cHi=p.camaraD[1];}
-  let camaraOff;
-  {
-    // Cámara: mismo criterio, ahora ligada al idx de física real en vez
-    // de un rand() plano sobre la ventana del nivel.
-    const centroC=cLo+((cHi-cLo)*((idx+1)/2));
-    const jitterC=rand(-Math.max(1,Math.round((cHi-cLo)*0.30)),Math.max(1,Math.round((cHi-cLo)*0.30)));
-    camaraOff=clamp(Math.round(centroC+jitterC),cLo,cHi);
-  }
-  const camara=clamp(general+camaraOff,100,200);
-  function _b(){if(nivel==="baja"){if(hs==="full")return rand(32,34);if(hs==="mid")return rand(33,35);return rand(34,36);}else if(nivel==="media"){if(hs==="full")return rand(36,39);if(hs==="mid")return rand(38,41);return rand(40,43);}else{if(hs==="full")return rand(34,36);if(hs==="mid")return rand(36,37);return rand(38,39);}}
-  let boton=iP?clamp(nivel==="baja"?rand(38,46):nivel==="media"?rand(42,49):rand(44,52),35,52):_b();
-  // El botón (giroscopio) afina la puntería fina en los mismos movimientos erráticos:
-  // se ajusta también con el índice de movimiento (más control fino si el índice pide control).
-  boton=clamp(Math.round(boton-(idx*2)),32,52);
-  const rd=rojo-general;
-  if(hs==="full"||rd>=3)boton=clamp(boton-rand(2,3),32,boton);else if(rd>=1)boton=clamp(boton-1,32,boton);
-  boton=clamp(boton,32,52);
-  if(rojo<=general){
-    // Si general ya está en el techo (200) no hay margen hacia arriba para
-    // el offset de Punto Rojo: en ese caso bajamos general 1 punto en vez
-    // de intentar subir rojo por encima del límite (que el clamp cancelaría).
-    if(general>=200){ general=199; }
-    rojo=clamp(general+1,100,200);
-  }
-  if(x2>=rojo)x2=clamp(rojo-xLo,100,rojo-1);
-  if(x4<=x2)x4=clamp(x2+20,100,200);
-  if(franco>=x2)franco=clamp(x2-1,fMin,x2-1);
-  rojo=clamp(rojo,100,200);x2=clamp(x2,100,200);x4=clamp(x4,100,200);
+  // ── DPI (se calcula primero porque entra en la física: sensi ∝ DPI^-½) ──
   let dpiV=null;
-  if(dpi&&!iP&&p.dpiMin>0){let base;if(nivel==="baja")base=rand(Math.round(p.dpiMin+(p.dpiMax-p.dpiMin)*0.55),p.dpiMax);else if(nivel==="media")base=rand(Math.round(p.dpiMin+(p.dpiMax-p.dpiMin)*0.25),Math.round(p.dpiMin+(p.dpiMax-p.dpiMin)*0.75));else base=rand(p.dpiMin,Math.round(p.dpiMin+(p.dpiMax-p.dpiMin)*0.45));dpiV=clamp(base+rand(-4,4),530,630);}
+  if(dpi&&!iP&&p.dpiMin>0){
+    const f=nivel==="baja"?[0.55,1]:nivel==="media"?[0.25,0.75]:[0,0.45],span=p.dpiMax-p.dpiMin;
+    dpiV=_spread("dpi_"+nivel,()=>p.dpiMin+span*(f[0]+(f[1]-f[0])*_sigm(1.1*_gauss())),p.dpiMin+span*f[0],p.dpiMin+span*f[1],5,4);
+    dpiV=clamp(dpiV,530,630);
+  }
+  // ── Física del dispositivo → ln g y su incertidumbre σ ──
+  const F=_fisGanancia(_screenProfile(marca,modelo),dpiV,_fisFuentes(marca,modelo));
+  const z0=F.lng/_FIS.ESC,zs=F.sigma/_FIS.ESC;
+  // ── GENERAL ──
+  let general=_spread("gen_"+(iP?"i":"a")+nivel,()=>gLo+(gHi-gLo)*_sigm(z0+zs*_gauss()),gLo,gHi,clamp(Math.round((gHi-gLo)/5),2,8),3);
+  // ── PUNTO ROJO: offset sobre General (más alto con hs "normal", más pegado con "full") ──
+  const rLo=Math.max(nivel==="baja"?3:2,p.rojoD[0]+2),rHi=Math.max(rLo+4,p.rojoD[1]*2+3+(nivel==="baja"?1:0)); // nunca pegado al General (mínimo 2-3 puntos)
+  const zh=hs==="full"?-0.9:hs==="mid"?0:0.9;
+  // Las ventanas se acotan con el espacio libre hasta 199: así nada se amontona en el 200.
+  const rHi2=Math.min(rHi,199-general),rLo2=Math.min(rLo,rHi2);
+  const off=_spread("roj_"+nivel,()=>rLo2+(rHi2-rLo2)*_sigm(0.8*z0+zh+zs*_gauss()),rLo2,rHi2,2,2);
+  let rojo=general+off;
+  // ── ZOOM 2x: reducción por monitor-distance matching, k dentro de la ventana del nivel ──
+  const xLo=Math.abs(p.x2D[1]),xHi=Math.abs(p.x2D[0]),dMin=Math.max(3,xLo-2),dMax=xHi+9;
+  const kr=_FIS_K[nivel]||_FIS_K.media,r2ref=_mdm(2,_FIS.K_REF);
+  const dX2=_spread("x2d_"+nivel,()=>{const k=kr[0]*Math.pow(kr[1]/kr[0],_sigm(0.6*z0+zs*_gauss()));return rojo*(1-_mdm(2,k)/r2ref);},dMin,dMax,2,2);
+  let x2=clamp(rojo-dX2,FLOOR,rojo-3);
+  // ── ZOOM 4x: compensación ∝ √(r2/r4) − 1 (la raíz amortigua la respuesta del juego) ──
+  const kq=_kDeRatio(2,clamp(x2/rojo,0.3,0.999)*r2ref);
+  const fq=Math.sqrt(_mdm(2,kq)/_mdm(4,kq))-1;
+  const hi4=Math.min(34,199-x2),lo4=Math.min(14,Math.max(4,hi4-4));
+  const d4=_spread("x4d_"+nivel,()=>x2*(0.30+0.16*_sigm(0.5*z0+zs*_gauss()))*fq,lo4,hi4,3,2);
+  let x4=x2+d4;
+  // ── FRANCOTIRADOR: ventana propia del grupo, posición por física ──
+  const fMin=p.franMin,fMax=p.franMax,fD=fMax-fMin;
+  const fr=nivel==="baja"?[0,0.40]:nivel==="media"?[0.20,0.70]:[0.48,1];
+  const fLo=fMin+fD*fr[0],fHi=fMin+fD*fr[1];
+  let franco=_spread("fran_"+nivel,()=>fLo+(fHi-fLo)*_sigm(0.7*z0+zs*_gauss()),Math.max(fMin,fLo-1),Math.min(fMax,fHi+1),2,2);
+  // ── CÁMARA LIBRE: offset sobre General ──
+  const cD=p.camaraD[1]-p.camaraD[0],wd=Math.max(2,Math.round(cD*0.15));
+  const cr=nivel==="baja"?[0,0.38]:nivel==="media"?[0.22,0.72]:[0.50,1];
+  const cLo=p.camaraD[0]+cD*cr[0]-wd,cHi=p.camaraD[0]+cD*cr[1]+wd;
+  const hiC=Math.min(cHi,199-general),loC=Math.min(cLo,Math.max(2,hiC-3));
+  const offC=_spread("cam_"+nivel,()=>loC+(hiC-loC)*_sigm(0.7*z0+zs*_gauss()),loC,hiC,2,2);
+  let camara=general+offC;
+  // ── BOTÓN (giroscopio): menos ganancia pide más control fino ──
+  let bw;
+  if(iP)bw=nivel==="baja"?[38,46]:nivel==="media"?[42,49]:[44,52];
+  else if(nivel==="baja")bw=hs==="full"?[32,34]:hs==="mid"?[33,35]:[34,36];
+  else if(nivel==="media")bw=hs==="full"?[36,39]:hs==="mid"?[38,41]:[40,43];
+  else bw=hs==="full"?[34,36]:hs==="mid"?[36,37]:[38,39];
+  const bLo=Math.max(32,bw[0]-1),bHi=Math.min(52,bw[1]+1);
+  let boton=_spread("bot_"+nivel+(iP?"i":""),()=>bLo+(bHi-bLo)*_sigm(-0.7*z0+zs*_gauss()),bLo,bHi,1,2);
+  const rd=rojo-general;
+  if(hs==="full"||rd>=3)boton-=(rd>=6?3:2);else if(rd>=1)boton-=1;
+  boton=clamp(Math.round(boton),32,52);
+  // ── Orden final de seguridad ──
+  rojo=clamp(rojo,FLOOR,200);x2=clamp(Math.round(x2),FLOOR,200);x4=clamp(x4,FLOOR,200);camara=clamp(camara,FLOOR,200);
+  if(rojo<=general){rojo=Math.min(200,general+1);if(rojo<=general)general=rojo-1;}
+  if(x2>=rojo)x2=rojo-3;
+  if(x4<=x2)x4=Math.min(200,x2+8);
+  franco=clamp(franco,fMin,Math.min(fMax,x2-1));
   return{general,rojo,x2,x4,franco,camara,boton,dpi:dpiV,nivel,hs,motor:"mejorado"};
 }
 

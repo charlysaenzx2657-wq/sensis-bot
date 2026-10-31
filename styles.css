@@ -731,3 +731,25 @@ body .bub.user{border-radius:22px 6px 22px 22px;}
 .a-hide{display:none!important;}
 .acard{padding:16px;border-radius:24px;}
 #msgInput::placeholder,#feedInput::placeholder,.inp::placeholder,textarea::placeholder{color:rgba(228,242,255,.42);}
+/* Configuración: 7 pestañas -> 3 anchas arriba y 4 abajo */
+.cfgnav{grid-template-columns:repeat(12,1fr);}
+.cfgnav-btn{grid-column:span 3;}
+.cfgnav-btn:nth-child(-n+3){grid-column:span 4;}
+/* Tabla de la sensi: ancho completo (cubre el espacio del bot y el del usuario) */
+.mw.wide{align-self:stretch;width:100%;}
+.mw.wide .bub{max-width:100%;width:100%;}
+.bub.bub-sensi{padding:18px 16px 14px;white-space:normal;}
+.stbl-title{font-size:13px;font-weight:900;letter-spacing:2.5px;text-align:center;color:var(--ac);}
+.stbl-dev{font-size:13px;font-weight:800;text-align:center;margin:6px 0 8px;color:#fff;word-break:break-word;}
+.stbl-tags{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-bottom:14px;}
+.stbl-tag{font-size:10px;font-weight:900;letter-spacing:1px;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.14);}
+.stbl-tag.hs{background:rgba(255,160,0,.18);border-color:rgba(255,160,0,.4);color:#FFC24D;}
+.stbl-tag.prem{background:rgba(190,120,255,.18);border-color:rgba(190,120,255,.4);color:#D9B3FF;}
+.stbl-tag.dpi{background:rgba(70,150,255,.18);border-color:rgba(70,150,255,.4);color:#9CC8FF;}
+.stbl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.stbl-cell{padding:12px 10px 10px;border-radius:18px;text-align:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);box-shadow:inset 1px 1px 0 rgba(255,255,255,.18);}
+.stbl-cell.main{grid-column:1 / -1;background:linear-gradient(145deg,rgba(var(--ac-rgb),.30),rgba(var(--ac-rgb),.10));border-color:rgba(var(--ac-rgb),.5);}
+.stbl-lab{font-size:11px;font-weight:800;letter-spacing:.6px;color:rgba(228,242,255,.75);}
+.stbl-val{font-size:34px;font-weight:900;line-height:1.15;margin-top:2px;color:#fff;font-variant-numeric:tabular-nums;}
+.stbl-cell.main .stbl-val{font-size:48px;color:var(--ac);}
+.stbl-foot{margin-top:12px;text-align:center;font-size:10px;font-weight:800;letter-spacing:2px;color:rgba(160,215,255,.5);}

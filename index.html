@@ -122,7 +122,6 @@
 
     <div class="cfgnav" id="cfgNav">
       <div class="cfgnav-btn sel" data-sec="cfgSecAccount">👤<span>Cuenta</span></div>
-      <div class="cfgnav-btn" data-sec="cfgSecValores">🎚️<span>Valores</span></div>
       <div class="cfgnav-btn" data-sec="cfgSecCreators">🎬<span>Creadores</span></div>
       <div class="cfgnav-btn" data-sec="cfgSecSession">🚪<span>Sesión</span></div>
       <div class="cfgnav-btn" data-sec="cfgSecFondo">🖼️<span>Fondo</span></div>
@@ -250,24 +249,6 @@
       <div class="mlabel">🎬 Programa Creadores</div>
       <button class="cbtn cbtn-p" id="openCreatorFromCfg" style="background:rgba(255,200,0,0.08);border-color:rgba(255,200,0,0.3);color:#FFC800;">🎬 SOLICITAR VERIFICACIÓN</button>
       <div id="cfgCreatorStatus" style="font-size:10px;color:rgba(160,215,255,0.4);margin-top:4px;text-align:center;"></div>
-    </div>
-
-    <div class="msec" id="cfgSecValores" style="display:none;">
-      <div class="mlabel">🎚️ Valores de la Sensi</div>
-      <div style="font-size:10px;color:rgba(160,215,255,0.5);margin-bottom:10px;">Elige qué lógica de calibración usar para generar la sensi.</div>
-      <div class="engsel">
-        <button type="button" class="engopt active" data-engine="actual" id="engBtnActual">
-          <span class="engopt-ico">⚙️</span>
-          <span class="engopt-txt"><b>Actual</b><small>Lógica y valores de siempre</small></span>
-          <span class="engopt-check"></span>
-        </button>
-        <button type="button" class="engopt" data-engine="mejorado" id="engBtnMejorado">
-          <span class="engopt-ico">🎯</span>
-          <span class="engopt-txt"><b>Mejorado</b><small>Física angular: distancia, altura y los 12 movimientos del personaje</small></span>
-          <span class="engopt-check"></span>
-        </button>
-      </div>
-      <div style="font-size:9px;color:rgba(160,215,255,0.35);margin-top:8px;text-align:center;">Ambas opciones generan sensis dentro de los mismos rangos seguros por marca y nivel.</div>
     </div>
 
     <div class="msec" id="cfgSecSession" style="display:none;">

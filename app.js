@@ -503,7 +503,6 @@ function exMod(txt,marca){
   const clean=origMod.replace(/\s+/g," ").trim();
   return clean||marca;
 }
-function genSensi(marca,modelo,nivel,dpi){const grp=_grp(marca),iP=(grp==="E"),p=P[grp];let gLo,gHi;if(iP){if(nivel==="baja"){gLo=89;gHi=120;}else if(nivel==="media"){gLo=121;gHi=169;}else{gLo=172;gHi=200;}}else{if(nivel==="baja"){gLo=clamp(Math.max(p.genMin,145),145,158);gHi=clamp(Math.min(158,p.genMax),145,158);}else if(nivel==="media"){gLo=clamp(Math.max(p.genMin,159),159,174);gHi=clamp(Math.min(174,p.genMax),159,174);}else{gLo=clamp(Math.max(p.genMin,176),176,200);gHi=clamp(Math.min(200,p.genMax),176,200);}}if(gLo>gHi){gLo=p.genMin;gHi=p.genMax;}const general=clamp(rand(gLo,gHi),100,200);const hsR=Math.random(),hs=hsR<0.60?"full":hsR<0.90?"mid":"normal";let rojo;if(nivel==="baja"){const mn=2;if(hs==="full")rojo=clamp(general+Math.max(p.rojoD[0],mn),100,200);else if(hs==="mid")rojo=clamp(general+Math.max(Math.round((p.rojoD[0]+p.rojoD[1])/2),mn),100,200);else rojo=clamp(general+Math.max(p.rojoD[1],mn+1),100,200);}else if(hs==="full")rojo=clamp(general+p.rojoD[0],100,200);else if(hs==="mid")rojo=clamp(general+Math.round((p.rojoD[0]+p.rojoD[1])/2),100,200);else rojo=clamp(general+p.rojoD[1],100,200);const xLo=Math.abs(p.x2D[1]),xHi=Math.abs(p.x2D[0]);let x2,x4;if(nivel==="baja"){const d=rand(xLo,Math.round(xLo+(xHi-xLo)*0.55));x2=clamp(rojo-Math.max(d,xLo),100,rojo-xLo);}else if(nivel==="media"){const d=rand(Math.round(xLo+(xHi-xLo)*0.25),Math.round(xLo+(xHi-xLo)*0.75));x2=clamp(rojo-Math.max(d,xLo),100,rojo-xLo);}else{const d=rand(xLo,Math.round(xLo+(xHi-xLo)*0.45));x2=clamp(rojo-Math.max(d,xLo),100,rojo-xLo);}x4=clamp(x2+rand(20,27),100,200);const fMin=Math.max(p.franMin,100),fMax=Math.min(p.franMax,200),fD=fMax-fMin;let fLo,fHi;if(nivel==="baja"){fLo=fMin;fHi=Math.round(fMin+fD*0.40);}else if(nivel==="media"){fLo=Math.round(fMin+fD*0.20);fHi=Math.round(fMin+fD*0.70);}else{fLo=Math.round(fMin+fD*0.48);fHi=fMax;}let franco=clamp(rand(fLo,fHi),fMin,fMax);const cD=p.camaraD[1]-p.camaraD[0];let cLo,cHi;if(nivel==="baja"){cLo=p.camaraD[0];cHi=Math.round(p.camaraD[0]+cD*0.38);}else if(nivel==="media"){cLo=Math.round(p.camaraD[0]+cD*0.22);cHi=Math.round(p.camaraD[0]+cD*0.72);}else{cLo=Math.round(p.camaraD[0]+cD*0.50);cHi=p.camaraD[1];}const camara=clamp(general+rand(cLo,cHi),100,200);function _b(){if(nivel==="baja"){if(hs==="full")return rand(32,34);if(hs==="mid")return rand(33,35);return rand(34,36);}else if(nivel==="media"){if(hs==="full")return rand(36,39);if(hs==="mid")return rand(38,41);return rand(40,43);}else{if(hs==="full")return rand(34,36);if(hs==="mid")return rand(36,37);return rand(38,39);}}let boton=iP?clamp(nivel==="baja"?rand(38,46):nivel==="media"?rand(42,49):rand(44,52),35,52):_b();const rd=rojo-general;if(hs==="full"||rd>=3)boton=clamp(boton-rand(2,3),32,boton);else if(rd>=1)boton=clamp(boton-1,32,boton);boton=clamp(boton,32,52);if(rojo<=general)rojo=clamp(general+1,100,200);if(x2>=rojo)x2=clamp(rojo-xLo,100,rojo-1);if(x4<=x2)x4=clamp(x2+20,100,200);if(franco>=x2)franco=clamp(x2-1,fMin,x2-1);rojo=clamp(rojo,100,200);x2=clamp(x2,100,200);x4=clamp(x4,100,200);let dpiV=null;if(dpi&&!iP&&p.dpiMin>0){let base;if(nivel==="baja")base=rand(Math.round(p.dpiMin+(p.dpiMax-p.dpiMin)*0.55),p.dpiMax);else if(nivel==="media")base=rand(Math.round(p.dpiMin+(p.dpiMax-p.dpiMin)*0.25),Math.round(p.dpiMin+(p.dpiMax-p.dpiMin)*0.75));else base=rand(p.dpiMin,Math.round(p.dpiMin+(p.dpiMax-p.dpiMin)*0.45));dpiV=clamp(base+rand(-4,4),530,630);}return{general,rojo,x2,x4,franco,camara,boton,dpi:dpiV,nivel,hs};}
 
 // ── MOTOR MEJORADO: calibración por física angular real ─────────────────
 // ── (no reemplaza genSensi, es una alternativa) ──────────────────────────
@@ -593,7 +592,7 @@ const _SCREEN_PROFILES={
   E:{diagIn:6.1,aspect:2.16,touchHz:150,touchLagMs:10},  // iPhone (mezcla base 120Hz / Pro ProMotion 240-360Hz)
   V:{diagIn:6.8,aspect:2.22,touchHz:600,touchLagMs:5},   // gaming phones (RedMagic hasta 960-1000Hz, ROG 480-720Hz)
 };
-const _SCREEN_REF={diagIn:6.5,aspect:2.17,touchHz:120,touchLagMs:14}; // punto neutro de referencia (nudge=0)
+const _SCREEN_REF={diagIn:6.5,aspect:2.17,touchHz:120,touchLagMs:14,refreshHz:90,chipScore:0.6,resShort:1080,resLong:2400}; // punto neutro de referencia (nudge=0)
 // ── LOOKUP DE SPECS REALES DE CELULAR (caché-primero + Cloudflare Worker) ─
 // Antes _screenProfile solo devolvía el estimado genérico por gama/marca.
 // Ahora, si ya se investigó el modelo EXACTO (marca+modelo) alguna vez —
@@ -614,7 +613,7 @@ const _SCREEN_REF={diagIn:6.5,aspect:2.17,touchHz:120,touchLagMs:14}; // punto n
 // estimado por gama de la tabla de arriba (igual que con touchHz cuando
 // no se encuentra).
 const _DEVICE_LOOKUP_URL="https://sensis-device-lookup.botdesensibilidades.workers.dev";
-const _DEVICE_SPECS_SCHEMA_V=2; // subir este número cada vez que cambie qué campos se investigan/aceptan, para que el caché viejo en Firestore se re-consulte una vez más en vez de quedar "found:false" para siempre.
+const _DEVICE_SPECS_SCHEMA_V=3; // subir este número cada vez que cambie qué campos se investigan/aceptan, para que el caché viejo en Firestore se re-consulte una vez más en vez de quedar "found:false" para siempre.
 const LIMITS_DEVICE={diagIn:[4.0,8.5],aspect:[1.6,2.6],touchHz:[40,1000],touchLagMs:[0,80]};
 function _inRangeDevice(v,[lo,hi]){ return typeof v==="number"&&isFinite(v)&&v>=lo&&v<=hi; }
 const _deviceSpecsCache=new Map();
@@ -623,13 +622,56 @@ const _deviceSpecsInFlight=new Map();
 // los 3 a la vez: found=true si AL MENOS uno quedó validado. Los campos que
 // no vinieron o no pasaron el rango quedan en null y _screenProfile los
 // completa con el estimado por gama, campo por campo.
+// Campos extra que investiga el Worker: resolución, frecuencia de refresco y chip. Se aceptan varios
+// nombres posibles (resolution/resW+resH, refreshHz/refreshRate/..., chip/chipset/soc/...) por si el
+// Worker los llama distinto; cada uno se valida por rango y los que no sirvan quedan en null.
+const _FIS_DEF={A:{refreshHz:120,chipScore:0.85},B:{refreshHz:90,chipScore:0.60},B2:{refreshHz:120,chipScore:0.65},B3:{refreshHz:90,chipScore:0.60},B4:{refreshHz:90,chipScore:0.60},C:{refreshHz:90,chipScore:0.30},D:{refreshHz:90,chipScore:0.50},E:{refreshHz:60,chipScore:0.95},V:{refreshHz:144,chipScore:0.90}};
+function _num(v){const n=typeof v==="number"?v:parseFloat(String(v==null?"":v).replace(",","."));return isFinite(n)?n:null;}
+function _parseResolution(d){
+  let w=null,h=null;
+  const c=d.resolution!=null?d.resolution:(d.resolucion!=null?d.resolucion:(d.res!=null?d.res:d.screenResolution));
+  if(typeof c==="string"){const m=c.match(/(\d{3,4})\s*[x×*]\s*(\d{3,4})/i);if(m){w=+m[1];h=+m[2];}}
+  else if(c&&typeof c==="object"){w=_num(c.w!=null?c.w:(c.width!=null?c.width:c.ancho));h=_num(c.h!=null?c.h:(c.height!=null?c.height:c.alto));}
+  if(!(w>0&&h>0)){
+    w=_num(d.resShort!=null?d.resShort:(d.resW!=null?d.resW:(d.widthPx!=null?d.widthPx:d.anchoPx)));
+    h=_num(d.resLong!=null?d.resLong:(d.resH!=null?d.resH:(d.heightPx!=null?d.heightPx:d.altoPx)));
+  }
+  if(!(w>0&&h>0))return null;
+  const sh=Math.min(w,h),lg=Math.max(w,h);
+  return(sh>=400&&sh<=2200&&lg>=800&&lg<=4500)?{resShort:Math.round(sh),resLong:Math.round(lg)}:null;
+}
+// Puntaje 0..1 del chip por familia/gen (heurística por nombre, no un benchmark): se usa para estimar
+// cuánto retraso extra mete la CPU/GPU al renderizar el juego.
+function _chipScore(name){
+  const n=String(name||"").toLowerCase();
+  const T=[
+    [/snapdragon\s*8\s*(elite|gen\s*[2-9])/,1.0],[/snapdragon\s*8(\s*\+)?\s*gen\s*1|snapdragon\s*8\+/,0.93],[/snapdragon\s*(8[0-9]{2}|870)/,0.86],
+    [/snapdragon\s*7\+?\s*gen\s*[23]|snapdragon\s*7s\s*gen\s*[23]/,0.74],[/snapdragon\s*(778|780|782|7\s*gen\s*1|7s\s*gen\s*1)/,0.68],
+    [/snapdragon\s*(7[0-9]{2}|695)/,0.58],[/snapdragon\s*6\s*gen|snapdragon\s*6[0-9]{2}/,0.48],[/snapdragon\s*4/,0.30],
+    [/dimensity\s*9[0-9]{3}/,0.96],[/dimensity\s*8[0-9]{3}/,0.76],[/dimensity\s*7[0-9]{3}/,0.62],[/dimensity\s*6[0-9]{3}/,0.48],[/dimensity\s*(1[0-9]{3}|9[0-9]{2})/,0.70],
+    [/helio\s*g9/,0.38],[/helio\s*g8/,0.28],[/helio\s*(g[0-7]|p)/,0.22],
+    [/exynos\s*2[2-9]/,0.90],[/exynos\s*(1[2-9]|9[0-9]{2})/,0.55],[/apple\s*a[0-9]{2}|\ba1[0-9]\b/,0.98],[/tensor/,0.75],[/kirin\s*9/,0.85],[/kirin/,0.55],
+    [/unisoc|tiger|spreadtrum|\bt6[0-9]{2}\b|\bt7[0-9]{2}\b/,0.26]
+  ];
+  for(const [re,v] of T) if(re.test(n)) return v;
+  return null;
+}
 function _buildPartialResult(d){
+  d=d||{};
   const diagIn=_inRangeDevice(d.diagIn,LIMITS_DEVICE.diagIn)?d.diagIn:null;
-  const aspect=_inRangeDevice(d.aspect,LIMITS_DEVICE.aspect)?d.aspect:null;
+  let aspect=_inRangeDevice(d.aspect,LIMITS_DEVICE.aspect)?d.aspect:null;
   const touchHz=_inRangeDevice(d.touchHz,LIMITS_DEVICE.touchHz)?d.touchHz:null;
   const touchLagMs=_inRangeDevice(d.touchLagMs,LIMITS_DEVICE.touchLagMs)?d.touchLagMs:null;
-  const found=(diagIn!=null||aspect!=null||touchHz!=null||touchLagMs!=null);
-  return {found,diagIn,aspect,touchHz,touchLagMs};
+  const res=_parseResolution(d);
+  const rf=_num(d.refreshHz!=null?d.refreshHz:(d.refreshRate!=null?d.refreshRate:(d.refresh!=null?d.refresh:(d.hz!=null?d.hz:(d.frecuenciaRefresco!=null?d.frecuenciaRefresco:d.tasaRefresco)))));
+  const refreshHz=_inRangeDevice(rf,[24,360])?Math.round(rf):null;
+  const cr=d.chip!=null?d.chip:(d.chipset!=null?d.chipset:(d.soc!=null?d.soc:(d.procesador!=null?d.procesador:d.cpu)));
+  const chip=(typeof cr==="string"&&cr.trim())?cr.trim().slice(0,60):null;
+  let chipScore=_inRangeDevice(_num(d.chipScore),[0,1])?_num(d.chipScore):null;
+  if(chipScore==null&&chip)chipScore=_chipScore(chip);
+  if(aspect==null&&res){const a=res.resLong/res.resShort;if(_inRangeDevice(a,LIMITS_DEVICE.aspect))aspect=a;} // el aspecto también sale de la resolución
+  const found=(diagIn!=null||aspect!=null||touchHz!=null||touchLagMs!=null||refreshHz!=null||chipScore!=null||res!=null);
+  return {found,diagIn,aspect,touchHz,touchLagMs,resShort:res?res.resShort:null,resLong:res?res.resLong:null,refreshHz,chip,chipScore};
 }
 function _deviceKey(marca,modelo){
   return (String(marca||"").trim()+"|"+String(modelo||"").trim()).toLowerCase().replace(/\s+/g," ").slice(0,180);
@@ -654,7 +696,7 @@ async function _lookupDeviceSpecs(marca,modelo){
       const snap=await getDoc(doc(db,"device_specs",key));
       if(snap.exists()&&snap.data().v===_DEVICE_SPECS_SCHEMA_V){
         const d=snap.data();
-        const result=d.found?_buildPartialResult({diagIn:d.diagIn,aspect:d.aspect,touchHz:d.touchHz,touchLagMs:d.touchLagMs}):{found:false};
+        const result=d.found?_buildPartialResult(d):{found:false};
         console.log("📱 [device_specs] '"+modelo+"' ya estaba en caché (Firestore):",result);
         _deviceSpecsCache.set(key,result);
         return result;
@@ -689,7 +731,7 @@ async function _lookupDeviceSpecs(marca,modelo){
       // estimado por gama (ver _screenProfile).
       const result=(data&&data.found)?_buildPartialResult(data):{found:false};
       if(!result.found) console.warn("📱 [device_specs] La respuesta no tenía ningún dato válido/en rango -> se usa el estimado por gama completo.");
-      else if(!(result.diagIn!=null&&result.aspect!=null&&result.touchHz!=null&&result.touchLagMs!=null)) console.log("📱 [device_specs] Se aceptaron solo los campos válidos; el resto usa estimado por gama:",result);
+      else if(!(result.diagIn!=null&&result.aspect!=null&&result.touchHz!=null&&result.touchLagMs!=null&&result.refreshHz!=null&&result.chipScore!=null&&result.resShort!=null)) console.log("📱 [device_specs] Se aceptaron solo los campos válidos; el resto usa estimado por gama:",result);
       _deviceSpecsCache.set(key,result);
       // 3) Guardar en Firestore PARA SIEMPRE (incluso si found:false, para
       // no volver a preguntarle al Worker por un modelo que no reconoce
@@ -717,6 +759,8 @@ async function _lookupDeviceSpecs(marca,modelo){
 }
 function _screenProfile(marca,modelo){
   const fallback=_SCREEN_PROFILES[_grp(marca)]||_SCREEN_REF;
+  const def=_FIS_DEF[_grp(marca)]||_FIS_DEF.D;
+  const extra=(c)=>({refreshHz:c&&c.refreshHz!=null?c.refreshHz:def.refreshHz,chipScore:c&&c.chipScore!=null?c.chipScore:def.chipScore,resShort:c&&c.resShort!=null?c.resShort:_SCREEN_REF.resShort,resLong:c&&c.resLong!=null?c.resLong:_SCREEN_REF.resLong});
   if(modelo){
     const cached=_deviceSpecsCache.get(_deviceKey(marca,modelo));
     if(cached&&cached.found){
@@ -728,13 +772,14 @@ function _screenProfile(marca,modelo){
         aspect:cached.aspect!=null?cached.aspect:fallback.aspect,
         touchHz:cached.touchHz!=null?cached.touchHz:fallback.touchHz,
         touchLagMs:cached.touchLagMs!=null?cached.touchLagMs:fallback.touchLagMs,
+        ...extra(cached)
       };
       console.log("📱 [calibración] Usando specs REALES (parcial/completo) para '"+modelo+"':",merged,"(investigado:",cached,")");
       return merged;
     }
   }
   console.log("📱 [calibración] Usando estimado por gama ('"+_grp(marca)+"') para '"+marca+" "+(modelo||"")+"':",fallback);
-  return fallback;
+  return {...fallback,...extra(null)};
 }
 // ══════════════════════════════════════════════════════════════════════
 //  MOTOR MEJORADO v2 · física + cálculo + estadística (sin valores fijos)
@@ -773,7 +818,10 @@ const _FIS={
   EPS_DEDO:0.10,       // cm: temblor/jitter de contacto del pulgar
   KAPPA:0.25,          // fracción del tamaño del blanco que el error angular puede ocupar
   BETA:0.30,           // peso del techo de precisión sobre ln g
-  ESC:0.14             // escala de la tanh (unidades de ln g)
+  CPU_MS:6,            // ms de retraso extra que mete un chip flojo (puntaje 0) al renderizar
+  GAMMA_RES:0.35,      // amortiguación de la densidad de píxeles (el juego normaliza parte de ella)
+  ESC:0.10,            // escala de la tanh (unidades de ln g): menor = más separación entre resultados
+  DEV:3.2              // cuánto pesan los datos del celular (Worker) al mover el centro del resultado
 };
 const _FIS_K={baja:[0.50,0.95],media:[0.60,1.10],alta:[0.70,1.20]}; // ventana de k por nivel
 function _gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
@@ -801,22 +849,27 @@ function _fisMov(){
 // De qué campos del Worker hay dato REAL (y cuáles son estimado por gama).
 function _fisFuentes(marca,modelo){
   const c=modelo?_deviceSpecsCache.get(_deviceKey(marca,modelo)):null,ok=!!(c&&c.found);
-  return{diagIn:ok&&c.diagIn!=null,aspect:ok&&c.aspect!=null,touchHz:ok&&c.touchHz!=null,touchLagMs:ok&&c.touchLagMs!=null};
+  return{diagIn:ok&&c.diagIn!=null,aspect:ok&&c.aspect!=null,touchHz:ok&&c.touchHz!=null,touchLagMs:ok&&c.touchLagMs!=null,res:ok&&c.resShort!=null,refreshHz:ok&&c.refreshHz!=null,chip:ok&&c.chipScore!=null};
 }
 function _fisGanancia(sp,dpiVal,src){
   const mov=_fisMov();
   const calc=(x)=>{
     const g=_fisGeom(x),gh=180/(_FIS.SWEEP*g.W),gv=60/(_FIS.SWEEP_V*g.H);
     const G=Math.sqrt((mov.h*gh*gh+mov.v*gv*gv)/(mov.h+mov.v));
-    const tau=(1000/x.touchHz+x.touchLagMs)/1000;
+    // Retraso total = muestreo táctil + lag de pantalla + media trama del refresco (se ve en el próximo
+    // frame, en promedio medio periodo) + retraso por carga del chip.
+    const frame=1000/(x.refreshHz||90),cpu=_FIS.CPU_MS*(1-(x.chipScore!=null?x.chipScore:0.6));
+    const tau=(1000/x.touchHz+x.touchLagMs+0.5*frame+cpu)/1000;
     const perdida=Math.max(0.35,1-_FIS.LAMBDA*tau/_FIS.T_FLICK);
     // Techo de precisión: el error del dedo ε = √(jitter² + (v·τ)²) (Pitágoras: temblor + arrastre por
     // latencia) multiplicado por la ganancia (°/cm) no debe pasar de una fracción del blanco.
     const v=_FIS.SWEEP*g.W/_FIS.T_FLICK,eps=Math.sqrt(_FIS.EPS_DEDO*_FIS.EPS_DEDO+Math.pow(v*tau,2));
-    return{G:G/perdida,tau,perdida,Gp:_FIS.KAPPA*mov.Sdeg/eps};
+    const ppi=Math.sqrt(x.resShort*x.resShort+x.resLong*x.resLong)/x.diagIn; // píxeles por pulgada reales
+    return{G:G/perdida,tau,perdida,Gp:_FIS.KAPPA*mov.Sdeg/eps,ppi,frame,cpu};
   };
   const a=calc(sp),r=calc(_SCREEN_REF);
-  let lng=Math.log(a.G/r.G)+_FIS.BETA*Math.log(a.Gp/r.Gp);
+  // Más píxeles por cm de barrido = más giro por el mismo gesto -> menos sensi (amortiguado por GAMMA_RES)
+  let lng=Math.log(a.G/r.G)+_FIS.BETA*Math.log(a.Gp/r.Gp)+_FIS.GAMMA_RES*Math.log(r.ppi/a.ppi);
   if(dpiVal)lng+=0.5*Math.log(_FIS.DPI_REF/dpiVal);
   // Incertidumbre: si el dato viene del Worker (real) pesa poco; si es estimado por gama pesa mucho.
   const real=src||{},dLn=(_FIS.LAMBDA/_FIS.T_FLICK)/a.perdida; // ∂ln g/∂τ
@@ -826,6 +879,9 @@ function _fisGanancia(sp,dpiVal,src){
   add(real.aspect?0.006:0.033);                                              // ∂ln W/∂ln a ≈ -a²/(1+a²)
   add(dLn*(1/sp.touchHz)*(real.touchHz?0.03:0.35));                          // periodo de muestreo
   add(dLn*(sp.touchLagMs/1000)*(real.touchLagMs?0.10:0.45));                 // retraso de pantalla
+  add(_FIS.GAMMA_RES*(real.res?0.02:0.12));                                  // densidad de píxeles
+  add(dLn*(0.5*a.frame/1000)*(real.refreshHz?0.02:0.30));                    // frecuencia de refresco
+  add(dLn*(a.cpu/1000)*(real.chip?0.15:0.60));                               // carga del chip
   return{lng,sigma:Math.sqrt(v2)};
 }
 function _histGet(k){try{const a=JSON.parse(localStorage.getItem(k)||"[]");return Array.isArray(a)?a.filter(Number.isFinite):[];}catch(e){return[];}}
@@ -859,43 +915,46 @@ function genSensiMejorado(marca,modelo,nivel,dpi){
   let dpiV=null;
   if(dpi&&!iP&&p.dpiMin>0){
     const f=nivel==="baja"?[0.55,1]:nivel==="media"?[0.25,0.75]:[0,0.45],span=p.dpiMax-p.dpiMin;
-    dpiV=_spread("dpi_"+nivel,()=>p.dpiMin+span*(f[0]+(f[1]-f[0])*_sigm(1.1*_gauss())),p.dpiMin+span*f[0],p.dpiMin+span*f[1],5,4);
+    dpiV=_spread("dpi_"+nivel,()=>p.dpiMin+span*(f[0]+(f[1]-f[0])*_sigm(1.1*_gauss())),p.dpiMin+span*f[0],p.dpiMin+span*f[1],8,4);
     dpiV=clamp(dpiV,530,630);
   }
   // ── Física del dispositivo → ln g y su incertidumbre σ ──
   const F=_fisGanancia(_screenProfile(marca,modelo),dpiV,_fisFuentes(marca,modelo));
-  const z0=F.lng/_FIS.ESC,zs=F.sigma/_FIS.ESC;
+  // Centro del resultado según el celular: los datos del Worker mueven el centro de forma suave y acotada (±1.8),
+  // y el azar físico (zs) reparte alrededor de ese centro, así no se amontona en los bordes de la banda.
+  const z0=1.8*Math.tanh(_FIS.DEV*F.lng/_FIS.ESC/1.8),zs=F.sigma/_FIS.ESC;
   // ── GENERAL ──
-  let general=_spread("gen_"+(iP?"i":"a")+nivel,()=>gLo+(gHi-gLo)*_sigm(z0+zs*_gauss()),gLo,gHi,clamp(Math.round((gHi-gLo)/5),2,8),3);
+  let general=_spread("gen_"+(iP?"i":"a")+nivel,()=>gLo+(gHi-gLo)*_sigm(z0+zs*_gauss()),gLo,gHi,clamp(Math.round((gHi-gLo)/5),3,8),2); // solo se aleja de los 2 últimos: separa sin borrar el sesgo del celular
   // ── PUNTO ROJO: offset sobre General (más alto con hs "normal", más pegado con "full") ──
-  const rLo=Math.max(nivel==="baja"?3:2,p.rojoD[0]+2),rHi=Math.max(rLo+4,p.rojoD[1]*2+3+(nivel==="baja"?1:0)); // nunca pegado al General (mínimo 2-3 puntos)
+  const rLo=Math.max(nivel==="baja"?5:4,p.rojoD[0]+4),rHi=Math.max(rLo+6,p.rojoD[1]*3+6+(nivel==="baja"?2:0)); // nunca pegado al General (mínimo 4-5 puntos)
   const zh=hs==="full"?-0.9:hs==="mid"?0:0.9;
   // Las ventanas se acotan con el espacio libre hasta 199: así nada se amontona en el 200.
-  const rHi2=Math.min(rHi,199-general),rLo2=Math.min(rLo,rHi2);
-  const off=_spread("roj_"+nivel,()=>rLo2+(rHi2-rLo2)*_sigm(0.8*z0+zh+zs*_gauss()),rLo2,rHi2,2,2);
+  const topR=199-Math.round(4*_sigm(_gauss())); // techo variable (195-199): evita que varios valores terminen clavados en 199
+  const rHi2=Math.max(2,Math.min(rHi,topR-general)),rLo2=Math.min(rLo,rHi2);
+  const off=_spread("roj_"+nivel,()=>rLo2+(rHi2-rLo2)*_sigm(0.8*z0+zh+zs*_gauss()),rLo2,rHi2,3,2);
   let rojo=general+off;
   // ── ZOOM 2x: reducción por monitor-distance matching, k dentro de la ventana del nivel ──
-  const xLo=Math.abs(p.x2D[1]),xHi=Math.abs(p.x2D[0]),dMin=Math.max(3,xLo-2),dMax=xHi+9;
+  const xLo=Math.abs(p.x2D[1]),xHi=Math.abs(p.x2D[0]),dMin=Math.max(5,xLo),dMax=xHi+12;
   const kr=_FIS_K[nivel]||_FIS_K.media,r2ref=_mdm(2,_FIS.K_REF);
-  const dX2=_spread("x2d_"+nivel,()=>{const k=kr[0]*Math.pow(kr[1]/kr[0],_sigm(0.6*z0+zs*_gauss()));return rojo*(1-_mdm(2,k)/r2ref);},dMin,dMax,2,2);
+  const dX2=_spread("x2d_"+nivel,()=>{const k=kr[0]*Math.pow(kr[1]/kr[0],_sigm(0.6*z0+zs*_gauss()));return rojo*(1-_mdm(2,k)/r2ref);},dMin,dMax,3,2);
   let x2=clamp(rojo-dX2,FLOOR,rojo-3);
   // ── ZOOM 4x: compensación ∝ √(r2/r4) − 1 (la raíz amortigua la respuesta del juego) ──
   const kq=_kDeRatio(2,clamp(x2/rojo,0.3,0.999)*r2ref);
   const fq=Math.sqrt(_mdm(2,kq)/_mdm(4,kq))-1;
-  const hi4=Math.min(34,199-x2),lo4=Math.min(14,Math.max(4,hi4-4));
-  const d4=_spread("x4d_"+nivel,()=>x2*(0.30+0.16*_sigm(0.5*z0+zs*_gauss()))*fq,lo4,hi4,3,2);
+  const topX=199-Math.round(7*_sigm(_gauss())),hi4=Math.max(3,Math.min(40,topX-x2)),lo4=Math.min(16,Math.max(3,hi4-5));
+  const d4=_spread("x4d_"+nivel,()=>x2*(0.32+0.22*_sigm(0.5*z0+zs*_gauss()))*fq,lo4,hi4,4,2);
   let x4=x2+d4;
   // ── FRANCOTIRADOR: ventana propia del grupo, posición por física ──
   const fMin=p.franMin,fMax=p.franMax,fD=fMax-fMin;
-  const fr=nivel==="baja"?[0,0.40]:nivel==="media"?[0.20,0.70]:[0.48,1];
+  const fr=nivel==="baja"?[0,0.55]:nivel==="media"?[0.25,0.80]:[0.45,1];
   const fLo=fMin+fD*fr[0],fHi=fMin+fD*fr[1];
-  let franco=_spread("fran_"+nivel,()=>fLo+(fHi-fLo)*_sigm(0.7*z0+zs*_gauss()),Math.max(fMin,fLo-1),Math.min(fMax,fHi+1),2,2);
+  let franco=_spread("fran_"+nivel,()=>fLo+(fHi-fLo)*_sigm(0.7*z0+zs*_gauss()),Math.max(fMin,fLo-1),Math.min(fMax,fHi+1),3,2);
   // ── CÁMARA LIBRE: offset sobre General ──
-  const cD=p.camaraD[1]-p.camaraD[0],wd=Math.max(2,Math.round(cD*0.15));
+  const cD=p.camaraD[1]-p.camaraD[0],wd=Math.max(3,Math.round(cD*0.25));
   const cr=nivel==="baja"?[0,0.38]:nivel==="media"?[0.22,0.72]:[0.50,1];
   const cLo=p.camaraD[0]+cD*cr[0]-wd,cHi=p.camaraD[0]+cD*cr[1]+wd;
-  const hiC=Math.min(cHi,199-general),loC=Math.min(cLo,Math.max(2,hiC-3));
-  const offC=_spread("cam_"+nivel,()=>loC+(hiC-loC)*_sigm(0.7*z0+zs*_gauss()),loC,hiC,2,2);
+  const topC=199-Math.round(7*_sigm(_gauss())),hiC=Math.max(2,Math.min(cHi,topC-general)),loC=Math.min(cLo,Math.max(2,hiC-3));
+  const offC=_spread("cam_"+nivel,()=>loC+(hiC-loC)*_sigm(0.7*z0+zs*_gauss()),loC,hiC,3,2);
   let camara=general+offC;
   // ── BOTÓN (giroscopio): menos ganancia pide más control fino ──
   let bw;
@@ -903,8 +962,8 @@ function genSensiMejorado(marca,modelo,nivel,dpi){
   else if(nivel==="baja")bw=hs==="full"?[32,34]:hs==="mid"?[33,35]:[34,36];
   else if(nivel==="media")bw=hs==="full"?[36,39]:hs==="mid"?[38,41]:[40,43];
   else bw=hs==="full"?[34,36]:hs==="mid"?[36,37]:[38,39];
-  const bLo=Math.max(32,bw[0]-1),bHi=Math.min(52,bw[1]+1);
-  let boton=_spread("bot_"+nivel+(iP?"i":""),()=>bLo+(bHi-bLo)*_sigm(-0.7*z0+zs*_gauss()),bLo,bHi,1,2);
+  const bLo=Math.max(32,bw[0]-2),bHi=Math.min(52,bw[1]+2);
+  let boton=_spread("bot_"+nivel+(iP?"i":""),()=>bLo+(bHi-bLo)*_sigm(-0.7*z0+zs*_gauss()),bLo,bHi,2,2);
   const rd=rojo-general;
   if(hs==="full"||rd>=3)boton-=(rd>=6?3:2);else if(rd>=1)boton-=1;
   boton=clamp(Math.round(boton),32,52);
@@ -914,7 +973,9 @@ function genSensiMejorado(marca,modelo,nivel,dpi){
   if(x2>=rojo)x2=rojo-3;
   if(x4<=x2)x4=Math.min(200,x2+8);
   franco=clamp(franco,fMin,Math.min(fMax,x2-1));
-  return{general,rojo,x2,x4,franco,camara,boton,dpi:dpiV,nivel,hs,motor:"mejorado"};
+  // Garantía final: TODOS los valores salen como enteros (nada de decimales).
+  const I=Math.round;
+  return{general:I(general),rojo:I(rojo),x2:I(x2),x4:I(x4),franco:I(franco),camara:I(camara),boton:I(boton),dpi:dpiV==null?null:I(dpiV),nivel,hs,motor:"mejorado"};
 }
 
 // ── CANVAS FX ─────────────────────────────────────────
@@ -2200,7 +2261,6 @@ const TUTORIAL_STEPS=[
   {icon:"🎭",title:"Temas de Personalización",body:"6 estilos completos (Hacker, Ciberseguridad, Consola, Cyberpunk, Infernal, Abismo): cambian color, fondo animado y tipografía juntos. Mientras uno esté activo, el fondo y color sueltos quedan bloqueados.",target:"[data-sec='cfgSecPersona']",before:async()=>{ openCfgSection("cfgSecPersona"); await _tutWait(560); }},
   {icon:"🖼️",title:"Fondos animados",body:"Elige entre varios fondos animados (Matrix, lluvia, fuego, partículas, océano y más) para ambientar el bot.",target:"[data-sec='cfgSecFondo']",before:async()=>{ openCfgSection("cfgSecFondo"); await _tutWait(560); }},
   {icon:"📷",title:"Fondo con tu propia imagen",body:"En esta misma sección, más abajo, puedes subir <b>tu propia foto</b> como fondo (no solo los animados prediseñados). Se sube la imagen completa, se ajusta sola para verse bien en tu pantalla, y queda guardada en tu dispositivo.",target:"#customBgPickBtn",before:async()=>{ openCfgSection("cfgSecFondo"); await _tutWait(560); }},
-  {icon:"🎯",title:"Lógica de calibración mejorada",body:"Además de la lógica de siempre, ahora puedes activar <b>Mejorado</b>: usa la física real de tu pantalla (tamaño, proporción y velocidad táctil de tu modelo exacto cuando se conoce) junto con los 12 movimientos del personaje para calcular una sensi más ajustada a tu celular específico.",target:"[data-sec='cfgSecValores']",before:async()=>{ openCfgSection("cfgSecValores"); await _tutWait(560); }},
   {icon:"✅",title:"¡Listo!",body:"Ya conoces todas las funciones principales. Puedes volver a este tutorial cuando quieras desde Configuración → Sesión. ¡Disfruta SENSIS BOT Creación de SENSIS GOOD FF!",target:null,before:async()=>{ document.getElementById("cfgModal").classList.remove("show"); await _tutWait(150); }},
 ];
 let _tutStep=0,_tutBusy=false,_tutRaf=0;
@@ -2655,6 +2715,28 @@ document.getElementById("hudPublishBtn").addEventListener("click",async()=>{
 
 
 // ── MY CHAT ───────────────────────────────────────────
+// Tabla grande de la sensibilidad: ocupa todo el ancho del chat (los dos espacios, bot y usuario).
+function _buildSensiTable(b,t){
+  const el=(tag,cls,txt)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;};
+  b.textContent="";
+  b.appendChild(el("div","stbl-title","✅ SENSIBILIDAD GENERADA"));
+  b.appendChild(el("div","stbl-dev","📱 "+t.device));
+  const tags=el("div","stbl-tags");
+  tags.appendChild(el("span","stbl-tag",t.nivel));
+  if(t.hs)tags.appendChild(el("span","stbl-tag hs",t.hs));
+  if(t.prem)tags.appendChild(el("span","stbl-tag prem","✨ PREMIUM"));
+  if(t.dpi)tags.appendChild(el("span","stbl-tag dpi","🔵 DPI "+t.dpi));
+  b.appendChild(tags);
+  const grid=el("div","stbl-grid");
+  t.rows.forEach((r,i)=>{
+    const cell=el("div","stbl-cell"+(i===0?" main":""));
+    cell.appendChild(el("div","stbl-lab",r[0]+" "+r[1]));
+    cell.appendChild(el("div","stbl-val",String(r[2])));
+    grid.appendChild(cell);
+  });
+  b.appendChild(grid);
+  b.appendChild(el("div","stbl-foot","— SENSIS GOOD FF ☠️⚡"));
+}
 function addMsg(from,text,opts={}){
   // Avisos de estado (✅ ❌ ⛔ ⚠️ ⏳ 🎉) → notificación de 5 s en vez de burbuja en el chat
   if(from==="bot"&&!opts.copy&&!opts.regen&&!opts.adm&&typeof text==="string"&&text.length<=300&&/^(✅|🎉|❌|⛔|⚠️|⏳|ℹ️)/.test(text)){ notify(text); return document.createElement("div"); }
@@ -2662,6 +2744,7 @@ function addMsg(from,text,opts={}){
   const w=document.createElement("div"); w.className="mw "+from;
   const b=document.createElement("div"); b.className="bub "+(opts.adm?"adm":from);
   b.textContent=text;
+  if(opts.table){ _buildSensiTable(b,opts.table); w.classList.add("wide"); }
   // Marca especial de "sensi generada" (siempre viene con el botón de copiar)
   // para que tenga su propia animación de aparición, distinta de un mensaje
   // normal del bot.
@@ -2696,7 +2779,7 @@ function addMsg(from,text,opts={}){
   if(isSensiReveal) _spawnSensiSparkles(b);
 }
 
-function onBtn(lbl,bd){
+function onBtn(lbl,bd,silent){
   bd.querySelectorAll(".obtn").forEach(b=>b.disabled=true);
   if(step==="nivel"){
     const n=lbl.includes("Baja")?"baja":lbl.includes("Media")?"media":"alta";
@@ -2704,13 +2787,13 @@ function onBtn(lbl,bd){
     if(_grp(data.marca)==="E"){
       // iPhone (iOS) no tiene ajuste de DPI: se omite la pregunta y se genera directo
       data.dpi=false; step="dpi";
-      onBtn("❌ Sin DPI",bd);
+      onBtn("❌ Sin DPI",bd,true);
       return;
     }
     step="dpi";
     setTimeout(()=>addMsg("bot","¿Con DPI calibrado?",{btns:["✅ Sí, con DPI","❌ Sin DPI"]}),300);
   } else if(step==="dpi"){
-    data.dpi=lbl.includes("Sí"); addMsg("user",lbl);
+    data.dpi=lbl.includes("Sí"); if(!silent) addMsg("user",lbl); // silent: al "generar otra" no se manda ningún mensaje
     setTimeout(async()=>{
       try{
         // doble check servidor
@@ -2721,19 +2804,22 @@ function onBtn(lbl,bd){
         // consulta specs reales (ver DEPLOY.md) antes de calibrar — con
         // timeout corto para que nunca trabe la generación si la Cloud
         // Function no está desplegada o tarda de más.
-        if(window.sensiEngine==="mejorado") await _lookupDeviceSpecs(data.marca,data.modelo).catch(()=>{});
-        const r=(window.sensiEngine==="mejorado")?genSensiMejorado(data.marca,data.modelo,data.nivel,data.dpi):genSensi(data.marca,data.modelo,data.nivel,data.dpi);
+        await _lookupDeviceSpecs(data.marca,data.modelo).catch(()=>{});
+        const r=genSensiMejorado(data.marca,data.modelo,data.nivel,data.dpi);
         myCount=await incServerCount(nickname); updateCounter();
         const hs=r.hs==="full"?"🎯 HEADSHOT CONFIG":r.hs==="mid"?"⚡ HEADSHOT MID":"";
         const dL=r.dpi?"\n🔵 DPI: "+r.dpi:"";
         const premL=isPremiumGen?"\n✨ PREMIUM (privada, no va al feed)":"";
         const txt="✅ SENSIBILIDAD GENERADA\n📱 "+data.marca+" "+data.modelo+"\n"+NL[r.nivel]+" "+hs+premL+"\n\n🎮 General: "+r.general+"\n🔴 Mira Rojo: "+r.rojo+"\n🔭 Mira 2X: "+r.x2+"\n🔬 Mira 4X: "+r.x4+"\n🏹 Francotirador: "+r.franco+"\n📷 Cámara 360°: "+r.camara+"\n🕹️ Botón Disparo: "+r.boton+dL+"\n\n— SENSIS GOOD FF ☠️⚡";
-        addMsg("bot",txt,{copy:txt,regen:()=>{
+        addMsg("bot",txt,{copy:txt,table:{
+          device:data.marca+" "+data.modelo, nivel:NL[r.nivel], hs:hs, prem:isPremiumGen, dpi:r.dpi,
+          rows:[["🎮","General",r.general],["🔴","Mira Rojo",r.rojo],["🔭","Mira 2X",r.x2],["🔬","Mira 4X",r.x4],["🏹","Francotirador",r.franco],["📷","Cámara 360°",r.camara],["🕹️","Botón Disparo",r.boton]]
+        },regen:()=>{
           // Repite la generación con la misma marca/modelo/nivel/dpi ya elegidos (fix #7)
           // IMPORTANTE: al terminar la generación step vuelve a "idle", así que hay que
           // reponerlo a "dpi" o onBtn ignora el clic (ese era el bug).
           step="dpi";
-          onBtn(data.dpi?"✅ Sí, con DPI":"❌ Sin DPI",document.createElement("div"));
+          onBtn(data.dpi?"✅ Sí, con DPI":"❌ Sin DPI",document.createElement("div"),true);
         }});
         const _uRef=doc(db,_C.u(),nickname);
         if(!isPremiumGen){
@@ -3301,21 +3387,9 @@ document.getElementById("applyColorBtn").addEventListener("click",()=>{
   const _go=()=>{ if(_randomColorInterval){ setRandomColors(false); document.getElementById("randomColorToggle").checked=false; } applyColor(pendingColor); document.getElementById("cfgModal").classList.remove("show"); addMsg("bot",String(pendingColor).toUpperCase()==="#E6E6E6"?"✅ Color quitado.":"✅ Color aplicado."); };
   if(_randomColorInterval) _rcWarn(_go); else _go();
 });
-// ── MOTOR DE SENSI: actual vs mejorado (guarda solo la preferencia; ─────
-// ── la lógica de generación sigue siendo 100% la actual, sin tocar) ─────
-(function(){
-  const KEY="sensiEngine";
-  const saved=localStorage.getItem(KEY)||"actual";
-  window.sensiEngine=saved; // 'actual' | 'mejorado'
-  const btns=document.querySelectorAll('.engopt[data-engine]');
-  function refresh(){ btns.forEach(b=>b.classList.toggle("active", b.dataset.engine===window.sensiEngine)); }
-  refresh();
-  btns.forEach(b=>b.addEventListener("click",()=>{
-    window.sensiEngine=b.dataset.engine;
-    localStorage.setItem(KEY,b.dataset.engine);
-    refresh();
-  }));
-})();
+// ── MOTOR DE SENSI: solo existe genSensiMejorado (para siempre) ─────
+window.sensiEngine="mejorado";
+try{ localStorage.removeItem("sensiEngine"); }catch(e){}
 
 document.getElementById("changeNickBtn").addEventListener("click",async()=>{
   const n=document.getElementById("newNickIn").value.trim();

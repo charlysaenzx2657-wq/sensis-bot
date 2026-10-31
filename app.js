@@ -980,13 +980,14 @@ function genSensiMejorado(marca,modelo,nivel,dpi){
 
 // ── CANVAS FX ─────────────────────────────────────────
 const cv=document.getElementById("fx"),ctx=cv.getContext("2d",{desynchronized:true})||cv.getContext("2d");
-let fxMode="none",fxRAF=null,drops=[],_fxHoldUntil=0; // _fxHoldUntil: el fondo se pausa SOLO hasta ese instante (cambios de pestaña, ventanas), nunca por scroll
+let fxMode="none",fxRAF=null,drops=[],_fxHoldUntil=0,_fxLast=0; // _fxHoldUntil: el fondo se pausa SOLO hasta ese instante (cambios de pestaña, ventanas), nunca por scroll
 // Bucle de fondo con ahorro: no dibuja mientras la interfaz hace una transición grande (cambio de pestaña,
-// ventanas abiertas) ni con la pestaña oculta. El scroll NO lo pausa. El último cuadro queda en pantalla y se reanuda solo.
+// ventanas abiertas) ni con la pestaña oculta. El scroll NO lo pausa (solo lo limita a ~30 fps). El último cuadro queda en pantalla y se reanuda solo.
 function _fxRaf(cb){
   return requestAnimationFrame(function w(t){
     const b=document.body;
-    if(document.hidden||Date.now()<_fxHoldUntil||b.classList.contains("ov-open")){ fxRAF=requestAnimationFrame(w); return; }
+    if(document.hidden||Date.now()<_fxHoldUntil||b.classList.contains("ov-open")||(b.classList.contains("is-scrolling")&&t-_fxLast<30)){ fxRAF=requestAnimationFrame(w); return; }
+    _fxLast=t; // durante el scroll el fondo dibuja a ~30 fps
     cb(t);
   });
 }
@@ -1721,32 +1722,12 @@ function applyColor(c){
     _fxAccentRGB=`${_r},${_g},${_b}`;
     _fxAccentHex=c;
   }
-  // Header title gradient
-  document.querySelectorAll(".header h1").forEach(el=>{
-    el.style.background=`linear-gradient(135deg,#fff,${c},${c}aa)`;
-    el.style.webkitBackgroundClip="text";
-    el.style.backgroundClip="text";
-  });
-  // Online dot
-  document.querySelectorAll(".dot").forEach(el=>{ el.style.background=c; el.style.boxShadow=`0 0 5px ${c}`; });
-  // Active tab border
-  const styleId="sg-color-style";
-  let st=document.getElementById(styleId);
-  if(!st){ st=document.createElement("style"); st.id=styleId; document.head.appendChild(st); }
-  st.textContent=`
-    .tab.active{color:${c}!important;border-bottom-color:${c}!important;}
-    .fi-user{color:${c}!important;}
-    .feed-item:hover{border-color:${c}44!important;}
-    .obtn{color:${c}!important;border-color:${c}44!important;}
-    #sendBtn{background:linear-gradient(160deg,${c},${c}aa)!important;}
-    .cpbtn{color:${c}!important;border-color:${c}44!important;}
-    .r-chip.mine{border-color:${c}88!important;background:${c}22!important;}
-    .nb-media{color:${c}!important;border-color:${c}44!important;background:${c}18!important;}
-    .inp:focus{border-color:${c}88!important;}
-    .online-dot,.dot{background:${c}!important;box-shadow:0 0 5px ${c}!important;}
-  `;
-  savePrefs();
+  // Todo lo demás (título, puntos, botones, pestañas...) sigue --ac / --ac-rgb desde styles.css:
+  // cambiar de color es solo cambiar 2 variables, sin reescribir hojas de estilo (evita el tirón de la ola).
+  _savePrefsSoon();
 }
+let _spT=null;
+function _savePrefsSoon(){ clearTimeout(_spT); _spT=setTimeout(savePrefs,300); }
 
 // ── FONDO PERSONALIZADO (imagen subida por el usuario) ──────────────────
 // Sin backend ni claves expuestas:
@@ -2239,12 +2220,16 @@ function _rcStep(){
   const next=()=>{ if(_rcOn) _rcT=setTimeout(_rcStep,5000); };
   const paint=()=>{ applyColor(rc); document.querySelectorAll(".copt").forEach(x=>x.classList.remove("sel")); };
   if(matchMedia("(prefers-reduced-motion:reduce)").matches){ paint(); next(); return; }
+  // Ola liviana: capa pequeña (300 px) que se escala. Antes era una capa gigante (260vmax) y su
+  // creación causaba un tirón notable justo cuando la ola arrancaba.
+  const _W=innerWidth,_H=innerHeight,_x=_W*(0.2+Math.random()*0.6),_y=_H*(0.2+Math.random()*0.6);
+  const _S=300,_k=Math.ceil(Math.hypot(Math.max(_x,_W-_x),Math.max(_y,_H-_y))*1.08/(0.396*_S));
   const w=document.createElement("div"); w.className="rc-wave";
-  w.style.cssText="position:fixed;left:"+(20+Math.random()*60)+"%;top:"+(20+Math.random()*60)+"%;width:260vmax;height:260vmax;margin:-130vmax 0 0 -130vmax;border-radius:50%;pointer-events:none;z-index:9000;will-change:transform,opacity;background:radial-gradient(circle,rgba("+m+",.16) 0,rgba("+m+",.16) 40%,rgba("+m+",.55) 47%,rgba("+m+",0) 56%)";
+  w.style.cssText="position:fixed;left:"+_x+"px;top:"+_y+"px;width:"+_S+"px;height:"+_S+"px;margin:-"+(_S/2)+"px 0 0 -"+(_S/2)+"px;border-radius:50%;pointer-events:none;z-index:9000;will-change:transform,opacity;background:radial-gradient(circle,rgba("+m+",.16) 0,rgba("+m+",.16) 40%,rgba("+m+",.55) 47%,rgba("+m+",0) 56%)";
   document.body.appendChild(w);
-  const a=w.animate([{transform:"scale(0)",opacity:1},{transform:"scale(1)",opacity:0}],{duration:1400,easing:"cubic-bezier(.3,.6,.4,1)"});
+  const a=w.animate([{transform:"scale(0)",opacity:1},{transform:"scale("+_k+")",opacity:0}],{duration:1400,easing:"cubic-bezier(.3,.6,.4,1)"});
   _rcW=a;
-  setTimeout(()=>{ if(_rcOn) paint(); },420); // el color cambia cuando el frente de la ola cruza la pantalla
+  setTimeout(()=>{ if(_rcOn) requestAnimationFrame(paint); },420); // el color cambia cuando el frente de la ola cruza la pantalla
   a.onfinish=()=>{ w.remove(); _rcW=null; next(); }; // el contador de 5 s arranca al terminar la ola
 }
 function setRandomColors(on,imm){
@@ -2616,7 +2601,20 @@ function _mergeFeedSources(){
     .slice(-40);
   if(_feedTouchActive){ _feedRenderPending=true; }
   else { _renderFeed(); }
-  document.getElementById("onlineN").textContent=Math.max(1,Math.min(_latestFeedDocs.length+rand(1,4),35));
+}
+// ── EN LÍNEA REAL: presencia en tiempo real (Supabase Realtime Presence; no usa tablas ni reglas) ──
+// Cada persona con la app abierta se une al canal "sg-online"; el contador es cuántas llaves distintas hay.
+let _presCh=null;
+function _startPresence(){
+  if(_presCh) return;
+  const el=document.getElementById("onlineN"); if(!el) return;
+  el.textContent="1";
+  try{
+    _presCh=sb.channel("sg-online",{config:{presence:{key:String(_ownerKey())}}});
+    const upd=()=>{ try{ el.textContent=Math.max(1,Object.keys(_presCh.presenceState()).length); }catch(e){} };
+    _presCh.on("presence",{event:"sync"},upd)
+      .subscribe(async(st)=>{ if(st==="SUBSCRIBED"){ try{ await _presCh.track({t:Date.now()}); }catch(e){} upd(); } });
+  }catch(e){ _presCh=null; }
 }
 function _renderFeed(){
   const fp=document.getElementById("feedPanel");
@@ -2738,7 +2736,7 @@ const _STBL_ICONS={
 };
 // Color de cada cuadro: sale del color elegido (o del aleatorio) girando el tono; cada cuadro un tono distinto.
 // Con "Quitar color" (acento neutro) cada cuadro usa un gris distinto.
-const _STBL_HUE=[0,50,100,155,210,262,312], _STBL_GRAY=[0.92,0.80,0.68,0.57,0.86,0.74,0.62];
+const _STBL_GRAY=[0.92,0.80,0.68,0.57,0.86,0.74,0.62];
 function _hexToHsl(hex){
   let h=String(hex||"").replace("#",""); if(h.length===3)h=h.split("").map(c=>c+c).join("");
   const r=parseInt(h.slice(0,2),16)/255,g=parseInt(h.slice(2,4),16)/255,b=parseInt(h.slice(4,6),16)/255;
@@ -2753,10 +2751,28 @@ function _hslToRgb(h,s,l){
   const q=l<0.5?l*(1+s):l+s-l*s,p=2*l-q;
   return[Math.round(f(p,q,h+1/3)*255),Math.round(f(p,q,h)*255),Math.round(f(p,q,h-1/3)*255)];
 }
+function _hueDist(a,b){const d=Math.abs(a-b)%360;return d>180?360-d:d;}
+// Paleta de la tabla: General = tu color; Mira Rojo = siempre ROJO (si tu color ya es rojo, un rojo vecino);
+// los otros 5 cuadros reparten tonos del círculo evitando el rojo, tu color y repetirse entre sí.
+let _stblPalKey="",_stblPal=null;
+function _stblPalette(){
+  if(_stblPalKey===currentColor&&_stblPal) return _stblPal;
+  const[hh,s,l]=_hexToHsl(currentColor); let pal;
+  if(s<0.12){ pal=_STBL_GRAY.map(v=>{const x=Math.round(v*255);return[x,x,x];}); }
+  else{
+    const S=Math.max(s,0.6),L=Math.min(Math.max(l,0.58),0.70);
+    const hr=_hueDist(hh,0)>=28?0:(hh<180?346:14), used=[hh,hr], hues=[hh,hr];
+    for(const off of [60,120,180,240,300]){
+      let h=(hh+off)%360,g=0;
+      while(g++<12&&(_hueDist(h,0)<30||used.some(u=>_hueDist(h,u)<32))) h=(h+22)%360;
+      used.push(h); hues.push(h);
+    }
+    pal=hues.map(h=>_hslToRgb(h,S,_hueDist(h,240)<32?Math.min(L+0.14,0.82):L)); // los azules oscuros se aclaran para que el número se lea bien
+  }
+  _stblPalKey=currentColor; _stblPal=pal; return pal;
+}
 function _paintSensiCell(cell,i){
-  const[hh,s,l]=_hexToHsl(currentColor); let rgb;
-  if(s<0.12){const v=Math.round(_STBL_GRAY[i%7]*255);rgb=[v,v,v];}
-  else rgb=_hslToRgb(hh+_STBL_HUE[i%7],Math.max(s,0.55),Math.min(Math.max(l,0.52),0.68));
+  const rgb=_stblPalette()[i%7];
   cell.style.setProperty("--cc","rgb("+rgb.join(",")+")"); cell.style.setProperty("--cc-rgb",rgb.join(","));
 }
 function _repaintSensiTables(){ document.querySelectorAll(".stbl-cell").forEach(c=>_paintSensiCell(c,+c.dataset.i||0)); }
@@ -3363,19 +3379,31 @@ const _SUP_MAIL="charlysaenzx2657@gmail.com";
   });
 })();
 // ── Ocultar / mostrar la barra superior (logo, créditos, nombre, menú, notificaciones) ──
-// "Ocultar" vive junto a la campana de notificaciones; "Mostrar" aparece arriba a la izquierda cuando está oculta.
+// La barra se desliza hacia arriba y se desvanece mientras el contenido sube; vuelve igual al mostrarla.
+// "Ocultar" vive junto a la campana; "Mostrar" aparece arriba a la izquierda cuando está oculta.
 (function(){
-  const b=document.body,hide=document.getElementById("hdrHide"),show=document.getElementById("hdrToggle"); if(!hide||!show) return;
+  const b=document.body,hide=document.getElementById("hdrHide"),show=document.getElementById("hdrToggle"),hdr=document.querySelector(".header");
+  if(!hide||!show||!hdr) return;
+  const measure=()=>hdr.style.setProperty("--hdr-h",hdr.offsetHeight+"px");
+  measure(); try{ new ResizeObserver(measure).observe(hdr); }catch(e){ addEventListener("resize",measure); }
   let hidden=false; try{ hidden=localStorage.getItem("sg_hdr_hidden")==="1"; }catch(e){}
-  if(hidden) b.classList.add("hdr-hidden");
+  if(hidden){ b.classList.add("hdr-nt","hdr-hidden","hdr-gone"); setTimeout(()=>b.classList.remove("hdr-nt"),120); }
+  let t=null;
   const go=(doHide)=>{
     try{ localStorage.setItem("sg_hdr_hidden",doHide?"1":"0"); }catch(e){}
-    _freezeFx(320);
-    if(doHide){ b.classList.add("hdr-out"); setTimeout(()=>{ b.classList.add("hdr-hidden"); b.classList.remove("hdr-out"); },190); }
-    else{ b.classList.remove("hdr-hidden"); b.classList.add("hdr-out"); requestAnimationFrame(()=>requestAnimationFrame(()=>b.classList.remove("hdr-out"))); }
+    _freezeFx(460); clearTimeout(t);
+    if(doHide){ measure(); b.classList.add("hdr-hidden"); t=setTimeout(()=>b.classList.add("hdr-gone"),430); }
+    else{ b.classList.remove("hdr-gone"); requestAnimationFrame(()=>b.classList.remove("hdr-hidden")); }
   };
   hide.addEventListener("click",()=>go(true));
   show.addEventListener("click",()=>go(false));
+})();
+// ── Ventana de Información (dentro de la web) ──
+(function(){
+  const m=document.getElementById("infoModal"),btn=document.getElementById("infoBtn"); if(!m||!btn) return;
+  btn.addEventListener("click",()=>m.classList.add("show"));
+  document.getElementById("infoCloseX").addEventListener("click",()=>m.classList.remove("show"));
+  m.addEventListener("click",e=>{ if(e.target===m) m.classList.remove("show"); });
 })();
 // Al abrir cualquier ventana (overlay) se apaga el blur unos instantes para que la animación fluya.
 (function(){
@@ -4429,6 +4457,7 @@ async function entrar(googleUID=null){
   _loadBoost();
   await _lgSuccess(n);
   document.body.classList.add("in-app");
+  _startPresence();
   const _sp=document.getElementById("splashScreen"); if(_sp) _sp.style.display="none";
   document.getElementById("loginScreen").style.display="none";
   document.getElementById("chatScreen").style.display="flex";

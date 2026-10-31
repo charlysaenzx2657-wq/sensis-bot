@@ -342,6 +342,7 @@
       <button class="menu-item" id="creatorBtn" title="Programa Creadores">🎬 Programa Creadores</button>
       <div style="font-size:9px;font-weight:900;letter-spacing:2px;color:rgba(160,215,255,0.45);margin:8px 4px 0;">AJUSTES</div>
       <button class="menu-item" id="cfgBtn">⚙️ Configuración</button>
+      <button class="menu-item" id="infoBtn" title="Información">ℹ️ Información</button>
       <button class="menu-item" id="supportBtn" title="Soporte">🛟 Soporte</button>
     </div>
   </div>
@@ -355,6 +356,54 @@
     <div style="text-align:center;font-size:16px;font-weight:900;color:var(--ac);margin-bottom:6px;">CÓDIGOS</div>
     <div style="text-align:center;font-size:12px;color:rgba(160,215,255,0.55);line-height:1.5;margin-bottom:18px;">Toca "Canjear" en el código que quieras usar. Cada código es de un solo uso por persona.</div>
     <div id="codesListContainer"></div>
+  </div>
+</div>
+
+<!-- PANEL: INFORMACIÓN (cómo se usa, qué usa para calibrar, colores y más) -->
+<div class="overlay" id="infoModal">
+  <div class="mbox" style="position:relative;">
+    <span id="infoCloseX" title="Cerrar" style="position:absolute;top:10px;right:14px;font-size:18px;color:rgba(160,215,255,0.5);cursor:pointer;line-height:1;">✕</span>
+    <div style="text-align:center;font-size:36px;margin:6px 0 4px;">ℹ️</div>
+    <div style="text-align:center;font-size:16px;font-weight:900;color:var(--ac);margin-bottom:6px;">INFORMACIÓN</div>
+    <div style="text-align:center;font-size:12px;color:rgba(160,215,255,0.55);line-height:1.5;margin-bottom:16px;">Todo lo que necesitas saber de SENSIS BOT en un vistazo.</div>
+    <details class="inf-sec" open>
+      <summary>🚀 ¿Cómo se usa?</summary>
+      <div class="inf-body"><ol>
+        <li>Escribe la <b>marca y el modelo</b> de tu celular (por ejemplo: Honor X5C Plus).</li>
+        <li>Elige tu <b>nivel</b> de sensibilidad: Baja, Media o Alta.</li>
+        <li>Indica si usas <b>DPI calibrado</b>.</li>
+        <li>Recibes tu tabla con General, Mira Rojo, 2X, 4X, Francotirador, Cámara 360° y Botón de disparo. Puedes <b>copiarla</b> o <b>generar otra</b>.</li>
+        <li>Hay un número limitado de sensis cada 5 horas; el contador está arriba.</li>
+      </ol></div>
+    </details>
+    <details class="inf-sec">
+      <summary>🎯 ¿Qué usa para calibrar tu sensi?</summary>
+      <div class="inf-body"><ul>
+        <li><b>Datos de tu celular:</b> tamaño y forma de la pantalla, resolución, frecuencia de refresco, velocidad y retraso del touch y el chip. Se buscan solos; si falta un dato, se estima según la gama de tu marca.</li>
+        <li><b>Los 12 movimientos del personaje</b> (quieto, adelante, atrás, lateral, salto, agachado…) y lo rápido que debes girar y apuntar en cada uno.</li>
+        <li><b>Tu nivel y tu DPI.</b></li>
+        <li><b>Física y estadística:</b> cada resultado se calcula, no es un número fijo, y dos sensis seguidas no salen pegadas.</li>
+      </ul></div>
+    </details>
+    <details class="inf-sec">
+      <summary>🎨 Colores y estilo</summary>
+      <div class="inf-body"><ul>
+        <li><b>22 colores</b> para elegir, <b>Colores aleatorios</b> (cambia solo cada 5 segundos con una ola de color) y <b>Quitar color</b> (modo neutro).</li>
+        <li><b>10 fondos:</b> Oscuro, Matrix, Lluvia, Cyber, Fuego, Neón, Océano, Gold, Blood y Mint; o <b>tu propia imagen</b>.</li>
+        <li><b>6 temas completos:</b> Hacker, Ciberseguridad, Consola, Cyberpunk, Infernal y Abismo.</li>
+        <li><b>Efectos:</b> Glassmorphism, RGB animado y pulsación al tocar.</li>
+        <li>En la tabla de tu sensi, cada casilla toma un tono distinto de tu color.</li>
+      </ul></div>
+    </details>
+    <details class="inf-sec">
+      <summary>🧰 Más funciones</summary>
+      <div class="inf-body"><ul>
+        <li>🌐 <b>EN VIVO:</b> comparte HUDs y mira lo que publican los demás.</li>
+        <li>📬 Bandeja · 🎟️ Códigos · 🎁 Productos Gratis · 🪙 Créditos · 🏆 Ranking · 🎬 Programa Creadores.</li>
+        <li>🛟 <b>Soporte:</b> reporta errores, bugs o vulnerabilidades.</li>
+        <li>⌃ El botón junto a la campana <b>oculta la barra superior</b>.</li>
+      </ul></div>
+    </details>
   </div>
 </div>
 

@@ -980,13 +980,13 @@ function genSensiMejorado(marca,modelo,nivel,dpi){
 
 // ── CANVAS FX ─────────────────────────────────────────
 const cv=document.getElementById("fx"),ctx=cv.getContext("2d",{desynchronized:true})||cv.getContext("2d");
-let fxMode="none",fxRAF=null,drops=[];
-// Bucle de fondo con ahorro: no dibuja mientras la interfaz se anima (scroll, cambio de pestaña, ventanas
-// abiertas) ni con la pestaña oculta. El último cuadro queda en pantalla y se reanuda solo.
+let fxMode="none",fxRAF=null,drops=[],_fxHoldUntil=0; // _fxHoldUntil: el fondo se pausa SOLO hasta ese instante (cambios de pestaña, ventanas), nunca por scroll
+// Bucle de fondo con ahorro: no dibuja mientras la interfaz hace una transición grande (cambio de pestaña,
+// ventanas abiertas) ni con la pestaña oculta. El scroll NO lo pausa. El último cuadro queda en pantalla y se reanuda solo.
 function _fxRaf(cb){
   return requestAnimationFrame(function w(t){
     const b=document.body;
-    if(document.hidden||b.classList.contains("is-scrolling")||b.classList.contains("ov-open")){ fxRAF=requestAnimationFrame(w); return; }
+    if(document.hidden||Date.now()<_fxHoldUntil||b.classList.contains("ov-open")){ fxRAF=requestAnimationFrame(w); return; }
     cb(t);
   });
 }
@@ -1705,6 +1705,7 @@ function startVideoOrFallback(name, fallbackFn){
 
 function applyColor(c){
   currentColor=c;
+  _repaintSensiTables(); // cada cuadro de la tabla de sensi toma su propio tono a partir del color elegido
   document.body.classList.toggle("nocolor",String(c).toUpperCase()==="#E6E6E6"); // "Quitar color": acento neutro + glassmorphism blanco
   // CSS var (--ac para colores sólidos/gradientes; --ac-rgb para los rgba()
   // usados en bordes/fondos translúcidos en toda la app)
@@ -2725,6 +2726,40 @@ document.getElementById("hudPublishBtn").addEventListener("click",async()=>{
 
 // ── MY CHAT ───────────────────────────────────────────
 // Tabla grande de la sensibilidad: ocupa todo el ancho del chat (los dos espacios, bot y usuario).
+// Íconos dibujados con código (SVG, trazo = currentColor) en vez de emojis, como la campana de notificaciones.
+const _STBL_ICONS={
+  general:'<svg viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="15.5" cy="11.3" r="1.1" fill="currentColor"/><circle cx="18.2" cy="13.9" r="1.1" fill="currentColor"/></svg>',
+  rojo:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3"/></svg>',
+  x2:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M12 2.8v4.4M12 16.8v4.4M2.8 12h4.4M16.8 12h4.4"/><text x="12" y="15.2" text-anchor="middle" font-size="8.5" font-weight="900" fill="currentColor" stroke="none" font-family="system-ui,sans-serif">2x</text></svg>',
+  x4:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2" stroke-width="2.6"/><path d="M12 2.8v4.4M12 16.8v4.4M2.8 12h4.4M16.8 12h4.4"/><text x="12" y="15.2" text-anchor="middle" font-size="8.5" font-weight="900" fill="currentColor" stroke="none" font-family="system-ui,sans-serif">4x</text></svg>',
+  franco:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.6"/><path d="M2.4 12h19.2M12 2.4v19.2"/><circle cx="12" cy="12" r="3.4"/><circle cx="6.6" cy="12" r=".8" fill="currentColor"/><circle cx="17.4" cy="12" r=".8" fill="currentColor"/><circle cx="12" cy="6.6" r=".8" fill="currentColor"/><circle cx="12" cy="17.4" r=".8" fill="currentColor"/></svg>',
+  camara:'<svg viewBox="0 0 24 24"><path d="M4 8h3l1.6-2.2h6.8L17 8h3a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 20 19H4a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 4 8z"/><circle cx="12" cy="13.2" r="3.6"/></svg>',
+  boton:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.6" fill="currentColor" fill-opacity=".4"/><path d="M12 1.6v2.6M12 19.8v2.6M1.6 12h2.6M19.8 12h2.6"/></svg>'
+};
+// Color de cada cuadro: sale del color elegido (o del aleatorio) girando el tono; cada cuadro un tono distinto.
+// Con "Quitar color" (acento neutro) cada cuadro usa un gris distinto.
+const _STBL_HUE=[0,50,100,155,210,262,312], _STBL_GRAY=[0.92,0.80,0.68,0.57,0.86,0.74,0.62];
+function _hexToHsl(hex){
+  let h=String(hex||"").replace("#",""); if(h.length===3)h=h.split("").map(c=>c+c).join("");
+  const r=parseInt(h.slice(0,2),16)/255,g=parseInt(h.slice(2,4),16)/255,b=parseInt(h.slice(4,6),16)/255;
+  if(isNaN(r)||isNaN(g)||isNaN(b))return[199,1,0.61];
+  const mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2; let hh=0,s=0;
+  if(mx!==mn){const d=mx-mn; s=l>0.5?d/(2-mx-mn):d/(mx+mn); hh=mx===r?((g-b)/d+(g<b?6:0)):mx===g?((b-r)/d+2):((r-g)/d+4); hh*=60;}
+  return[hh,s,l];
+}
+function _hslToRgb(h,s,l){
+  h=(((h%360)+360)%360)/360;
+  const f=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};
+  const q=l<0.5?l*(1+s):l+s-l*s,p=2*l-q;
+  return[Math.round(f(p,q,h+1/3)*255),Math.round(f(p,q,h)*255),Math.round(f(p,q,h-1/3)*255)];
+}
+function _paintSensiCell(cell,i){
+  const[hh,s,l]=_hexToHsl(currentColor); let rgb;
+  if(s<0.12){const v=Math.round(_STBL_GRAY[i%7]*255);rgb=[v,v,v];}
+  else rgb=_hslToRgb(hh+_STBL_HUE[i%7],Math.max(s,0.55),Math.min(Math.max(l,0.52),0.68));
+  cell.style.setProperty("--cc","rgb("+rgb.join(",")+")"); cell.style.setProperty("--cc-rgb",rgb.join(","));
+}
+function _repaintSensiTables(){ document.querySelectorAll(".stbl-cell").forEach(c=>_paintSensiCell(c,+c.dataset.i||0)); }
 function _buildSensiTable(b,t){
   const el=(tag,cls,txt)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;};
   b.textContent="";
@@ -2738,10 +2773,12 @@ function _buildSensiTable(b,t){
   b.appendChild(tags);
   const grid=el("div","stbl-grid");
   t.rows.forEach((r,i)=>{
-    const cell=el("div","stbl-cell"+(i===0?" main":""));
-    cell.appendChild(el("div","stbl-lab",r[0]+" "+r[1]));
-    cell.appendChild(el("div","stbl-val",String(r[2])));
-    grid.appendChild(cell);
+    const cell=el("div","stbl-cell"+(i===0?" main":"")); cell.dataset.i=i;
+    const lab=el("div","stbl-lab"), ico=el("span","stbl-ico");
+    ico.innerHTML=_STBL_ICONS[r[0]]||""; // SVG constante (sin datos del usuario)
+    lab.appendChild(ico); lab.appendChild(el("span",null,r[1]));
+    cell.appendChild(lab); cell.appendChild(el("div","stbl-val",String(r[2])));
+    _paintSensiCell(cell,i); grid.appendChild(cell);
   });
   b.appendChild(grid);
   b.appendChild(el("div","stbl-foot","— SENSIS GOOD FF ☠️⚡"));
@@ -2822,7 +2859,7 @@ function onBtn(lbl,bd,silent){
         const txt="✅ SENSIBILIDAD GENERADA\n📱 "+data.marca+" "+data.modelo+"\n"+NL[r.nivel]+" "+hs+premL+"\n\n🎮 General: "+r.general+"\n🔴 Mira Rojo: "+r.rojo+"\n🔭 Mira 2X: "+r.x2+"\n🔬 Mira 4X: "+r.x4+"\n🏹 Francotirador: "+r.franco+"\n📷 Cámara 360°: "+r.camara+"\n🕹️ Botón Disparo: "+r.boton+dL+"\n\n— SENSIS GOOD FF ☠️⚡";
         addMsg("bot",txt,{copy:txt,table:{
           device:data.marca+" "+data.modelo, nivel:NL[r.nivel], hs:hs, prem:isPremiumGen, dpi:r.dpi,
-          rows:[["🎮","General",r.general],["🔴","Mira Rojo",r.rojo],["🔭","Mira 2X",r.x2],["🔬","Mira 4X",r.x4],["🏹","Francotirador",r.franco],["📷","Cámara 360°",r.camara],["🕹️","Botón Disparo",r.boton]]
+          rows:[["general","General",r.general],["rojo","Mira Rojo",r.rojo],["x2","Mira 2X",r.x2],["x4","Mira 4X",r.x4],["franco","Francotirador",r.franco],["camara","Cámara 360°",r.camara],["boton","Botón Disparo",r.boton]]
         },regen:()=>{
           // Repite la generación con la misma marca/modelo/nivel/dpi ya elegidos (fix #7)
           // IMPORTANTE: al terminar la generación step vuelve a "idle", así que hay que
@@ -2895,13 +2932,14 @@ async function handleFeedSend(){
 let _scrollFreezeT=null, _freezeUntil=0;
 // Apaga el blur del vidrio durante ms milisegundos (scroll, cambios de pestaña, modales).
 // Si ya había un freeze más largo, se respeta el más largo.
-function _freezeFx(ms){
+function _freezeFx(ms,soft){
   document.body.classList.add("is-scrolling");
+  if(!soft)_fxHoldUntil=Math.max(_fxHoldUntil,Date.now()+ms); // soft = solo scroll: apaga el blur de las ventanas pero NO pausa el fondo
   const until=Date.now()+ms; if(until>_freezeUntil) _freezeUntil=until;
   clearTimeout(_scrollFreezeT);
   _scrollFreezeT=setTimeout(()=>document.body.classList.remove("is-scrolling"),Math.max(150,_freezeUntil-Date.now()));
 }
-function _onGlassScroll(){ _freezeFx(150); }
+function _onGlassScroll(){ _freezeFx(150,true); }
 document.getElementById("myMsgs").addEventListener("scroll",_onGlassScroll,{passive:true});
 document.getElementById("feedPanel").addEventListener("scroll",_onGlassScroll,{passive:true});
 function _playPanelFade(el,dir){
@@ -3325,18 +3363,19 @@ const _SUP_MAIL="charlysaenzx2657@gmail.com";
   });
 })();
 // ── Ocultar / mostrar la barra superior (logo, créditos, nombre, menú, notificaciones) ──
+// "Ocultar" vive junto a la campana de notificaciones; "Mostrar" aparece arriba a la izquierda cuando está oculta.
 (function(){
-  const b=document.body,btn=document.getElementById("hdrToggle"); if(!btn) return;
-  const paint=()=>{const h=b.classList.contains("hdr-hidden");btn.textContent=h?"▼":"▲";btn.title=h?"Mostrar barra superior":"Ocultar barra superior";};
+  const b=document.body,hide=document.getElementById("hdrHide"),show=document.getElementById("hdrToggle"); if(!hide||!show) return;
   let hidden=false; try{ hidden=localStorage.getItem("sg_hdr_hidden")==="1"; }catch(e){}
-  if(hidden) b.classList.add("hdr-hidden"); paint();
-  btn.addEventListener("click",()=>{
-    const hide=!b.classList.contains("hdr-hidden");
-    try{ localStorage.setItem("sg_hdr_hidden",hide?"1":"0"); }catch(e){}
+  if(hidden) b.classList.add("hdr-hidden");
+  const go=(doHide)=>{
+    try{ localStorage.setItem("sg_hdr_hidden",doHide?"1":"0"); }catch(e){}
     _freezeFx(320);
-    if(hide){ b.classList.add("hdr-out"); setTimeout(()=>{ b.classList.add("hdr-hidden"); b.classList.remove("hdr-out"); paint(); },190); }
-    else{ b.classList.remove("hdr-hidden"); b.classList.add("hdr-out"); paint(); requestAnimationFrame(()=>requestAnimationFrame(()=>b.classList.remove("hdr-out"))); }
-  });
+    if(doHide){ b.classList.add("hdr-out"); setTimeout(()=>{ b.classList.add("hdr-hidden"); b.classList.remove("hdr-out"); },190); }
+    else{ b.classList.remove("hdr-hidden"); b.classList.add("hdr-out"); requestAnimationFrame(()=>requestAnimationFrame(()=>b.classList.remove("hdr-out"))); }
+  };
+  hide.addEventListener("click",()=>go(true));
+  show.addEventListener("click",()=>go(false));
 })();
 // Al abrir cualquier ventana (overlay) se apaga el blur unos instantes para que la animación fluya.
 (function(){

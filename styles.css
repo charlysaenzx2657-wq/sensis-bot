@@ -758,11 +758,11 @@ body .bub.user{border-radius:22px 6px 22px 22px;}
 #streakFloat{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:rgba(4,7,15,.92);}
 /* Barra superior ocultable */
 .hdr-strip{flex-shrink:0;height:0;position:relative;z-index:40;}
+body:not(.hdr-hidden) .hdr-strip{display:none;}
 body:not(.in-app) .hdr-strip{display:none;}
-#hdrToggle{position:absolute;top:-10px;left:50%;transform:translateX(-50%);width:44px;height:20px;padding:0;border-radius:99px;border:1px solid rgba(255,255,255,.22);background:rgba(8,14,30,.88);color:rgba(228,242,255,.85);font-size:9px;line-height:1;cursor:pointer;display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,.45);font-family:inherit;}
-#hdrToggle:active{transform:translateX(-50%) scale(.92);}
-body.hdr-hidden .hdr-strip{height:24px;}
-body.hdr-hidden #hdrToggle{top:3px;}
+#hdrToggle{position:absolute;top:3px;left:14px;width:36px;height:30px;padding:0;border-radius:99px;border:1px solid rgba(255,255,255,.22);background:rgba(8,14,30,.88);color:rgba(228,242,255,.85);font-size:9px;line-height:1;cursor:pointer;display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,.45);font-family:inherit;}
+#hdrToggle:active{transform:scale(.92);}
+body.hdr-hidden .hdr-strip{height:38px;}
 .header{transition:opacity .18s ease,transform .18s ease;}
 body.hdr-out .header{opacity:0;transform:translateY(-14px);}
 body.hdr-hidden .header{display:none!important;}
@@ -774,3 +774,20 @@ body .tabs{width:min(240px,64%);margin:6px auto 4px;padding:3px;}
 body #myInputArea{width:min(300px,84%);margin:0 auto 10px;padding:5px 6px;gap:6px;border-radius:22px!important;}
 body #myInputArea #msgInput{padding:9px 12px;font-size:13px;}
 body #myInputArea #sendBtn,body #myInputArea #huAddBtn{width:36px;height:36px;font-size:15px;}
+/* Botón de ocultar junto a las notificaciones */
+.header{gap:8px;}
+.hleft{flex:0 0 auto;display:flex;align-items:center;gap:4px;}
+.hright{flex:0 0 auto;display:flex;align-items:center;justify-content:flex-end;}
+#hdrHide{width:30px;height:34px;padding:0;display:grid;place-items:center;flex-shrink:0;}
+/* Barra de escribir del chat: un poco más grande */
+body #myInputArea{width:min(340px,90%);margin:0 auto 12px;padding:7px 8px;gap:8px;}
+body #myInputArea #msgInput{padding:11px 14px;font-size:14px;}
+body #myInputArea #sendBtn,body #myInputArea #huAddBtn{width:42px;height:42px;font-size:17px;}
+/* Tabla de la sensi: cada cuadro con su propio color (--cc) e ícono dibujado con código */
+.stbl-cell{background:linear-gradient(145deg,rgba(var(--cc-rgb,255,255,255),.26),rgba(var(--cc-rgb,255,255,255),.07));border:1px solid rgba(var(--cc-rgb,255,255,255),.5);box-shadow:inset 1px 1px 0 rgba(255,255,255,.2),0 6px 16px -8px rgba(var(--cc-rgb,0,0,0),.6);transition:border-color .5s ease;}
+.stbl-cell.main{background:linear-gradient(145deg,rgba(var(--cc-rgb,255,255,255),.34),rgba(var(--cc-rgb,255,255,255),.10));border-color:rgba(var(--cc-rgb,255,255,255),.6);}
+.stbl-lab{display:flex;align-items:center;justify-content:center;gap:7px;color:rgba(235,245,255,.82);}
+.stbl-ico{display:inline-grid;place-items:center;width:22px;height:22px;color:var(--cc,#fff);transition:color .5s ease;}
+.stbl-ico svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+.stbl-val{color:var(--cc,#fff);text-shadow:0 0 14px rgba(var(--cc-rgb,255,255,255),.45);transition:color .5s ease;}
+.stbl-cell.main .stbl-val{color:var(--cc,#fff);}

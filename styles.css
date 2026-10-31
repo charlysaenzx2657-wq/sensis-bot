@@ -94,17 +94,15 @@ body.glass{
   --gl-glow:0 20px 44px -18px rgba(var(--ac-rgb),.55);
 }
 body.glass .header,body.glass .tabs,body.glass .input-area,body.glass .mbox{
-  background:var(--gl-noise),var(--gl-spec),var(--gl-hi),rgba(var(--ac-rgb),.13)!important;
-  background-size:160px 160px,auto,auto,auto!important;
-  backdrop-filter:blur(var(--gl-blur))!important;
-  -webkit-backdrop-filter:blur(var(--gl-blur))!important;
+  background:var(--gl-noise),var(--gl-spec),var(--gl-hi),linear-gradient(rgba(6,10,22,.42),rgba(6,10,22,.42)),rgba(var(--ac-rgb),.13)!important;
+  background-size:160px 160px,auto,auto,auto,auto!important;
   border:1px solid rgba(255,255,255,.16)!important;
   box-shadow:var(--gl-edge),0 14px 34px -12px rgba(0,0,0,.6),var(--gl-glow)!important;
   contain:paint;
 }
 /* Ventanas: un poco más de blur que las barras; pestañas y barra de escribir sin grano (más livianas) */
 body.glass .mbox{backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;}
-body.glass .tabs,body.glass .input-area{background:var(--gl-spec),var(--gl-hi),rgba(var(--ac-rgb),.13)!important;background-size:auto!important;}
+body.glass .tabs,body.glass .input-area{background:var(--gl-spec),var(--gl-hi),linear-gradient(rgba(6,10,22,.42),rgba(6,10,22,.42)),rgba(var(--ac-rgb),.13)!important;background-size:auto!important;}
 /* Mientras se hace scroll / se cambia de pestaña se apaga SOLO el blur (el fondo animado + blur a la vez es lo que
    trababa); el vidrio se mantiene con un fondo algo más sólido para que no "salte". */
 body.glass.is-scrolling .header,body.glass.is-scrolling .tabs,
@@ -753,3 +751,26 @@ body .bub.user{border-radius:22px 6px 22px 22px;}
 .stbl-val{font-size:34px;font-weight:900;line-height:1.15;margin-top:2px;color:#fff;font-variant-numeric:tabular-nums;}
 .stbl-cell.main .stbl-val{font-size:48px;color:var(--ac);}
 .stbl-foot{margin-top:12px;text-align:center;font-size:10px;font-weight:800;letter-spacing:2px;color:rgba(160,215,255,.5);}
+
+/* ═════ v2.1 · RENDIMIENTO + BARRAS COMPACTAS ═════ */
+/* Sin animación de filtro permanente en el título ni blur permanente en la racha */
+.header h1{animation:none;filter:drop-shadow(0 0 8px rgba(var(--ac-rgb),.55));}
+#streakFloat{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:rgba(4,7,15,.92);}
+/* Barra superior ocultable */
+.hdr-strip{flex-shrink:0;height:0;position:relative;z-index:40;}
+body:not(.in-app) .hdr-strip{display:none;}
+#hdrToggle{position:absolute;top:-10px;left:50%;transform:translateX(-50%);width:44px;height:20px;padding:0;border-radius:99px;border:1px solid rgba(255,255,255,.22);background:rgba(8,14,30,.88);color:rgba(228,242,255,.85);font-size:9px;line-height:1;cursor:pointer;display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,.45);font-family:inherit;}
+#hdrToggle:active{transform:translateX(-50%) scale(.92);}
+body.hdr-hidden .hdr-strip{height:24px;}
+body.hdr-hidden #hdrToggle{top:3px;}
+.header{transition:opacity .18s ease,transform .18s ease;}
+body.hdr-out .header{opacity:0;transform:translateY(-14px);}
+body.hdr-hidden .header{display:none!important;}
+/* Pestañas EN VIVO / MI CHAT más pequeñas (no ocupan todo el ancho) */
+body .tabs{width:min(240px,64%);margin:6px auto 4px;padding:3px;}
+.tab{padding:7px 4px;font-size:10px;letter-spacing:1.2px;}
+#tabIndicator{top:3px;bottom:3px;left:3px;width:calc((100% - 6px)/2);}
+/* Barra de escribir del chat más pequeña (la del EN VIVO no cambia) */
+body #myInputArea{width:min(300px,84%);margin:0 auto 10px;padding:5px 6px;gap:6px;border-radius:22px!important;}
+body #myInputArea #msgInput{padding:9px 12px;font-size:13px;}
+body #myInputArea #sendBtn,body #myInputArea #huAddBtn{width:36px;height:36px;font-size:15px;}

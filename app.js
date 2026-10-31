@@ -981,6 +981,15 @@ function genSensiMejorado(marca,modelo,nivel,dpi){
 // ── CANVAS FX ─────────────────────────────────────────
 const cv=document.getElementById("fx"),ctx=cv.getContext("2d",{desynchronized:true})||cv.getContext("2d");
 let fxMode="none",fxRAF=null,drops=[];
+// Bucle de fondo con ahorro: no dibuja mientras la interfaz se anima (scroll, cambio de pestaña, ventanas
+// abiertas) ni con la pestaña oculta. El último cuadro queda en pantalla y se reanuda solo.
+function _fxRaf(cb){
+  return requestAnimationFrame(function w(t){
+    const b=document.body;
+    if(document.hidden||b.classList.contains("is-scrolling")||b.classList.contains("ov-open")){ fxRAF=requestAnimationFrame(w); return; }
+    cb(t);
+  });
+}
 function resizeFX(){cv.width=window.innerWidth;cv.height=window.innerHeight;}
 resizeFX(); window.addEventListener("resize",resizeFX);
 
@@ -1035,7 +1044,7 @@ function startMatrix(){
     ctx.fillStyle="rgba(0,0,0,0.05)";ctx.fillRect(0,0,cv.width,cv.height);
     ctx.fillStyle=_fxAccentHex;ctx.font="13px monospace"; // sigue al color actual (aleatorio o fijo), a diferencia de los demás fondos que mantienen su color propio
     drops.forEach((y,i)=>{const c=chars[Math.floor(Math.random()*chars.length)];ctx.fillText(c,i*14,y*14);if(y*14>cv.height&&Math.random()>0.975)drops[i]=0;drops[i]++;});
-    fxRAF=requestAnimationFrame(draw);
+    fxRAF=_fxRaf(draw);
   }
   draw();
 }
@@ -1072,7 +1081,7 @@ function startRain(){
       d.x-=0.4;
       if(d.y>cv.height){d.y=-d.len;d.x=Math.random()*cv.width;}
     });
-    fxRAF=requestAnimationFrame(draw);
+    fxRAF=_fxRaf(draw);
   }
   draw();
 }
@@ -1092,7 +1101,7 @@ function startParticles(color){
       p.y-=p.sp; p.op+=0.01;
       if(p.y<-10){p.y=cv.height+10;p.x=Math.random()*cv.width;}
     });
-    fxRAF=requestAnimationFrame(draw);
+    fxRAF=_fxRaf(draw);
   }
   draw();
 }
@@ -1125,7 +1134,7 @@ function startCyberDust(){
     });
     streaks=streaks.filter(s=>s.x>-60&&s.x<cv.width+60);
     t++;
-    fxRAF=requestAnimationFrame(draw);
+    fxRAF=_fxRaf(draw);
   }
   draw();
 }
@@ -1158,7 +1167,7 @@ function startNeonPulse(){
     });
     rings=rings.filter(r=>r.life>0);
     t++;
-    fxRAF=requestAnimationFrame(draw);
+    fxRAF=_fxRaf(draw);
   }
   draw();
 }
@@ -1184,7 +1193,7 @@ function startGoldRush(){
       if(c.y>cv.height+10){ c.y=-10; c.x=Math.random()*cv.width; }
     });
     t++;
-    fxRAF=requestAnimationFrame(draw);
+    fxRAF=_fxRaf(draw);
   }
   draw();
 }
@@ -1218,7 +1227,7 @@ function startBloodDrip(){
     });
     splats=splats.filter(s=>s.life>0);
     t++;
-    fxRAF=requestAnimationFrame(draw);
+    fxRAF=_fxRaf(draw);
   }
   draw();
 }
@@ -1254,7 +1263,7 @@ function startMintBreeze(){
       if(b.y<-10){ b.y=cv.height+10; b.x=Math.random()*cv.width; }
     });
     t++;
-    fxRAF=requestAnimationFrame(draw);
+    fxRAF=_fxRaf(draw);
   }
   draw();
 }
@@ -1301,7 +1310,7 @@ function startOcean(){
       b.y-=b.sp; if(b.y<seaTop){ b.y=cv.height+Math.random()*40; b.x=Math.random()*cv.width; }
     });
     t+=0.016;
-    fxRAF=requestAnimationFrame(draw);
+    fxRAF=_fxRaf(draw);
   }
   draw();
 }
@@ -1349,7 +1358,7 @@ function startFire(){
     fctx.putImageData(imgData,0,0);
     ctx.clearRect(0,0,cv.width,cv.height);
     ctx.drawImage(off,0,0,cols,rows,offsetX,offsetY,W,H);
-    fxRAF=requestAnimationFrame(draw);
+    fxRAF=_fxRaf(draw);
   }
   draw();
 }
@@ -1412,7 +1421,7 @@ function startCyberGuard(){
     ctx.beginPath(); ctx.moveTo(0,scanY); ctx.lineTo(cv.width,scanY); ctx.stroke();
     scanY+=2.2; if(scanY>cv.height+70) scanY=-10;
     t++;
-    fxRAF=requestAnimationFrame(draw);
+    fxRAF=_fxRaf(draw);
   }
   draw();
 }
@@ -1463,7 +1472,7 @@ function startTerminal(){
     if(Math.random()<0.02){ ctx.fillStyle="rgba(61,255,143,0.03)"; ctx.fillRect(0,0,cv.width,cv.height); }
     ctx.fillStyle=_termVignette(); ctx.fillRect(0,0,cv.width,cv.height);
     t++;
-    fxRAF=requestAnimationFrame(draw);
+    fxRAF=_fxRaf(draw);
   }
   draw();
 }
@@ -1517,7 +1526,7 @@ function startSynthwave(){
       ctx.strokeStyle=`rgba(255,90,200,${0.25*(1-p)})`; ctx.stroke();
     }
     t++;
-    fxRAF=requestAnimationFrame(draw);
+    fxRAF=_fxRaf(draw);
   }
   draw();
 }
@@ -1563,7 +1572,7 @@ function startInferno(){
       _drawGlow("255,220,150",fx,fy,100,0.5);
     }
     t++;
-    fxRAF=requestAnimationFrame(draw);
+    fxRAF=_fxRaf(draw);
   }
   draw();
 }
@@ -1633,7 +1642,7 @@ function startAbyss(){
     });
     ctx.fillStyle=_vignette(); ctx.fillRect(0,0,cv.width,cv.height);
     t++;
-    fxRAF=requestAnimationFrame(draw);
+    fxRAF=_fxRaf(draw);
   }
   draw();
 }
@@ -3315,12 +3324,28 @@ const _SUP_MAIL="charlysaenzx2657@gmail.com";
     catch(e){ status("Correo de soporte: "+_SUP_MAIL,true); }
   });
 })();
+// ── Ocultar / mostrar la barra superior (logo, créditos, nombre, menú, notificaciones) ──
+(function(){
+  const b=document.body,btn=document.getElementById("hdrToggle"); if(!btn) return;
+  const paint=()=>{const h=b.classList.contains("hdr-hidden");btn.textContent=h?"▼":"▲";btn.title=h?"Mostrar barra superior":"Ocultar barra superior";};
+  let hidden=false; try{ hidden=localStorage.getItem("sg_hdr_hidden")==="1"; }catch(e){}
+  if(hidden) b.classList.add("hdr-hidden"); paint();
+  btn.addEventListener("click",()=>{
+    const hide=!b.classList.contains("hdr-hidden");
+    try{ localStorage.setItem("sg_hdr_hidden",hide?"1":"0"); }catch(e){}
+    _freezeFx(320);
+    if(hide){ b.classList.add("hdr-out"); setTimeout(()=>{ b.classList.add("hdr-hidden"); b.classList.remove("hdr-out"); paint(); },190); }
+    else{ b.classList.remove("hdr-hidden"); b.classList.add("hdr-out"); paint(); requestAnimationFrame(()=>requestAnimationFrame(()=>b.classList.remove("hdr-out"))); }
+  });
+})();
 // Al abrir cualquier ventana (overlay) se apaga el blur unos instantes para que la animación fluya.
 (function(){
   const mo=new MutationObserver(ms=>{
     for(const r of ms){
       if(r.target.classList.contains("show") && !(r.oldValue||"").split(" ").includes("show")){ _freezeFx(640); break; }
     }
+    // con una ventana abierta el fondo animado se pausa (ya está tapado y atenuado)
+    document.body.classList.toggle("ov-open",!!document.querySelector(".overlay.show"));
   });
   document.querySelectorAll(".overlay").forEach(o=>mo.observe(o,{attributes:true,attributeFilter:["class"],attributeOldValue:true}));
 })();

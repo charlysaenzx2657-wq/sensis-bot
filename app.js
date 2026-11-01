@@ -679,7 +679,13 @@ function _deviceKey(marca,modelo){
 async function _lookupDeviceSpecs(marca,modelo){
   if(!marca||!modelo) return null;
   const key=_deviceKey(marca,modelo);
-  if(_deviceSpecsCache.has(key)) return _deviceSpecsCache.get(key);
+  if(_deviceSpecsCache.has(key)){
+    const c=_deviceSpecsCache.get(key);
+    // Un resultado con datos se queda siempre; un "no encontrado" caduca (20 s si fue un error, 5 min si el
+    // modelo no se reconoció) para poder reintentar sin recargar la página.
+    if(c&&(c.found||(Date.now()-(c._t||0))<(c._ttl||20000))) return c;
+    _deviceSpecsCache.delete(key);
+  }
   if(_deviceSpecsInFlight.has(key)) return _deviceSpecsInFlight.get(key);
   const p=(async()=>{
     try{
@@ -729,8 +735,14 @@ async function _lookupDeviceSpecs(marca,modelo){
       // NADA de lo investigado. Ahora se acepta campo por campo: lo que
       // sí sea válido se usa, y solo el/los campo(s) faltante(s) caen al
       // estimado por gama (ver _screenProfile).
-      const result=(data&&data.found)?_buildPartialResult(data):{found:false};
-      if(!result.found) console.warn("📱 [device_specs] La respuesta no tenía ningún dato válido/en rango -> se usa el estimado por gama completo.");
+      // Se aprovechan los campos válidos aunque el Worker diga found:false (found se recalcula con los campos).
+      const result=data?_buildPartialResult(data):{found:false};
+      if(!result.found){
+        const motivo=(data&&data.reason)||"(el Worker no dio motivo)";
+        console.warn("📱 [device_specs] Sin datos válidos -> estimado por gama. Motivo del Worker:",motivo,data&&data.model?("| modelo IA: "+data.model):"");
+        result._t=Date.now();
+        result._ttl=/^modelo_no_reconocido/.test(motivo)?300000:20000; // si fue un error se reintenta pronto
+      }
       else if(!(result.diagIn!=null&&result.aspect!=null&&result.touchHz!=null&&result.touchLagMs!=null&&result.refreshHz!=null&&result.chipScore!=null&&result.resShort!=null)) console.log("📱 [device_specs] Se aceptaron solo los campos válidos; el resto usa estimado por gama:",result);
       _deviceSpecsCache.set(key,result);
       // 3) Guardar en Firestore PARA SIEMPRE (incluso si found:false, para
@@ -747,8 +759,8 @@ async function _lookupDeviceSpecs(marca,modelo){
       // Worker caído, etc.), simplemente no se encontró nada y se sigue
       // con el estimado por gama de siempre.
       console.warn("📱 [device_specs] Falló la consulta ("+e.message+") -> usando estimado por gama.");
-      const result={found:false};
-      _deviceSpecsCache.set(key,result); // evita reintentar en cada sensi de esta sesión
+      const result={found:false,_t:Date.now(),_ttl:20000};
+      _deviceSpecsCache.set(key,result); // evita martillar al Worker, pero solo 20 s (antes: toda la sesión)
       return result;
     }finally{
       _deviceSpecsInFlight.delete(key);

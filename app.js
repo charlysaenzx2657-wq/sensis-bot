@@ -708,7 +708,7 @@ async function _lookupDeviceSpecs(marca,modelo){
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({marca,modelo})
-      }),16000,"timeout");
+      }),24000,"timeout");
       const data=await resp.json();
       console.log("📱 [device_specs] Worker respondió:",JSON.stringify(data));
       // Revalidamos los rangos también acá (defensa extra, además de la

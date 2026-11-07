@@ -57,13 +57,32 @@ body.rgb-on.rgb-btns #feedSendBtn::before,body.rgb-on.rgb-btns .icon-btn::before
   padding:2px;
   background:linear-gradient(90deg,#ff003c,#ff8a00,#ffee00,#3dff8f,#38beff,#aa44ff,#ff003c);
   background-size:300% 300%;
-  animation:rgbRun 2.2s linear infinite;
+  animation:rgbRun 2.4s steps(30) infinite; /* ~12 fps: mismo efecto, 5 veces menos repintado */
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
   -webkit-mask-composite:xor;
   mask-composite:exclude;
   pointer-events:none;
   z-index:2;
 }
+/* Pausa del RGB mientras se desliza o hay una ventana abierta: no se repinta lo que no se está mirando */
+body.rgb-on.rgb-input.is-scrolling .input-area::before,
+body.rgb-on.rgb-msgs.is-scrolling .bub::before,
+body.rgb-on.rgb-msgs.is-scrolling .feed-item::before,
+body.rgb-on.rgb-btns.is-scrolling .cbtn::before,
+body.rgb-on.rgb-btns.is-scrolling .obtn::before,
+body.rgb-on.rgb-btns.is-scrolling #sendBtn::before,
+body.rgb-on.rgb-btns.is-scrolling #feedSendBtn::before,
+body.rgb-on.rgb-btns.is-scrolling .icon-btn::before,
+body.rgb-on.rgb-btns.is-scrolling .btn-main::before,
+body.rgb-on.rgb-input.ov-open .input-area::before,
+body.rgb-on.rgb-msgs.ov-open .bub::before,
+body.rgb-on.rgb-msgs.ov-open .feed-item::before,
+body.rgb-on.rgb-btns.ov-open .cbtn::before,
+body.rgb-on.rgb-btns.ov-open .obtn::before,
+body.rgb-on.rgb-btns.ov-open #sendBtn::before,
+body.rgb-on.rgb-btns.ov-open #feedSendBtn::before,
+body.rgb-on.rgb-btns.ov-open .icon-btn::before,
+body.rgb-on.rgb-btns.ov-open .btn-main::before{animation-play-state:paused;}
 body.t-cyber{background:linear-gradient(135deg,#050010,#000820,#050010)!important;}
 body.t-fire{background:radial-gradient(ellipse at bottom,#1a0500,#000)!important;}
 body.t-neon{background:linear-gradient(135deg,#0a0020,#180040,#0a0020)!important;}
@@ -220,7 +239,7 @@ button:focus-visible,.cbtn:focus-visible,.obtn:focus-visible{outline:none;}
 /* ── HEADER ── */
 .header{flex-shrink:0;background:linear-gradient(135deg,color-mix(in srgb, var(--ac) 16%, #04070f),color-mix(in srgb, var(--ac) 24%, #04070f));border-bottom:1px solid rgba(var(--ac-rgb),0.15);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;backdrop-filter:blur(10px);}
 .hcenter{text-align:center;flex:1;}
-.header h1{font-size:18px;font-weight:900;letter-spacing:3px;background:linear-gradient(135deg,#fff,var(--ac),color-mix(in srgb,var(--ac) 70%,black));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:glow 3s ease-in-out infinite;}
+.header h1{font-size:18px;font-weight:900;letter-spacing:3px;background:linear-gradient(135deg,#fff,var(--ac),color-mix(in srgb,var(--ac) 70%,black));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:glow 3s ease-in-out infinite;will-change:filter;}
 @keyframes glow{0%,100%{filter:drop-shadow(0 0 6px rgba(var(--ac-rgb),0.4));}50%{filter:drop-shadow(0 0 14px rgba(var(--ac-rgb),0.8));}}
 .hsub{display:flex;justify-content:center;gap:12px;margin-top:3px;}
 .hinfo{font-size:9px;letter-spacing:2px;color:rgba(160,215,255,0.4);text-transform:uppercase;}
@@ -512,7 +531,7 @@ body.glass .topt.sel{border-color:var(--ac)!important;background:rgba(var(--ac-r
 @keyframes lgSpin{to{transform:rotate(360deg);}}
 @keyframes lgBar{0%{transform:translateX(-100%);}100%{transform:translateX(250%);}}
 @keyframes lgDrift{to{transform:translate(70px,50px) scale(1.15);}}
-@keyframes shine{0%,55%{left:-60%;}100%{left:140%;}}
+@keyframes shine{0%,55%{transform:translateX(0) skewX(-20deg);}100%{transform:translateX(500%) skewX(-20deg);}}
 @keyframes rip{to{transform:scale(1);opacity:0;}}
 @keyframes miIn{from{opacity:0;transform:translateX(-18px);}}
 @keyframes msgIn{from{opacity:0;transform:translateY(12px) scale(.96);}}

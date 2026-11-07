@@ -1007,10 +1007,17 @@ const cv=document.getElementById("fx"),ctx=cv.getContext("2d",{desynchronized:tr
 let fxMode="none",fxRAF=null,drops=[],_fxHoldUntil=0,_fxLast=0; // _fxHoldUntil: el fondo se pausa SOLO hasta ese instante (cambios de pestaña, ventanas), nunca por scroll
 // Bucle de fondo con ahorro: no dibuja mientras la interfaz hace una transición grande (cambio de pestaña,
 // ventanas abiertas) ni con la pestaña oculta. El scroll NO lo pausa (solo lo limita a ~30 fps). El último cuadro queda en pantalla y se reanuda solo.
+let _fxCapMs=0,_fxDt=[]; // _fxCapMs: tope de cuadros del fondo; 0 = sin tope. Se activa solo si el dispositivo no llega a ~45 fps.
 function _fxRaf(cb){
   return requestAnimationFrame(function w(t){
-    const b=document.body;
-    if(document.hidden||Date.now()<_fxHoldUntil||b.classList.contains("ov-open")||(b.classList.contains("is-scrolling")&&t-_fxLast<30)){ fxRAF=requestAnimationFrame(w); return; }
+    const b=document.body, scrolling=b.classList.contains("is-scrolling");
+    if(document.hidden||Date.now()<_fxHoldUntil||b.classList.contains("ov-open")||(scrolling&&t-_fxLast<30)||t-_fxLast<_fxCapMs){ fxRAF=requestAnimationFrame(w); return; }
+    // Auto-ahorro: si el fondo no logra ~45 fps (mediana > 22 ms entre cuadros, sin contar scroll ni pausas), se fija a ~30 fps estables,
+    // que se ven más fluidos que 35-45 fps irregulares y liberan CPU/GPU para el resto de la app.
+    if(!_fxCapMs&&_fxLast&&!scrolling){
+      const dt=t-_fxLast;
+      if(dt<200){ _fxDt.push(dt); if(_fxDt.length>=45){ _fxDt.sort((x,y)=>x-y); if(_fxDt[22]>22) _fxCapMs=30; _fxDt.length=0; } } else _fxDt.length=0;
+    }
     _fxLast=t; // durante el scroll el fondo dibuja a ~30 fps
     cb(t);
   });

@@ -668,7 +668,7 @@ async function _lookupDeviceSpecs(marca,modelo){
     const c=_deviceSpecsCache.get(key);
     // Un resultado con datos se queda siempre; un "no encontrado" caduca (20 s si fue un error, 5 min si el
     // modelo no se reconoció) para poder reintentar sin recargar la página.
-    if(c&&(c.found||(Date.now()-(c._t||0))<(c._ttl||20000))) return c;
+    if(c&&((c.found&&!c._ttl)||(Date.now()-(c._t||0))<(c._ttl||20000))) return c;
     _deviceSpecsCache.delete(key);
   }
   if(_deviceSpecsInFlight.has(key)) return _deviceSpecsInFlight.get(key);
@@ -692,7 +692,7 @@ async function _lookupDeviceSpecs(marca,modelo){
         _deviceSpecsCache.set(key,result);
         return result;
       }
-      if(snap.exists()) console.log("📱 [device_specs] '"+modelo+"' estaba en caché con un esquema viejo -> se vuelve a investigar con la lógica nueva.");
+      if(snap.exists()) console.log("📱 [device_specs] '"+modelo+"' estaba en caché con un esquema viejo -> se vuelve a investigar con la lógica nueva. Doc guardado:",JSON.stringify(snap.data()));
       if(!_DEVICE_LOOKUP_URL){
         // Worker todavía no desplegado/conectado -> no hay forma de
         // investigar este modelo todavía, se sigue con el estimado por
@@ -722,6 +722,9 @@ async function _lookupDeviceSpecs(marca,modelo){
       // estimado por gama (ver _screenProfile).
       // Se aprovechan los campos válidos aunque el Worker diga found:false (found se recalcula con los campos).
       const result=data?_buildPartialResult(data):{found:false};
+      // Solo lo investigado en webs (model "web xN") es confiable para guardarse PARA SIEMPRE; lo que Gemini contesta de memoria puede estar mal.
+      const verificado=!!(data&&/^web/.test(String(data.model||"")));
+      if(result.found&&!verificado){ result._t=Date.now(); result._ttl=60000; } // se usa ahora, pero se reintenta la web pronto
       if(!result.found){
         const motivo=(data&&data.reason)||"(el Worker no dio motivo)";
         console.warn("📱 [device_specs] Sin datos válidos -> estimado por gama. Motivo del Worker:",motivo,data&&data.model?("| modelo IA: "+data.model):"");
@@ -735,7 +738,7 @@ async function _lookupDeviceSpecs(marca,modelo){
       // cada vez que alguien lo vuelva a escribir) -- con la versión de
       // esquema actual, para que si en el futuro se agrega OTRO campo
       // nuevo, esta entrada también se pueda re-investigar una vez más.
-      if(result.found) setDoc(doc(db,"device_specs",key),{marca,modelo,...result,v:_DEVICE_SPECS_SCHEMA_V,ts:serverTimestamp()})
+      if(result.found&&verificado) setDoc(doc(db,"device_specs",key),{marca,modelo,...result,v:_DEVICE_SPECS_SCHEMA_V,ts:serverTimestamp()})
         .then(()=>console.log("📱 [device_specs] Guardado en Firestore para siempre."))
         .catch(err=>console.warn("📱 [device_specs] No se pudo guardar en Firestore (revisá las reglas, paso 8 del DEPLOY.md):",err.message));
       return result;

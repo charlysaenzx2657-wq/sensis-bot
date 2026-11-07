@@ -105,23 +105,22 @@ canvas#fx{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-e
    Borde con luz arriba-izquierda y sombra abajo-derecha, brillo interior y sombra con el color del acento.
    Blur SOLO en barras, ventanas y botones principales; tarjetas y burbujas llevan el mismo look sin blur propio. */
 body.glass{
-  --gl-blur:8px;
-  --gl-hi:linear-gradient(150deg,rgba(255,255,255,.20) 0%,rgba(255,255,255,.07) 38%,rgba(255,255,255,.02) 62%,rgba(255,255,255,.10) 100%);
-  --gl-spec:radial-gradient(120% 80% at 0% 0%,rgba(255,255,255,.20),transparent 55%);
-  --gl-noise:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
-  --gl-edge:inset 1px 1px 0 rgba(255,255,255,.46),inset -1px -1px 0 rgba(255,255,255,.07),inset 0 0 24px rgba(255,255,255,.05);
-  --gl-glow:0 20px 44px -18px rgba(var(--ac-rgb),.55);
+  --gl-blur:20px;
+  --gl-hi:linear-gradient(160deg,rgba(255,255,255,.22) 0%,rgba(255,255,255,.06) 42%,rgba(255,255,255,.03) 70%,rgba(255,255,255,.12) 100%);
+  --gl-spec:radial-gradient(140% 100% at 6% -10%,rgba(255,255,255,.34),rgba(255,255,255,0) 56%);
+  --gl-edge:inset 0 1px 0 rgba(255,255,255,.55),inset 1px 0 0 rgba(255,255,255,.18),inset 0 -1px 0 rgba(255,255,255,.08),inset -1px 0 0 rgba(255,255,255,.06);
+  --gl-glow:0 12px 28px -14px rgba(var(--ac-rgb),.5);
 }
 body.glass .header,body.glass .tabs,body.glass .input-area,body.glass .mbox{
-  background:var(--gl-noise),var(--gl-spec),var(--gl-hi),linear-gradient(rgba(6,10,22,.42),rgba(6,10,22,.42)),rgba(var(--ac-rgb),.13)!important;
-  background-size:160px 160px,auto,auto,auto,auto!important;
-  border:1px solid rgba(255,255,255,.16)!important;
-  box-shadow:var(--gl-edge),0 14px 34px -12px rgba(0,0,0,.6),var(--gl-glow)!important;
+  background:var(--gl-spec),var(--gl-hi),linear-gradient(rgba(6,10,22,.36),rgba(6,10,22,.36)),rgba(var(--ac-rgb),.15)!important;
+  background-size:auto!important;
+  border:1px solid rgba(255,255,255,.18)!important;
+  box-shadow:var(--gl-edge),0 10px 26px -12px rgba(0,0,0,.55),var(--gl-glow)!important;
   contain:paint;
 }
 /* Ventanas: un poco más de blur que las barras; pestañas y barra de escribir sin grano (más livianas) */
-body.glass .mbox{backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;}
-body.glass .tabs,body.glass .input-area{background:var(--gl-spec),var(--gl-hi),linear-gradient(rgba(6,10,22,.42),rgba(6,10,22,.42)),rgba(var(--ac-rgb),.13)!important;background-size:auto!important;}
+body.glass .mbox{backdrop-filter:blur(var(--gl-blur)) saturate(1.6)!important;-webkit-backdrop-filter:blur(var(--gl-blur)) saturate(1.6)!important;}
+body.glass .tabs,body.glass .input-area{background:var(--gl-spec),var(--gl-hi),linear-gradient(rgba(6,10,22,.36),rgba(6,10,22,.36)),rgba(var(--ac-rgb),.15)!important;background-size:auto!important;}
 /* Mientras se hace scroll / se cambia de pestaña se apaga SOLO el blur (el fondo animado + blur a la vez es lo que
    trababa); el vidrio se mantiene con un fondo algo más sólido para que no "salte". */
 body.glass.is-scrolling .header,body.glass.is-scrolling .tabs,
@@ -142,7 +141,7 @@ body.glass .feed-item,body.glass .bub.bot,body.glass .bub.adm,body.glass .bub.us
   border-width:1px!important;
   border-style:solid!important;
   border-color:rgba(255,255,255,.18)!important;
-  box-shadow:inset 1px 1px 0 rgba(255,255,255,.34),inset -1px -1px 0 rgba(255,255,255,.05),0 8px 20px -8px rgba(0,0,0,.5);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.38),inset 1px 0 0 rgba(255,255,255,.12),inset 0 -1px 0 rgba(255,255,255,.05),0 6px 16px -8px rgba(0,0,0,.5);
 }
 body.glass .feed-item{background:var(--gl-hi),linear-gradient(135deg,rgba(var(--ac-rgb),.15),rgba(var(--ac-rgb),.08))!important;border-radius:26px!important;}
 body.glass .bub.bot{background:var(--gl-hi),rgba(var(--ac-rgb),.15)!important;border-radius:6px 22px 22px 22px!important;}
@@ -780,13 +779,16 @@ body .bub.user{border-radius:22px 6px 22px 22px;}
 body:not(.in-app) .hdr-strip{display:none;}
 #hdrToggle{position:absolute;top:3px;left:14px;width:36px;height:30px;padding:0;border-radius:99px;border:1px solid rgba(255,255,255,.22);background:rgba(8,14,30,.88);color:rgba(228,242,255,.85);font-size:9px;line-height:1;cursor:pointer;display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,.45);font-family:inherit;}
 #hdrToggle:active{transform:scale(.92);}
-body.hdr-hidden .hdr-strip{height:38px;opacity:1;pointer-events:auto;}
+body.hdr-hidden .hdr-strip{height:0;opacity:1;pointer-events:auto;} /* sin franja: el botón de mostrar flota y las pestañas suben hasta arriba */
 .header{transition:margin-top .42s cubic-bezier(.22,1,.36,1),opacity .3s ease,transform .42s cubic-bezier(.22,1,.36,1);}
 body.hdr-hidden .header{margin-top:calc(-1 * var(--hdr-h,170px));opacity:0;transform:translateY(-14px);pointer-events:none;}
 body.hdr-gone .header{visibility:hidden;}
 body.hdr-nt .header,body.hdr-nt .hdr-strip{transition:none!important;}
 /* Pestañas EN VIVO / MI CHAT más pequeñas (no ocupan todo el ancho) */
 body .tabs{width:min(240px,64%);margin:6px auto 4px;padding:3px;}
+/* Con la barra oculta las pestañas suben hasta arriba y dejan lugar al botón de mostrar */
+body.hdr-hidden .tabs{margin:calc(env(safe-area-inset-top,0px) + 6px) auto 4px;}
+body.hdr-hidden #hdrToggle{top:calc(env(safe-area-inset-top,0px) + 9px);}
 .tab{padding:7px 4px;font-size:10px;letter-spacing:1.2px;}
 #tabIndicator{top:3px;bottom:3px;left:3px;width:calc((100% - 6px)/2);}
 /* Barra de escribir del chat más pequeña (la del EN VIVO no cambia) */

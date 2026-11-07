@@ -500,7 +500,8 @@ function exMod(txt,marca){
   }
   origMod=origMod.replace(new RegExp(marca,"gi")," ");
   stopWords.forEach(w=>{origMod=origMod.replace(new RegExp("\\b"+w+"\\b","gi")," ");});
-  const clean=origMod.replace(/\s+/g," ").trim();
+  // splitPegado separa letra y número ("x5c" -> "x 5c"); una letra suelta + número es parte del modelo (X5c, A12, C11): se vuelve a pegar.
+  const clean=origMod.replace(/\s+/g," ").trim().replace(/\b([a-z])\s+(\d)/gi,"$1$2");
   return clean||marca;
 }
 

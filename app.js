@@ -915,10 +915,24 @@ function genSensiMejorado(marca,modelo,nivel,dpi){
     dpiV=clamp(dpiV,530,630);
   }
   // ── Física del dispositivo → ln g y su incertidumbre σ ──
-  const F=_fisGanancia(_screenProfile(marca,modelo),dpiV,_fisFuentes(marca,modelo));
+  const sp=_screenProfile(marca,modelo);
+  // La física usa un refresco NEUTRO (90 Hz): los Hz se aplican de forma explícita más abajo (General y botón), sin doble conteo.
+  const F=_fisGanancia({...sp,refreshHz:_SCREEN_REF.refreshHz},dpiV,_fisFuentes(marca,modelo));
+  // ── Hz → botón y General (Android). ≤60 Hz = pantalla lenta; 90 = media; ≥120 = rápida (144/165/180/185 cuentan como 120).
+  // th: 0 en 60 Hz, 0.5 en 90 Hz, 1 en 120 Hz o más; los Hz intermedios (72, 75, 100...) se interpolan.
+  const th=clamp((Math.min(sp.refreshHz||90,120)-60)/60,0,1);
+  const _l3=(a,b,c)=>th<0.5?a+(b-a)*(th/0.5):b+(c-b)*((th-0.5)/0.5);
   // Centro del resultado según el celular: los datos del Worker mueven el centro de forma suave y acotada (±1.8),
   // y el azar físico (zs) reparte alrededor de ese centro, así no se amontona en los bordes de la banda.
   const z0=1.8*Math.tanh(_FIS.DEV*F.lng/_FIS.ESC/1.8),zs=F.sigma/_FIS.ESC;
+  // ── Hz -> ventana del General DENTRO de la banda del nivel elegido (Android) ──
+  // Hz bajos (táctil lento) = parte alta de la banda (así "baja" no se queda en el fondo y no da puro pecho);
+  // 90 Hz = centro; 120 Hz o más = centro-bajo, y el botón grande compensa. Ancho de la ventana = 50% de la banda.
+  if(!iP){
+    const g0=gLo,gs=gHi-gLo,pc=_l3(0.70,0.52,0.45);
+    gLo=Math.max(g0,Math.round(g0+gs*(pc-0.25)));gHi=Math.min(gHi,Math.round(g0+gs*(pc+0.25)));
+    if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.round(c-3);gHi=Math.min(197,Math.round(c+3));}
+  }
   // ── GENERAL ──
   let general=_spread("gen_"+(iP?"i":"a")+nivel,()=>gLo+(gHi-gLo)*_sigm(z0+zs*_gauss()),gLo,gHi,clamp(Math.round((gHi-gLo)/5),3,8),2); // solo se aleja de los 2 últimos: separa sin borrar el sesgo del celular
   // ── PUNTO ROJO: offset sobre General (más alto con hs "normal", más pegado con "full") ──
@@ -962,6 +976,12 @@ function genSensiMejorado(marca,modelo,nivel,dpi){
   let boton=_spread("bot_"+nivel+(iP?"i":""),()=>bLo+(bHi-bLo)*_sigm(-0.7*z0+zs*_gauss()),bLo,bHi,2,2);
   const rd=rojo-general;
   if(hs==="full"||rd>=3)boton-=(rd>=6?3:2);else if(rd>=1)boton-=1;
+  if(!iP){
+    // Rango del botón [60 Hz, 90 Hz, 120+ Hz] según el nivel que eligió el usuario; los Hz suben o bajan el rango.
+    const BT={baja:[[32,35],[35,38],[38,41]],media:[[36,39],[40,43],[43,46]],alta:[[40,43],[43,47],[45,51]]}[nivel]||[[36,39],[40,43],[43,46]];
+    const bL=Math.round(_l3(BT[0][0],BT[1][0],BT[2][0])),bH=Math.round(_l3(BT[0][1],BT[1][1],BT[2][1]));
+    boton=_spread("bot_"+nivel+"_hz",()=>bL+(bH-bL)*_sigm(-0.5*z0+zs*_gauss()),bL,bH,2,2);
+  }
   boton=clamp(Math.round(boton),32,52);
   // ── Orden final de seguridad ──
   rojo=clamp(rojo,FLOOR,200);x2=clamp(Math.round(x2),FLOOR,200);x4=clamp(x4,FLOOR,200);camara=clamp(camara,FLOOR,200);

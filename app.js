@@ -918,9 +918,12 @@ function genSensiMejorado(marca,modelo,nivel,dpi){
   const sp=_screenProfile(marca,modelo);
   // La física usa un refresco NEUTRO (90 Hz): los Hz se aplican de forma explícita más abajo (General y botón), sin doble conteo.
   const F=_fisGanancia({...sp,refreshHz:_SCREEN_REF.refreshHz},dpiV,_fisFuentes(marca,modelo));
-  // ── Hz → botón y General (Android). ≤60 Hz = pantalla lenta; 90 = media; ≥120 = rápida (144/165/180/185 cuentan como 120).
-  // th: 0 en 60 Hz, 0.5 en 90 Hz, 1 en 120 Hz o más; los Hz intermedios (72, 75, 100...) se interpolan.
-  const th=clamp((Math.min(sp.refreshHz||90,120)-60)/60,0,1);
+  // ── Respuesta del táctil (Android e iPhone). ≤60 Hz = pantalla lenta; 90 = media; ≥120 = rápida (144/165/180/185 cuentan como 120).
+  // th0: 0 en 60 Hz, 0.5 en 90 Hz, 1 en 120 Hz o más (los Hz intermedios se interpolan).
+  // La resolución (rf: ~720p=0, ~1080p=0.5, ~1440p=1) y el chip corren esa escala: más resolución/chip = se siente más rápido.
+  const th0=clamp((Math.min(sp.refreshHz||90,120)-60)/60,0,1);
+  const rf=clamp((Math.sqrt((sp.resShort||1080)*(sp.resLong||2400))-1000)/1200,0,1);
+  const th=clamp(th0+0.60*(rf-0.5)+0.20*((sp.chipScore!=null?sp.chipScore:0.5)-0.5),0,1);
   const _l3=(a,b,c)=>th<0.5?a+(b-a)*(th/0.5):b+(c-b)*((th-0.5)/0.5);
   // Centro del resultado según el celular: los datos del Worker mueven el centro de forma suave y acotada (±1.8),
   // y el azar físico (zs) reparte alrededor de ese centro, así no se amontona en los bordes de la banda.
@@ -928,15 +931,18 @@ function genSensiMejorado(marca,modelo,nivel,dpi){
   // ── Hz -> ventana del General DENTRO de la banda del nivel elegido (Android) ──
   // Hz bajos (táctil lento) = parte alta de la banda (así "baja" no se queda en el fondo y no da puro pecho);
   // 90 Hz = centro; 120 Hz o más = centro-bajo, y el botón grande compensa. Ancho de la ventana = 50% de la banda.
-  if(!iP){
-    const g0=gLo,gs=gHi-gLo,pc=_l3(0.70,0.52,0.45);
+  {
+    const g0=gLo,gs=gHi-gLo,pc=clamp(_l3(0.70,0.52,0.45)+0.06*_gauss(),0.26,0.78); // el azar mueve la ventana para que no salga siempre en lo mismo
     gLo=Math.max(g0,Math.round(g0+gs*(pc-0.25)));gHi=Math.min(gHi,Math.round(g0+gs*(pc+0.25)));
     if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.round(c-3);gHi=Math.min(197,Math.round(c+3));}
   }
   // ── GENERAL ──
   let general=_spread("gen_"+(iP?"i":"a")+nivel,()=>gLo+(gHi-gLo)*_sigm(z0+zs*_gauss()),gLo,gHi,clamp(Math.round((gHi-gLo)/5),3,8),2); // solo se aleja de los 2 últimos: separa sin borrar el sesgo del celular
   // ── PUNTO ROJO: offset sobre General (más alto con hs "normal", más pegado con "full") ──
-  const rLo=Math.max(nivel==="baja"?5:4,p.rojoD[0]+4),rHi=Math.max(rLo+6,p.rojoD[1]*3+6+(nivel==="baja"?2:0)); // nunca pegado al General (mínimo 4-5 puntos)
+  // Separación rojo-General: 10 a 15 puntos. Táctil rápido (th alto) = parte baja (no se pasa de la cabeza); lento = parte alta (no se pega al pecho).
+  // Solo cuando el techo de 199 no deja espacio (General muy alto) puede quedar más junto.
+  const cg=clamp(14-3*th+(hs==="full"?-1:hs==="normal"?1:0),10.5,14.5);
+  const rLo=Math.max(10,Math.round(cg-2)),rHi=Math.min(15,Math.round(cg+2));
   const zh=hs==="full"?-0.9:hs==="mid"?0:0.9;
   // Las ventanas se acotan con el espacio libre hasta 199: así nada se amontona en el 200.
   const topR=199-Math.round(4*_sigm(_gauss())); // techo variable (195-199): evita que varios valores terminen clavados en 199
@@ -944,14 +950,14 @@ function genSensiMejorado(marca,modelo,nivel,dpi){
   const off=_spread("roj_"+nivel,()=>rLo2+(rHi2-rLo2)*_sigm(0.8*z0+zh+zs*_gauss()),rLo2,rHi2,3,2);
   let rojo=general+off;
   // ── ZOOM 2x: reducción por monitor-distance matching, k dentro de la ventana del nivel ──
-  const xLo=Math.abs(p.x2D[1]),xHi=Math.abs(p.x2D[0]),dMin=Math.max(5,xLo),dMax=xHi+12;
+  const xLo=Math.abs(p.x2D[1]),xHi=Math.abs(p.x2D[0]),dMin=Math.max(8,xLo),dMax=xHi+12;
   const kr=_FIS_K[nivel]||_FIS_K.media,r2ref=_mdm(2,_FIS.K_REF);
   const dX2=_spread("x2d_"+nivel,()=>{const k=kr[0]*Math.pow(kr[1]/kr[0],_sigm(0.6*z0+zs*_gauss()));return rojo*(1-_mdm(2,k)/r2ref);},dMin,dMax,3,2);
   let x2=clamp(rojo-dX2,FLOOR,rojo-3);
   // ── ZOOM 4x: compensación ∝ √(r2/r4) − 1 (la raíz amortigua la respuesta del juego) ──
   const kq=_kDeRatio(2,clamp(x2/rojo,0.3,0.999)*r2ref);
   const fq=Math.sqrt(_mdm(2,kq)/_mdm(4,kq))-1;
-  const topX=199-Math.round(7*_sigm(_gauss())),hi4=Math.max(3,Math.min(40,topX-x2)),lo4=Math.min(16,Math.max(3,hi4-5));
+  const topX=199-Math.round(7*_sigm(_gauss())),hi4=Math.max(3,Math.min(40,topX-x2)),lo4=Math.min(16,Math.max(Math.min(8,hi4),hi4-5));
   const d4=_spread("x4d_"+nivel,()=>x2*(0.32+0.22*_sigm(0.5*z0+zs*_gauss()))*fq,lo4,hi4,4,2);
   let x4=x2+d4;
   // ── FRANCOTIRADOR: ventana propia del grupo, posición por física ──
@@ -976,11 +982,13 @@ function genSensiMejorado(marca,modelo,nivel,dpi){
   let boton=_spread("bot_"+nivel+(iP?"i":""),()=>bLo+(bHi-bLo)*_sigm(-0.7*z0+zs*_gauss()),bLo,bHi,2,2);
   const rd=rojo-general;
   if(hs==="full"||rd>=3)boton-=(rd>=6?3:2);else if(rd>=1)boton-=1;
-  if(!iP){
-    // Rango del botón [60 Hz, 90 Hz, 120+ Hz] según el nivel que eligió el usuario; los Hz suben o bajan el rango.
-    const BT={baja:[[32,35],[35,38],[38,41]],media:[[36,39],[40,43],[43,46]],alta:[[40,43],[43,47],[45,51]]}[nivel]||[[36,39],[40,43],[43,46]];
+  {
+    // Rango del botón [60 Hz, 90 Hz, 120+ Hz] según el nivel que eligió el usuario; la respuesta del táctil (Hz, resolución, chip) sube o baja el rango.
+    const BTA={baja:[[32,35],[35,38],[38,41]],media:[[36,39],[40,43],[43,46]],alta:[[40,43],[43,47],[45,51]]};
+    const BTI={baja:[[36,40],[39,43],[42,46]],media:[[40,44],[43,47],[46,50]],alta:[[44,47],[47,50],[49,52]]};
+    const BT=(iP?BTI:BTA)[nivel]||(iP?BTI:BTA).media;
     const bL=Math.round(_l3(BT[0][0],BT[1][0],BT[2][0])),bH=Math.round(_l3(BT[0][1],BT[1][1],BT[2][1]));
-    boton=_spread("bot_"+nivel+"_hz",()=>bL+(bH-bL)*_sigm(-0.5*z0+zs*_gauss()),bL,bH,2,2);
+    boton=_spread("bot_"+nivel+(iP?"i":"")+"_hz",()=>bL+(bH-bL)*_sigm(-0.5*z0+zs*_gauss()),bL,bH,2,2);
   }
   boton=clamp(Math.round(boton),32,52);
   // ── Orden final de seguridad ──

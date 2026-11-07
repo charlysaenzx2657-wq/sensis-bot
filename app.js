@@ -575,25 +575,18 @@ const _MOV_PROFILES=[
 // mismo dato investigado en vez de ser una segunda cifra suelta.
 const _SCREEN_PROFILES={
   // diagIn: diagonal típica de pantalla (pulgadas) · aspect: alto/ancho típico
-  // touchHz: frecuencia de muestreo táctil típica (ver fuentes arriba)
-  // touchLagMs: RETRASO real de respuesta táctil (latencia dedo->pantalla,
-  // distinto de touchHz: touchHz es cuántas veces por segundo el chip LEE
-  // el dedo, touchLagMs es cuánto tarda esa lectura en traducirse en un
-  // cambio visible en pantalla — paneles/controladores más lentos o con
-  // procesamiento extra (filtros de imagen, etc.) agregan retraso aunque
-  // el touchHz sea alto). Estimado por gama mientras no se investigue el
-  // modelo exacto (ver _buildPartialResult / _screenProfile más abajo).
-  A:{diagIn:6.7,aspect:2.20,touchHz:240,touchLagMs:8},   // flagships (Samsung S/Note, Pixel, OnePlus, Sony)
-  B:{diagIn:6.5,aspect:2.17,touchHz:120,touchLagMs:14},  // gama media-alta
-  B2:{diagIn:6.4,aspect:2.15,touchHz:110,touchLagMs:16}, // gama media
-  B3:{diagIn:6.5,aspect:2.17,touchHz:100,touchLagMs:15}, // gama media-alta (variante)
-  B4:{diagIn:6.6,aspect:2.18,touchHz:120,touchLagMs:13}, // gama media-alta (variante)
-  C:{diagIn:6.5,aspect:2.15,touchHz:60,touchLagMs:24},   // gama baja/entrada, chips más lentos
-  D:{diagIn:6.5,aspect:2.16,touchHz:90,touchLagMs:17},   // gama genérica/no catalogada
-  E:{diagIn:6.1,aspect:2.16,touchHz:150,touchLagMs:10},  // iPhone (mezcla base 120Hz / Pro ProMotion 240-360Hz)
-  V:{diagIn:6.8,aspect:2.22,touchHz:600,touchLagMs:5},   // gaming phones (RedMagic hasta 960-1000Hz, ROG 480-720Hz)
+  // (touchHz y touchLagMs se quitaron: ya no se investigan ni entran en la fórmula)
+  A:{diagIn:6.7,aspect:2.20},   // flagships (Samsung S/Note, Pixel, OnePlus, Sony)
+  B:{diagIn:6.5,aspect:2.17},  // gama media-alta
+  B2:{diagIn:6.4,aspect:2.15}, // gama media
+  B3:{diagIn:6.5,aspect:2.17}, // gama media-alta (variante)
+  B4:{diagIn:6.6,aspect:2.18}, // gama media-alta (variante)
+  C:{diagIn:6.5,aspect:2.15},   // gama baja/entrada, chips más lentos
+  D:{diagIn:6.5,aspect:2.16},   // gama genérica/no catalogada
+  E:{diagIn:6.1,aspect:2.16},  // iPhone (mezcla base 120Hz / Pro ProMotion 240-360Hz)
+  V:{diagIn:6.8,aspect:2.22},   // gaming phones (RedMagic hasta 960-1000Hz, ROG 480-720Hz)
 };
-const _SCREEN_REF={diagIn:6.5,aspect:2.17,touchHz:120,touchLagMs:14,refreshHz:90,chipScore:0.6,resShort:1080,resLong:2400}; // punto neutro de referencia (nudge=0)
+const _SCREEN_REF={diagIn:6.5,aspect:2.17,refreshHz:90,chipScore:0.6,resShort:1080,resLong:2400}; // punto neutro de referencia (nudge=0)
 // ── LOOKUP DE SPECS REALES DE CELULAR (caché-primero + Cloudflare Worker) ─
 // Antes _screenProfile solo devolvía el estimado genérico por gama/marca.
 // Ahora, si ya se investigó el modelo EXACTO (marca+modelo) alguna vez —
@@ -606,16 +599,9 @@ const _SCREEN_REF={diagIn:6.5,aspect:2.17,touchHz:120,touchLagMs:14,refreshHz:90
 // llama al Worker una vez y guarda el resultado. Si el Worker todavía no
 // está desplegado (_DEVICE_LOOKUP_URL vacío) o falla, todo esto se salta
 // en silencio y la app sigue funcionando igual que antes.
-// IMPORTANTE: touchLagMs (retraso de pantalla) es un campo NUEVO que el
-// cliente ya sabe leer/validar/calibrar acá, pero la IA que lo INVESTIGA
-// corre del lado del Worker (worker.js), que no forma parte de este
-// archivo. Falta agregar "touchLagMs" al prompt/schema de ese worker para
-// que efectivamente lo busque y lo devuelva; mientras tanto se usa el
-// estimado por gama de la tabla de arriba (igual que con touchHz cuando
-// no se encuentra).
 const _DEVICE_LOOKUP_URL="https://sensis-device-lookup.botdesensibilidades.workers.dev";
 const _DEVICE_SPECS_SCHEMA_V=3; // subir este número cada vez que cambie qué campos se investigan/aceptan, para que el caché viejo en Firestore se re-consulte una vez más en vez de quedar "found:false" para siempre.
-const LIMITS_DEVICE={diagIn:[4.0,8.5],aspect:[1.6,2.6],touchHz:[40,1000],touchLagMs:[0,80]};
+const LIMITS_DEVICE={diagIn:[4.0,8.5],aspect:[1.6,2.6]};
 function _inRangeDevice(v,[lo,hi]){ return typeof v==="number"&&isFinite(v)&&v>=lo&&v<=hi; }
 const _deviceSpecsCache=new Map();
 const _deviceSpecsInFlight=new Map();
@@ -661,8 +647,6 @@ function _buildPartialResult(d){
   d=d||{};
   const diagIn=_inRangeDevice(d.diagIn,LIMITS_DEVICE.diagIn)?d.diagIn:null;
   let aspect=_inRangeDevice(d.aspect,LIMITS_DEVICE.aspect)?d.aspect:null;
-  const touchHz=_inRangeDevice(d.touchHz,LIMITS_DEVICE.touchHz)?d.touchHz:null;
-  const touchLagMs=_inRangeDevice(d.touchLagMs,LIMITS_DEVICE.touchLagMs)?d.touchLagMs:null;
   const res=_parseResolution(d);
   const rf=_num(d.refreshHz!=null?d.refreshHz:(d.refreshRate!=null?d.refreshRate:(d.refresh!=null?d.refresh:(d.hz!=null?d.hz:(d.frecuenciaRefresco!=null?d.frecuenciaRefresco:d.tasaRefresco)))));
   const refreshHz=_inRangeDevice(rf,[24,360])?Math.round(rf):null;
@@ -671,8 +655,8 @@ function _buildPartialResult(d){
   let chipScore=_inRangeDevice(_num(d.chipScore),[0,1])?_num(d.chipScore):null;
   if(chipScore==null&&chip)chipScore=_chipScore(chip);
   if(aspect==null&&res){const a=res.resLong/res.resShort;if(_inRangeDevice(a,LIMITS_DEVICE.aspect))aspect=a;} // el aspecto también sale de la resolución
-  const found=(diagIn!=null||aspect!=null||touchHz!=null||touchLagMs!=null||refreshHz!=null||chipScore!=null||res!=null);
-  return {found,diagIn,aspect,touchHz,touchLagMs,resShort:res?res.resShort:null,resLong:res?res.resLong:null,refreshHz,chip,chipScore};
+  const found=(diagIn!=null||aspect!=null||refreshHz!=null||chipScore!=null||res!=null);
+  return {found,diagIn,aspect,resShort:res?res.resShort:null,resLong:res?res.resLong:null,refreshHz,chip,chipScore};
 }
 function _deviceKey(marca,modelo){
   return (String(marca||"").trim()+"|"+String(modelo||"").trim()).toLowerCase().replace(/\s+/g," ").slice(0,180);
@@ -744,7 +728,7 @@ async function _lookupDeviceSpecs(marca,modelo){
         result._t=Date.now();
         result._ttl=/^modelo_no_reconocido/.test(motivo)?300000:20000; // si fue un error se reintenta pronto
       }
-      else if(!(result.diagIn!=null&&result.aspect!=null&&result.touchHz!=null&&result.touchLagMs!=null&&result.refreshHz!=null&&result.chipScore!=null&&result.resShort!=null)) console.log("📱 [device_specs] Se aceptaron solo los campos válidos; el resto usa estimado por gama:",result);
+      else if(!(result.diagIn!=null&&result.aspect!=null&&result.refreshHz!=null&&result.chipScore!=null&&result.resShort!=null)) console.log("📱 [device_specs] Se aceptaron solo los campos válidos; el resto usa estimado por gama:",result);
       _deviceSpecsCache.set(key,result);
       // 3) Guardar en Firestore PARA SIEMPRE (incluso si found:false, para
       // no volver a preguntarle al Worker por un modelo que no reconoce
@@ -783,8 +767,6 @@ function _screenProfile(marca,modelo){
       const merged={
         diagIn:cached.diagIn!=null?cached.diagIn:fallback.diagIn,
         aspect:cached.aspect!=null?cached.aspect:fallback.aspect,
-        touchHz:cached.touchHz!=null?cached.touchHz:fallback.touchHz,
-        touchLagMs:cached.touchLagMs!=null?cached.touchLagMs:fallback.touchLagMs,
         ...extra(cached)
       };
       console.log("📱 [calibración] Usando specs REALES (parcial/completo) para '"+modelo+"':",merged,"(investigado:",cached,")");
@@ -804,7 +786,7 @@ function _screenProfile(marca,modelo){
 //     fracción del alto → g_h = 180/L_h, g_v = 60/L_v (grados por cm). Se combinan con la
 //     raíz cuadrática media ponderada G = √((w_h·g_h² + w_v·g_v²)/(w_h+w_v)), con pesos w
 //     que salen de la velocidad angular RMS de los 12 movimientos (lat/dist, vert/dist).
-//  3) LATENCIA: τ = 1000/touchHz + lag. En τ el dedo ya recorrió v·τ, se pierde la fracción
+//  3) LATENCIA: τ = media trama del refresco + carga del chip. En τ el dedo ya recorrió v·τ, se pierde la fracción
 //     λ·τ/T del gesto y la ganancia debe subir 1/(1−λτ/T).
 //  4) DPI: cm/360 = 360×2.54/(DPI×sens×yaw) → la sensi de software escala ∝ 1/DPI; el juego
 //     amortigua parte de eso, así que se aplica la RAÍZ: (DPI_ref/DPI)^½.
@@ -862,17 +844,17 @@ function _fisMov(){
 // De qué campos del Worker hay dato REAL (y cuáles son estimado por gama).
 function _fisFuentes(marca,modelo){
   const c=modelo?_deviceSpecsCache.get(_deviceKey(marca,modelo)):null,ok=!!(c&&c.found);
-  return{diagIn:ok&&c.diagIn!=null,aspect:ok&&c.aspect!=null,touchHz:ok&&c.touchHz!=null,touchLagMs:ok&&c.touchLagMs!=null,res:ok&&c.resShort!=null,refreshHz:ok&&c.refreshHz!=null,chip:ok&&c.chipScore!=null};
+  return{diagIn:ok&&c.diagIn!=null,aspect:ok&&c.aspect!=null,res:ok&&c.resShort!=null,refreshHz:ok&&c.refreshHz!=null,chip:ok&&c.chipScore!=null};
 }
 function _fisGanancia(sp,dpiVal,src){
   const mov=_fisMov();
   const calc=(x)=>{
     const g=_fisGeom(x),gh=180/(_FIS.SWEEP*g.W),gv=60/(_FIS.SWEEP_V*g.H);
     const G=Math.sqrt((mov.h*gh*gh+mov.v*gv*gv)/(mov.h+mov.v));
-    // Retraso total = muestreo táctil + lag de pantalla + media trama del refresco (se ve en el próximo
+    // Retraso total = media trama del refresco (se ve en el próximo
     // frame, en promedio medio periodo) + retraso por carga del chip.
     const frame=1000/(x.refreshHz||90),cpu=_FIS.CPU_MS*(1-(x.chipScore!=null?x.chipScore:0.6));
-    const tau=(1000/x.touchHz+x.touchLagMs+0.5*frame+cpu)/1000;
+    const tau=(0.5*frame+cpu)/1000;
     const perdida=Math.max(0.35,1-_FIS.LAMBDA*tau/_FIS.T_FLICK);
     // Techo de precisión: el error del dedo ε = √(jitter² + (v·τ)²) (Pitágoras: temblor + arrastre por
     // latencia) multiplicado por la ganancia (°/cm) no debe pasar de una fracción del blanco.
@@ -890,8 +872,6 @@ function _fisGanancia(sp,dpiVal,src){
   const add=(x)=>{v2+=x*x;};
   add(real.diagIn?0.008:0.045);                                              // ∂ln g/∂ln diag ≈ -1
   add(real.aspect?0.006:0.033);                                              // ∂ln W/∂ln a ≈ -a²/(1+a²)
-  add(dLn*(1/sp.touchHz)*(real.touchHz?0.03:0.35));                          // periodo de muestreo
-  add(dLn*(sp.touchLagMs/1000)*(real.touchLagMs?0.10:0.45));                 // retraso de pantalla
   add(_FIS.GAMMA_RES*(real.res?0.02:0.12));                                  // densidad de píxeles
   add(dLn*(0.5*a.frame/1000)*(real.refreshHz?0.02:0.30));                    // frecuencia de refresco
   add(dLn*(a.cpu/1000)*(real.chip?0.15:0.60));                               // carga del chip

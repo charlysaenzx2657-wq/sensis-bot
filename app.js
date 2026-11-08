@@ -1018,6 +1018,7 @@ function _fxRaf(cb){
       const dt=t-_fxLast;
       if(dt<200){ _fxDt.push(dt); if(_fxDt.length>=45){ _fxDt.sort((x,y)=>x-y); if(_fxDt[22]>22) _fxCapMs=30; _fxDt.length=0; } } else _fxDt.length=0;
     }
+    if(!document.body.classList.contains("fx-live")) document.body.classList.add("fx-live"); // fondo animado activo: se apaga el blur de las barras
     _fxLast=t; // durante el scroll el fondo dibuja a ~30 fps
     cb(t);
   });
@@ -1058,6 +1059,7 @@ function _drawGlow(colorRGB,x,y,size,alpha){
 }
 
 function stopFX(){
+  document.body.classList.remove("fx-live");
   if(fxRAF){cancelAnimationFrame(fxRAF);fxRAF=null;}
   ctx.clearRect(0,0,cv.width,cv.height);
   const v=document.getElementById("fxVideo");
@@ -1708,6 +1710,7 @@ function applyTheme(t){
 // si el archivo no carga (falta, error de red, etc.) cae automáticamente
 // al efecto dibujado en canvas como respaldo, sin dejar la pantalla en blanco.
 function startVideoOrFallback(name, fallbackFn){
+  document.body.classList.add("fx-live");
   const v=document.getElementById("fxVideo");
   if(!v){ fallbackFn(); return; }
   // Si ya es el mismo video y sigue reproduciéndose, no lo reiniciamos —
@@ -2040,7 +2043,7 @@ async function _openPublicProfile(nick){
     }
     const u=snap.data();
     const streak=u.streak||0;
-    document.getElementById("viewProfileStreak").textContent="🔥 "+streak+" día"+(streak!==1?"s":"");
+    document.getElementById("viewProfileStreak").innerHTML='<i class="racha-ico"></i> '+streak+" día"+(streak!==1?"s":"");
     document.getElementById("viewProfileBio").textContent=u.bio||"";
     document.getElementById("viewProfileTotalSensi").textContent=u.totalSensi||0;
     document.getElementById("viewProfileStreakNum").textContent=streak;
@@ -2484,7 +2487,7 @@ async function reaccionar(docId,emoji){
 function _streakBadgeHtml(item){
   const s=item.streak||0;
   if(s<10) return "";
-  return `<span style="font-size:10px;font-weight:900;color:#FF8844;margin-left:5px;">🔥${s}</span>`;
+  return `<span style="font-size:10px;font-weight:900;color:#FF8844;margin-left:5px;"><i class="racha-ico"></i>${s}</span>`;
 }
 // Botón de "like" (❤️) reutilizando el mismo sistema de reacciones que ya
 // existe (reaccionar()) — un toque simple en vez de tener que mantener
@@ -3453,7 +3456,7 @@ document.getElementById("cfgBtn").addEventListener("click",()=>{
   document.querySelectorAll(".copt").forEach(o=>o.classList.toggle("sel",o.dataset.c===currentColor));
   document.getElementById("customBgRemoveBtn").style.display=(currentTheme==="custom"&&localStorage.getItem("sg_custom_bg"))?"block":"none";
   const _sBox=document.getElementById("cfgStreakBox");
-  if(_sBox) _sBox.textContent="🔥 Racha: "+(window._myStreak||0)+" día"+((window._myStreak||0)!==1?"s":"")+" seguido"+((window._myStreak||0)!==1?"s":"");
+  if(_sBox) _sBox.innerHTML='<i class="racha-ico"></i> Racha: '+(window._myStreak||0)+" día"+((window._myStreak||0)!==1?"s":"")+" seguido"+((window._myStreak||0)!==1?"s":"");
   document.getElementById("cfgModal").classList.add("show");
   startMiniPreviews();
 });
@@ -4442,7 +4445,7 @@ async function entrar(googleUID=null){
   const {streak:_myStreak,lastLoginDay:_todayKey}=_computeStreak(_prevUD);
   window._myStreak=_myStreak;
   const _sf=document.getElementById("streakFloat");
-  if(_sf){ _sf.style.display=_myStreak>0?"flex":"none"; document.getElementById("streakFloatNum").textContent=_myStreak; }
+  if(_sf){ _sf.style.display=_myStreak>0?"flex":"none"; document.getElementById("streakFloatNum").textContent=_myStreak; if(window._streakFit) setTimeout(window._streakFit,0); }
   const _baseDoc={nickname:n, uid:myUID, did:DEVICE_ID, googleAccount:isGoogleUser, lastSeen:serverTimestamp(), online:true, meetId, streak:_myStreak, lastLoginDay:_todayKey};
   if(!(uSnapForMeet&&uSnapForMeet.exists())) await setDoc(uRef,{..._baseDoc,banned:false,createdAt:serverTimestamp()});
   else await setDoc(uRef,_baseDoc,{merge:true});
@@ -5258,3 +5261,35 @@ if(!/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)){
     }
   });
 }
+
+
+// ── Racha flotante: se arrastra con el dedo/mouse y recuerda su lugar ──
+(function(){
+  const el=document.getElementById("streakFloat"); if(!el) return;
+  const KEY="sg_streak_pos";
+  const apply=(x,y)=>{
+    const nx=Math.min(Math.max(x,4),Math.max(4,window.innerWidth-el.offsetWidth-4));
+    const ny=Math.min(Math.max(y,4),Math.max(4,window.innerHeight-el.offsetHeight-4));
+    el.style.left=nx+"px"; el.style.top=ny+"px"; el.style.right="auto";
+  };
+  let drag=null;
+  el.addEventListener("pointerdown",e=>{
+    const r=el.getBoundingClientRect();
+    drag={dx:e.clientX-r.left,dy:e.clientY-r.top,id:e.pointerId};
+    try{ el.setPointerCapture(e.pointerId); }catch(_){}
+    el.classList.add("dragging"); e.preventDefault();
+  });
+  el.addEventListener("pointermove",e=>{ if(drag&&e.pointerId===drag.id) apply(e.clientX-drag.dx,e.clientY-drag.dy); });
+  const end=()=>{
+    if(!drag) return; drag=null; el.classList.remove("dragging");
+    const r=el.getBoundingClientRect();
+    try{ localStorage.setItem(KEY,JSON.stringify({fx:r.left/window.innerWidth,fy:r.top/window.innerHeight})); }catch(_){}
+  };
+  el.addEventListener("pointerup",end); el.addEventListener("pointercancel",end);
+  // al mostrarse o girar la pantalla: vuelve al lugar guardado y se mantiene dentro de la pantalla
+  window._streakFit=()=>{
+    try{ const s=JSON.parse(localStorage.getItem(KEY)||"null"); if(s&&isFinite(s.fx)&&isFinite(s.fy)){ apply(s.fx*window.innerWidth,s.fy*window.innerHeight); return; } }catch(_){}
+    if(el.style.left){ const r=el.getBoundingClientRect(); apply(r.left,r.top); }
+  };
+  window.addEventListener("resize",()=>window._streakFit());
+})();

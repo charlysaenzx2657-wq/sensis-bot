@@ -896,7 +896,15 @@ function _spread(name,sampler,lo,hi,minSep,nHist){
   _histPush(key,best,6);
   return best;
 }
-function genSensiMejorado(marca,modelo,nivel,dpi){
+// DPI de fábrica aproximado: densidad física de la pantalla (ppi) redondeada al escalón típico de Android. Solo sirve de referencia interna.
+function _dpiFabrica(sp){
+  const w=sp&&sp.resShort,h=sp&&sp.resLong,d=sp&&sp.diagIn;
+  if(!(w>0&&h>0&&d>0)) return 420;
+  const ppi=Math.sqrt(w*w+h*h)/d, L=[240,280,320,360,400,420,440,450,480,520,540,560,600,640];
+  return L.reduce((b,x)=>Math.abs(x-ppi)<Math.abs(b-ppi)?x:b,L[0]);
+}
+// dpiUser: DPI actual que escribió el usuario (Android). Se compara contra el DPI de fábrica de SU celular, no contra un valor fijo.
+function genSensiMejorado(marca,modelo,nivel,dpi,dpiUser){
   const grp=_grp(marca),iP=(grp==="E"),p=P[grp];
   // ── Ventana de la General según el nivel (banda del nivel ∩ límites del grupo) ──
   const BANDA={baja:[145,158],media:[159,174],alta:[176,200]},BANDA_I={baja:[89,120],media:[121,169],alta:[172,200]};
@@ -917,7 +925,14 @@ function genSensiMejorado(marca,modelo,nivel,dpi){
   // ── Física del dispositivo → ln g y su incertidumbre σ ──
   const sp=_screenProfile(marca,modelo);
   // La física usa un refresco NEUTRO (90 Hz): los Hz se aplican de forma explícita más abajo (General y botón), sin doble conteo.
+  const dpiDef=_dpiFabrica(sp), uD=(!iP&&dpiUser>=240&&dpiUser<=800)?dpiUser:null;
+  // El DPI escrito por el usuario NO entra a la física: se coordina con los Hz en un solo reparto (ver dSh más abajo).
   const F=_fisGanancia({...sp,refreshHz:_SCREEN_REF.refreshHz},dpiV,_fisFuentes(marca,modelo));
+  // Reparto coordinado Hz + DPI sobre el General: los Hz mueven la ventana 0.25 de la banda (60 -> 120 Hz) y el DPI recibe una parte
+  // PROPIA y limitada (2/3 de ese recorrido, +-1/6 de la banda): así un DPI extremo nunca borra la diferencia entre 60 y 120 Hz.
+  // Con el DPI de fábrica no hay ajuste (igual que "Sin DPI"); más DPI que el de fábrica baja el General y menos DPI lo sube.
+  const _HZ_SPAN=0.25, _DPI_SHARE=2/3;
+  const dSh=uD?-(_HZ_SPAN*_DPI_SHARE/2)*clamp(Math.log(uD/dpiDef)/0.7,-1,1):0;
   // ── Respuesta del táctil (Android e iPhone). ≤60 Hz = pantalla lenta; 90 = media; ≥120 = rápida (144/165/180/185 cuentan como 120).
   // th0: 0 en 60 Hz, 0.5 en 90 Hz, 1 en 120 Hz o más (los Hz intermedios se interpolan).
   // La resolución (rf: ~720p=0, ~1080p=0.5, ~1440p=1) y el chip corren esa escala: más resolución/chip = se siente más rápido.
@@ -932,7 +947,7 @@ function genSensiMejorado(marca,modelo,nivel,dpi){
   // Hz bajos (táctil lento) = parte alta de la banda (así "baja" no se queda en el fondo y no da puro pecho);
   // 90 Hz = centro; 120 Hz o más = centro-bajo, y el botón grande compensa. Ancho de la ventana = 50% de la banda.
   {
-    const g0=gLo,gs=gHi-gLo,pc=clamp(_l3(0.70,0.52,0.45)+0.06*_gauss(),0.26,0.78); // el azar mueve la ventana para que no salga siempre en lo mismo
+    const g0=gLo,gs=gHi-gLo,pc=clamp(_l3(0.70,0.52,0.45)+0.06*_gauss()+dSh,0.16,0.86); // el azar mueve la ventana para que no salga siempre en lo mismo
     gLo=Math.max(g0,Math.round(g0+gs*(pc-0.25)));gHi=Math.min(gHi,Math.round(g0+gs*(pc+0.25)));
     if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.round(c-3);gHi=Math.min(197,Math.round(c+3));}
   }
@@ -999,7 +1014,7 @@ function genSensiMejorado(marca,modelo,nivel,dpi){
   franco=clamp(franco,fMin,Math.min(fMax,x2-1));
   // Garantía final: TODOS los valores salen como enteros (nada de decimales).
   const I=Math.round;
-  return{general:I(general),rojo:I(rojo),x2:I(x2),x4:I(x4),franco:I(franco),camara:I(camara),boton:I(boton),dpi:dpiV==null?null:I(dpiV),nivel,hs,motor:"mejorado"};
+  return{general:I(general),rojo:I(rojo),x2:I(x2),x4:I(x4),franco:I(franco),camara:I(camara),boton:I(boton),dpi:uD?I(uD):(dpiV==null?null:I(dpiV)),nivel,hs,motor:"mejorado"};
 }
 
 // ── CANVAS FX ─────────────────────────────────────────
@@ -2882,14 +2897,27 @@ function onBtn(lbl,bd,silent){
     data.nivel=n; addMsg("user",lbl);
     if(_grp(data.marca)==="E"){
       // iPhone (iOS) no tiene ajuste de DPI: se omite la pregunta y se genera directo
-      data.dpi=false; step="dpi";
+      data.dpi=false; data._dpiAsk=true; step="dpi"; // iPhone: no hay pregunta de DPI
       onBtn("❌ Sin DPI",bd,true);
       return;
     }
     step="dpi";
     setTimeout(()=>addMsg("bot","¿Con DPI calibrado?",{btns:["✅ Sí, con DPI","❌ Sin DPI"]}),300);
   } else if(step==="dpi"){
-    data.dpi=lbl.includes("Sí"); if(!silent) addMsg("user",lbl); // silent: al "generar otra" no se manda ningún mensaje
+    // Android + "Sin DPI": nueva pregunta "¿Sabes cuál es tu DPI actual?" (si ya lo guardó para este celular, no se vuelve a preguntar)
+    let echoed=false;
+    if(!lbl.includes("Sí")&&data._dpiAsk!==true){
+      const sv=_devGet(data.marca,data.modelo);
+      if(sv){ if(!silent){ addMsg("user",lbl); echoed=true; } data.dpiUser=sv.dpi; data._dpiAsk=true; addMsg("bot","🔵 Uso el DPI guardado de este celular: "+sv.dpi+"\n(puedes cambiarlo en Menú → Dispositivos guardados)"); }
+      else{
+        if(!silent) addMsg("user",lbl);
+        step="dpiKnow";
+        setTimeout(()=>addMsg("bot","¿Sabes cuál es tu DPI actual?",{btns:["✅ Sí, lo sé","❌ No lo sé"]}),300);
+        return;
+      }
+    }
+    if(lbl.includes("Sí")) data.dpiUser=null; // "Sí, con DPI" sigue igual: la app propone el DPI
+    data.dpi=lbl.includes("Sí"); if(!silent&&!echoed) addMsg("user",lbl); // silent: al "generar otra" no se manda ningún mensaje
     setTimeout(async()=>{
       try{
         // doble check servidor
@@ -2901,7 +2929,7 @@ function onBtn(lbl,bd,silent){
         // timeout corto para que nunca trabe la generación si la Cloud
         // Function no está desplegada o tarda de más.
         await _lookupDeviceSpecs(data.marca,data.modelo).catch(()=>{});
-        const r=genSensiMejorado(data.marca,data.modelo,data.nivel,data.dpi);
+        const r=genSensiMejorado(data.marca,data.modelo,data.nivel,data.dpi,data.dpiUser||null);
         myCount=await incServerCount(nickname); updateCounter();
         const hs=r.hs==="full"?"🎯 HEADSHOT CONFIG":r.hs==="mid"?"⚡ HEADSHOT MID":"";
         const dL=r.dpi?"\n🔵 DPI: "+r.dpi:"";
@@ -2945,11 +2973,34 @@ function onBtn(lbl,bd,silent){
         step="idle";
       }
     },300);
+  } else if(step==="dpiKnow"){
+    addMsg("user",lbl);
+    if(lbl.includes("Sí")){
+      step="dpiVal";
+      setTimeout(()=>addMsg("bot","✍️ Escribe tu DPI actual (por ejemplo 420).\n\n⚠️ Debe ser tu DPI real: si no, tu sensibilidad no saldrá calibrada y no se va a pegar bien.\n\nSi es el DPI de fábrica o nunca lo has cambiado ni movido, mejor pulsa «No, es el de fábrica».",{btns:["❌ No, es el de fábrica"]}),300);
+    } else { data._dpiAsk=true; data.dpiUser=null; step="dpi"; onBtn("❌ Sin DPI",document.createElement("div"),true); }
+  } else if(step==="dpiVal"){
+    // botón «No, es el de fábrica»: se genera como siempre, sin DPI
+    addMsg("user",lbl); data._dpiAsk=true; data.dpiUser=null; step="dpi"; onBtn("❌ Sin DPI",document.createElement("div"),true);
   }
+}
+
+// El usuario escribió su DPI en el chat (paso "dpiVal")
+function _handleDpiInput(msg){
+  const inp=document.getElementById("msgInput");
+  // si en vez del DPI escribió otro celular, se reinicia el flujo con ese celular
+  if(!/^\s*\d{2,4}\s*(dpi)?\s*$/i.test(msg)&&detectM(msg)){ step="idle"; inp.value=msg; handleSend(); return; }
+  addMsg("user",msg);
+  const n=parseInt(String(msg).replace(/[^\d]/g,""),10);
+  if(!(n>=240&&n<=800)){ setTimeout(()=>addMsg("bot","Ese DPI no parece válido. Escribe un número entre 240 y 800 (por ejemplo 420)."),300); return; }
+  _devSet(data.marca,data.modelo,n);
+  data.dpiUser=n; data._dpiAsk=true; step="dpi";
+  onBtn("❌ Sin DPI",document.createElement("div"),true);
 }
 
 function handleSend(){
   const inp=document.getElementById("msgInput"); const msg=inp.value.trim(); if(!msg)return; inp.value="";
+  if(step==="dpiVal"){ _handleDpiInput(msg); return; }
   if(step!=="idle"){ addMsg("user",msg); return; }
   if(/^\d{6}$/.test(msg)){ addMsg("user",msg); redeemCode(msg); return; }
   _winTick(); if(myCount>=_effectiveMax()){ addMsg("user",msg); setTimeout(()=>addMsg("bot","⛔ Llegaste al límite.\n\nSe restablece en "+_winLeft()+". ☠️⚡"),300); return; }
@@ -3438,6 +3489,39 @@ const _SUP_MAIL="charlysaenzx2657@gmail.com";
   btn.addEventListener("click",()=>m.classList.add("show"));
   document.getElementById("infoCloseX").addEventListener("click",()=>m.classList.remove("show"));
   m.addEventListener("click",e=>{ if(e.target===m) m.classList.remove("show"); });
+})();
+// ── Dispositivos guardados: DPI por celular, solo en este navegador (localStorage) ──
+const _DEV_KEY="sg_devices";
+function _devAll(){ try{ const o=JSON.parse(localStorage.getItem(_DEV_KEY)||"{}"); return (o&&typeof o==="object"&&!Array.isArray(o))?o:{}; }catch(e){ return {}; } }
+function _devGet(marca,modelo){ const v=_devAll()[_deviceKey(marca,modelo)]; return (v&&v.dpi>=240&&v.dpi<=800)?v:null; }
+function _devSet(marca,modelo,dpi){ const o=_devAll(); o[_deviceKey(marca,modelo)]={marca,modelo,dpi,ts:Date.now()}; try{ localStorage.setItem(_DEV_KEY,JSON.stringify(o)); }catch(e){} }
+function _devDel(key){ const o=_devAll(); delete o[key]; try{ localStorage.setItem(_DEV_KEY,JSON.stringify(o)); }catch(e){} }
+(function(){
+  const m=document.getElementById("devModal"),btn=document.getElementById("devBtn"),list=document.getElementById("devList"); if(!m||!btn||!list) return;
+  const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  function render(){
+    const o=_devAll(), keys=Object.keys(o).filter(k=>o[k]&&o[k].dpi);
+    if(!keys.length){ list.innerHTML="<div style='font-size:12px;color:rgba(160,215,255,0.4);text-align:center;padding:24px 8px;line-height:1.6;'>Aún no hay dispositivos guardados.<br>Aparecen aquí cuando generas una sensi y dices que sí sabes tu DPI.</div>"; return; }
+    list.innerHTML=keys.map(k=>"<div class='dev-row' data-k='"+esc(k)+"' style='padding:12px;border-radius:16px;border:1px solid rgba(var(--ac-rgb),0.2);background:rgba(var(--ac-rgb),0.05);'>"
+      +"<div style='font-size:12px;font-weight:900;color:var(--ac);margin-bottom:8px;'>📱 "+esc(o[k].marca)+" "+esc(o[k].modelo)+"</div>"
+      +"<div style='display:flex;gap:8px;align-items:center;'>"
+      +"<input class='inp dev-dpi' type='number' inputmode='numeric' min='240' max='800' value='"+esc(o[k].dpi)+"' style='flex:1;font-size:13px;'/>"
+      +"<button class='abtn dev-save' style='padding:10px 14px;font-size:11px;'>Guardar</button>"
+      +"<button class='abtn dev-del' title='Borrar' style='padding:10px 12px;font-size:11px;'>🗑️</button>"
+      +"</div><div class='dev-msg' style='font-size:10px;color:rgba(160,215,255,0.5);margin-top:6px;min-height:12px;'>DPI en el que está tu celular (240 a 800)</div></div>").join("");
+  }
+  btn.addEventListener("click",()=>{ render(); m.classList.add("show"); });
+  document.getElementById("devCloseX").addEventListener("click",()=>m.classList.remove("show"));
+  m.addEventListener("click",e=>{ if(e.target===m) m.classList.remove("show"); });
+  list.addEventListener("click",e=>{
+    const row=e.target.closest(".dev-row"); if(!row) return; const k=row.dataset.k, o=_devAll();
+    if(e.target.closest(".dev-del")){ _devDel(k); render(); return; }
+    if(e.target.closest(".dev-save")&&o[k]){
+      const n=parseInt(row.querySelector(".dev-dpi").value,10), msg=row.querySelector(".dev-msg");
+      if(!(n>=240&&n<=800)){ msg.textContent="⚠️ Escribe un número entre 240 y 800."; msg.style.color="#ff8888"; return; }
+      _devSet(o[k].marca,o[k].modelo,n); msg.textContent="✅ Guardado: "+n; msg.style.color="#3DFF8F";
+    }
+  });
 })();
 // Al abrir cualquier ventana (overlay) se apaga el blur unos instantes para que la animación fluya.
 (function(){

@@ -1,0 +1,32 @@
+# SensisBot (Sensis Good FF)
+
+> SensisBot (sensisbot.com) es un bot y generador web avanzado de sensibilidades personalizadas para Free Fire, creado por Sensis Good FF. Calcula configuraciones exactas en tiempo real utilizando datos de hardware del dispositivo, física y estadística.
+
+## Cómo funciona y cómo se usa
+1. **Ingreso de dispositivo:** El usuario escribe la marca y el modelo exacto de su teléfono móvil (ejemplo: Honor X5C Plus).
+2. **Selección de nivel:** Se elige el nivel de sensibilidad deseado entre Baja, Media o Alta.
+3. **Configuración de DPI:** Se indica si el dispositivo utiliza DPI calibrado.
+4. **Tabla de resultados:** El sistema genera valores listos para copiar para General, Mira Rojo, Mira 2X, Mira 4X, Francotirador, Cámara 360° y tamaño del Botón de disparo, permitiendo generar nuevas variaciones al instante.
+5. **Sistema de límites:** Cuenta con un límite de generaciones cada 5 horas visible en el contador superior.
+
+## Algoritmo y parámetros de calibración
+- **Análisis automático de hardware:** Busca especificaciones reales del teléfono en internet (tamaño y forma de pantalla, resolución, tasa de refresco en Hz y procesador/chip). Si falta algún dato técnico, lo estima según la gama y marca del equipo.
+- **Cálculo por Hz y resolución:** Ajusta automáticamente el tamaño del botón de disparo y la altura de la sensibilidad General según la pantalla.
+- **Los 12 movimientos del personaje:** Calibra la velocidad de giro y apuntado evaluando las 12 acciones del jugador en Free Fire (quieto, adelante, atrás, lateral, salto, agachado, etc.).
+- **Física y estadística dinámica:** Cada tabla se calcula matemáticamente desde cero; no utiliza números fijos y evita repetir valores pegados entre dos generaciones seguidas.
+- **Separación de Mira Rojo:** Mantiene una distancia calibrada entre el Punto Rojo y la sensibilidad General para evitar que los disparos se queden pegados al pecho o pasen por encima de la cabeza.
+
+## Funciones de comunidad y herramientas adicionales
+- **Chat En Vivo (HUDs):** Espacio interactivo para compartir y explorar códigos de HUD personalizados de la comunidad.
+- **Sistema de recompensas y gamificación:** Incluye Bandeja de mensajes, canje de Códigos, Productos Gratis (como comandos y configuraciones), sistema de Créditos por invitación, Ranking de usuarios y Programa Creadores para TikTok y YouTube.
+- **Soporte integrado:** Canal directo para reportar errores, bugs, sugerencias o vulnerabilidades al desarrollador.
+
+## Personalización visual e interfaz
+- **Paleta de colores:** 22 colores de acento, modo neutro y modo de colores aleatorios con transición cada 5 segundos; cada casilla de la tabla de sensibilidad adopta un tono distinto del color elegido.
+- **Fondos:** 10 fondos predefinidos (Oscuro, Matrix, Lluvia, Cyber, Fuego, Neón, Océano, Gold, Blood y Mint) más soporte para subir una imagen personalizada.
+- **Temas completos:** 6 temas visuales integrales (Hacker, Ciberseguridad, Consola, Cyberpunk, Infernal y Abismo).
+- **Efectos visuales:** Efecto Glassmorphism, bordes RGB animados y respuesta visual de pulsación al tocar.
+
+## Enlaces oficiales
+- Plataforma web: https://sensisbot.com
+- Mapa del sitio: https://sensisbot.comsitemap.xml

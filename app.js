@@ -2897,27 +2897,14 @@ function onBtn(lbl,bd,silent){
     data.nivel=n; addMsg("user",lbl);
     if(_grp(data.marca)==="E"){
       // iPhone (iOS) no tiene ajuste de DPI: se omite la pregunta y se genera directo
-      data.dpi=false; data._dpiAsk=true; step="dpi"; // iPhone: no hay pregunta de DPI
+      data.dpi=false; step="dpi";
       onBtn("❌ Sin DPI",bd,true);
       return;
     }
     step="dpi";
     setTimeout(()=>addMsg("bot","¿Con DPI calibrado?",{btns:["✅ Sí, con DPI","❌ Sin DPI"]}),300);
   } else if(step==="dpi"){
-    // Android + "Sin DPI": nueva pregunta "¿Sabes cuál es tu DPI actual?" (si ya lo guardó para este celular, no se vuelve a preguntar)
-    let echoed=false;
-    if(!lbl.includes("Sí")&&data._dpiAsk!==true){
-      const sv=_devGet(data.marca,data.modelo);
-      if(sv){ if(!silent){ addMsg("user",lbl); echoed=true; } data.dpiUser=sv.dpi; data._dpiAsk=true; addMsg("bot","🔵 Uso el DPI guardado de este celular: "+sv.dpi+"\n(puedes cambiarlo en Menú → Dispositivos guardados)"); }
-      else{
-        if(!silent) addMsg("user",lbl);
-        step="dpiKnow";
-        setTimeout(()=>addMsg("bot","¿Sabes cuál es tu DPI actual?",{btns:["✅ Sí, lo sé","❌ No lo sé"]}),300);
-        return;
-      }
-    }
-    if(lbl.includes("Sí")) data.dpiUser=null; // "Sí, con DPI" sigue igual: la app propone el DPI
-    data.dpi=lbl.includes("Sí"); if(!silent&&!echoed) addMsg("user",lbl); // silent: al "generar otra" no se manda ningún mensaje
+    data.dpi=lbl.includes("Sí"); if(!silent) addMsg("user",lbl); // silent: al "generar otra" no se manda ningún mensaje
     setTimeout(async()=>{
       try{
         // doble check servidor
@@ -2929,7 +2916,7 @@ function onBtn(lbl,bd,silent){
         // timeout corto para que nunca trabe la generación si la Cloud
         // Function no está desplegada o tarda de más.
         await _lookupDeviceSpecs(data.marca,data.modelo).catch(()=>{});
-        const r=genSensiMejorado(data.marca,data.modelo,data.nivel,data.dpi,data.dpiUser||null);
+        const r=genSensiMejorado(data.marca,data.modelo,data.nivel,data.dpi);
         myCount=await incServerCount(nickname); updateCounter();
         const hs=r.hs==="full"?"🎯 HEADSHOT CONFIG":r.hs==="mid"?"⚡ HEADSHOT MID":"";
         const dL=r.dpi?"\n🔵 DPI: "+r.dpi:"";
@@ -2973,34 +2960,11 @@ function onBtn(lbl,bd,silent){
         step="idle";
       }
     },300);
-  } else if(step==="dpiKnow"){
-    addMsg("user",lbl);
-    if(lbl.includes("Sí")){
-      step="dpiVal";
-      setTimeout(()=>addMsg("bot","✍️ Escribe tu DPI actual (por ejemplo 420).\n\n⚠️ Debe ser tu DPI real: si no, tu sensibilidad no saldrá calibrada y no se va a pegar bien.\n\nSi es el DPI de fábrica o nunca lo has cambiado ni movido, mejor pulsa «No, es el de fábrica».",{btns:["❌ No, es el de fábrica"]}),300);
-    } else { data._dpiAsk=true; data.dpiUser=null; step="dpi"; onBtn("❌ Sin DPI",document.createElement("div"),true); }
-  } else if(step==="dpiVal"){
-    // botón «No, es el de fábrica»: se genera como siempre, sin DPI
-    addMsg("user",lbl); data._dpiAsk=true; data.dpiUser=null; step="dpi"; onBtn("❌ Sin DPI",document.createElement("div"),true);
   }
-}
-
-// El usuario escribió su DPI en el chat (paso "dpiVal")
-function _handleDpiInput(msg){
-  const inp=document.getElementById("msgInput");
-  // si en vez del DPI escribió otro celular, se reinicia el flujo con ese celular
-  if(!/^\s*\d{2,4}\s*(dpi)?\s*$/i.test(msg)&&detectM(msg)){ step="idle"; inp.value=msg; handleSend(); return; }
-  addMsg("user",msg);
-  const n=parseInt(String(msg).replace(/[^\d]/g,""),10);
-  if(!(n>=240&&n<=800)){ setTimeout(()=>addMsg("bot","Ese DPI no parece válido. Escribe un número entre 240 y 800 (por ejemplo 420)."),300); return; }
-  _devSet(data.marca,data.modelo,n);
-  data.dpiUser=n; data._dpiAsk=true; step="dpi";
-  onBtn("❌ Sin DPI",document.createElement("div"),true);
 }
 
 function handleSend(){
   const inp=document.getElementById("msgInput"); const msg=inp.value.trim(); if(!msg)return; inp.value="";
-  if(step==="dpiVal"){ _handleDpiInput(msg); return; }
   if(step!=="idle"){ addMsg("user",msg); return; }
   if(/^\d{6}$/.test(msg)){ addMsg("user",msg); redeemCode(msg); return; }
   _winTick(); if(myCount>=_effectiveMax()){ addMsg("user",msg); setTimeout(()=>addMsg("bot","⛔ Llegaste al límite.\n\nSe restablece en "+_winLeft()+". ☠️⚡"),300); return; }
@@ -3490,39 +3454,6 @@ const _SUP_MAIL="charlysaenzx2657@gmail.com";
   document.getElementById("infoCloseX").addEventListener("click",()=>m.classList.remove("show"));
   m.addEventListener("click",e=>{ if(e.target===m) m.classList.remove("show"); });
 })();
-// ── Dispositivos guardados: DPI por celular, solo en este navegador (localStorage) ──
-const _DEV_KEY="sg_devices";
-function _devAll(){ try{ const o=JSON.parse(localStorage.getItem(_DEV_KEY)||"{}"); return (o&&typeof o==="object"&&!Array.isArray(o))?o:{}; }catch(e){ return {}; } }
-function _devGet(marca,modelo){ const v=_devAll()[_deviceKey(marca,modelo)]; return (v&&v.dpi>=240&&v.dpi<=800)?v:null; }
-function _devSet(marca,modelo,dpi){ const o=_devAll(); o[_deviceKey(marca,modelo)]={marca,modelo,dpi,ts:Date.now()}; try{ localStorage.setItem(_DEV_KEY,JSON.stringify(o)); }catch(e){} }
-function _devDel(key){ const o=_devAll(); delete o[key]; try{ localStorage.setItem(_DEV_KEY,JSON.stringify(o)); }catch(e){} }
-(function(){
-  const m=document.getElementById("devModal"),btn=document.getElementById("devBtn"),list=document.getElementById("devList"); if(!m||!btn||!list) return;
-  const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  function render(){
-    const o=_devAll(), keys=Object.keys(o).filter(k=>o[k]&&o[k].dpi);
-    if(!keys.length){ list.innerHTML="<div style='font-size:12px;color:rgba(160,215,255,0.4);text-align:center;padding:24px 8px;line-height:1.6;'>Aún no hay dispositivos guardados.<br>Aparecen aquí cuando generas una sensi y dices que sí sabes tu DPI.</div>"; return; }
-    list.innerHTML=keys.map(k=>"<div class='dev-row' data-k='"+esc(k)+"' style='padding:12px;border-radius:16px;border:1px solid rgba(var(--ac-rgb),0.2);background:rgba(var(--ac-rgb),0.05);'>"
-      +"<div style='font-size:12px;font-weight:900;color:var(--ac);margin-bottom:8px;'>📱 "+esc(o[k].marca)+" "+esc(o[k].modelo)+"</div>"
-      +"<div style='display:flex;gap:8px;align-items:center;'>"
-      +"<input class='inp dev-dpi' type='number' inputmode='numeric' min='240' max='800' value='"+esc(o[k].dpi)+"' style='flex:1;font-size:13px;'/>"
-      +"<button class='abtn dev-save' style='padding:10px 14px;font-size:11px;'>Guardar</button>"
-      +"<button class='abtn dev-del' title='Borrar' style='padding:10px 12px;font-size:11px;'>🗑️</button>"
-      +"</div><div class='dev-msg' style='font-size:10px;color:rgba(160,215,255,0.5);margin-top:6px;min-height:12px;'>DPI en el que está tu celular (240 a 800)</div></div>").join("");
-  }
-  btn.addEventListener("click",()=>{ render(); m.classList.add("show"); });
-  document.getElementById("devCloseX").addEventListener("click",()=>m.classList.remove("show"));
-  m.addEventListener("click",e=>{ if(e.target===m) m.classList.remove("show"); });
-  list.addEventListener("click",e=>{
-    const row=e.target.closest(".dev-row"); if(!row) return; const k=row.dataset.k, o=_devAll();
-    if(e.target.closest(".dev-del")){ _devDel(k); render(); return; }
-    if(e.target.closest(".dev-save")&&o[k]){
-      const n=parseInt(row.querySelector(".dev-dpi").value,10), msg=row.querySelector(".dev-msg");
-      if(!(n>=240&&n<=800)){ msg.textContent="⚠️ Escribe un número entre 240 y 800."; msg.style.color="#ff8888"; return; }
-      _devSet(o[k].marca,o[k].modelo,n); msg.textContent="✅ Guardado: "+n; msg.style.color="#3DFF8F";
-    }
-  });
-})();
 // Al abrir cualquier ventana (overlay) se apaga el blur unos instantes para que la animación fluya.
 (function(){
   const mo=new MutationObserver(ms=>{
@@ -3880,6 +3811,7 @@ async function showAdmin(){
   <div class='acard' id='aActionCard' style='display:none;'>
     <div class='atitle blue'>👤 USUARIO SELECCIONADO: <span id='aSelLabel' style='color:#FFC800;'></span></div>
     <div class='ainfo' id='aUserInfo' style='margin-bottom:10px;'></div>
+    <input class='inp' id='aBanReason' maxlength='200' placeholder='Motivo del ban (el usuario lo verá)' style='margin-bottom:10px;font-size:12px;'/>
     <div class='agrid' style='margin-bottom:10px;'>
       <button class='abtn abtn-red' id='aBanBtn'>⛔ BANEAR</button>
       <button class='abtn abtn-green' id='aUnbanBtn'>✅ DESBANEAR</button>
@@ -4001,7 +3933,7 @@ async function showAdmin(){
       <pre style='font-size:11px;color:rgba(160,215,255,0.7);white-space:pre-wrap;line-height:1.8;'>🆔 UID: ${d.uid||"Sin ID"}
 👤 Nombre: ${d.nickname}
 ${isCreatorUser?"🎬 CREADOR VERIFICADO ✅\n":""}🎮 Sensis totales: ${d.totalSensi||0}
-⚠️ Baneado: ${d.banned?"SÍ ⛔":"NO ✅"}
+⚠️ Baneado: ${d.banned?"SÍ ⛔":"NO ✅"}${d.banned&&d.banReason?"\n📝 Motivo: "+String(d.banReason).replace(/[<>&]/g,"").slice(0,200):""}
 🔢 Límite por 5h: ${d.maxOverride??5}
 📱 Device: ${(d.did||"").slice(0,16)}...</pre>`;
     });
@@ -4255,13 +4187,13 @@ ${isCreatorUser?"🎬 CREADOR VERIFICADO ✅\n":""}🎮 Sensis totales: ${d.tota
 
   document.getElementById("aBanBtn").addEventListener("click",async()=>{
     if(!selectedUser||!confirm("¿Banear a "+selectedUser+"?"))return;
-    await setDoc(doc(db,_C.u(),selectedUser),{banned:true,bannedUntil:null},{merge:true});
+    await setDoc(doc(db,_C.u(),selectedUser),{banned:true,bannedUntil:null,banReason:(document.getElementById("aBanReason").value.trim()||null)},{merge:true});
     alert("Baneado ✅"); refreshUserInfo(selectedUser);
   });
   document.getElementById("aUnbanBtn").addEventListener("click",async()=>{
     if(!selectedUser)return;
     // Desbanear usuario
-    await setDoc(doc(db,_C.u(),selectedUser),{banned:false,bannedUntil:null},{merge:true});
+    await setDoc(doc(db,_C.u(),selectedUser),{banned:false,bannedUntil:null,banReason:null},{merge:true});
     // Borrar también el ban de fingerprint (device) si existe
     const uSnap=await getDoc(doc(db,_C.u(),selectedUser));
     if(uSnap.exists()){
@@ -4282,7 +4214,7 @@ ${isCreatorUser?"🎬 CREADOR VERIFICADO ✅\n":""}🎮 Sensis totales: ${d.tota
     const unit=match[3];
     const ms=unit==="s"?val*1000:unit==="m"?val*60000:unit==="h"?val*3600000:val*86400000;
     const label=unit==="s"?val+"s":unit==="m"?val+"m":unit==="h"?val+"h":val+"d";
-    await setDoc(doc(db,_C.u(),selectedUser),{banned:true,bannedUntil:new Date(Date.now()+ms)},{merge:true});
+    await setDoc(doc(db,_C.u(),selectedUser),{banned:true,bannedUntil:new Date(Date.now()+ms),banReason:(document.getElementById("aBanReason").value.trim()||null)},{merge:true});
     alert("Ban de "+label+" aplicado ✅"); refreshUserInfo(selectedUser);
   });
   document.getElementById("aRefreshBtn").addEventListener("click",async()=>{ if(selectedUser) refreshUserInfo(selectedUser); });
@@ -4492,6 +4424,7 @@ async function entrar(googleUID=null){
         } else {
           banMsg+="🚫 Ban permanente\n\nContacta al administrador.";
         }
+        if(ud.banReason) banMsg+="\n\n📝 Motivo: "+String(ud.banReason).slice(0,200);
         showBanScreen(banMsg, untilDate);
         return;
       } /* ban vencido: las reglas ya lo ignoran, no hace falta escribir */
@@ -4630,6 +4563,7 @@ async function entrar(googleUID=null){
         } else {
           banMsg+="🚫 Ban permanente\n\nContacta al administrador.";
         }
+        if(ud.banReason) banMsg+="\n\n📝 Motivo: "+String(ud.banReason).slice(0,200);
         // Mostrar pantalla de ban TOTAL — saca de sesión
         showBanScreen(banMsg, untilDate);
         return;
@@ -4790,7 +4724,7 @@ function _fallbackToLogin(){
   if(loginEl) loginEl.classList.add("show");
 }
 function _alreadyEntered(){
-  return document.getElementById("chatScreen").style.display==="flex" || !!document.getElementById("banScreen");
+  return document.getElementById("chatScreen").style.display==="flex" || !!document.getElementById("banScreen") || _isAdmin;
 }
 
 pendingTheme=currentTheme; pendingColor=currentColor;
@@ -4971,6 +4905,8 @@ onAuthStateChanged(auth, async _u=>{
   if(_autoLoginStarted) return;
   _autoLoginStarted=true;
   const _tryLogin=async(retry)=>{
+    // Sesión de Google del admin: vuelve directo al panel (antes entraba como un usuario normal)
+    if(user&&user.email===ADMIN_EMAIL){ showAdmin(); return; }
     // Siempre se lee el nombre guardado MÁS RECIENTE justo antes de usarlo
     const freshNick=localStorage.getItem(_xd("ODEsODQ=",0x36));
     if(freshNick){

@@ -2825,6 +2825,23 @@ function _paintSensiCell(cell,i){
   cell.style.setProperty("--cc","rgb("+rgb.join(",")+")"); cell.style.setProperty("--cc-rgb",rgb.join(","));
 }
 function _repaintSensiTables(){ document.querySelectorAll(".stbl-cell").forEach(c=>_paintSensiCell(c,+c.dataset.i||0)); }
+// Medidor de media luna (General) y animación de números/barras al revelar la sensi
+const _STBL_GAUGE='<svg viewBox="0 0 200 108" aria-hidden="true"><path class="stbl-g0" d="M12 100A88 88 0 0 1 188 100"/><path class="stbl-g1" pathLength="100" d="M12 100A88 88 0 0 1 188 100"/></svg>';
+function _stblAnimate(b){
+  const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const run=()=>{
+    const g=b.querySelector(".stbl-g1");
+    b.querySelectorAll(".stbl-val").forEach(v=>{
+      const to=+v.dataset.to||0;
+      if(g&&v.closest(".stbl-gw")) g.style.strokeDashoffset=String(100*(1-Math.min(200,to)/200));
+      if(reduce){ v.textContent=String(to); return; }
+      const t0=performance.now();
+      (function f(t){ const p=Math.min(1,(t-t0)/1000); v.textContent=String(Math.round(to*(1-Math.pow(1-p,3)))); if(p<1)requestAnimationFrame(f); })(t0);
+    });
+    b.querySelectorAll(".stbl-bar i").forEach(i=>{ i.style.width=i.dataset.w+"%"; });
+  };
+  requestAnimationFrame(()=>requestAnimationFrame(run));
+}
 function _buildSensiTable(b,t){
   const el=(tag,cls,txt)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;};
   b.textContent="";
@@ -2842,15 +2859,82 @@ function _buildSensiTable(b,t){
     const lab=el("div","stbl-lab"), ico=el("span","stbl-ico");
     ico.innerHTML=_STBL_ICONS[r[0]]||""; // SVG constante (sin datos del usuario)
     lab.appendChild(ico); lab.appendChild(el("span",null,r[1]));
-    cell.appendChild(lab); cell.appendChild(el("div","stbl-val",String(r[2])));
+    cell.appendChild(lab);
+    const val=el("div","stbl-val","0"); val.dataset.to=r[2];
+    if(i===0){ const gw=el("div","stbl-gw"); gw.innerHTML=_STBL_GAUGE; gw.appendChild(val); cell.appendChild(gw); } // SVG constante
+    else{
+      cell.appendChild(val);
+      const bar=el("div","stbl-bar"), fl=el("i"); // botón de disparo va de 32 a 52; el resto de 0 a 200
+      fl.dataset.w=String(r[0]==="boton"?Math.max(0,Math.min(100,(r[2]-32)/20*100)):Math.min(100,r[2]/2));
+      bar.appendChild(fl); cell.appendChild(bar);
+    }
     _paintSensiCell(cell,i); grid.appendChild(cell);
   });
   b.appendChild(grid);
   b.appendChild(el("div","stbl-foot","— SENSIS GOOD FF ☠️⚡"));
+  _stblAnimate(b);
+}
+// ── "Escribiendo…" (3 bolitas) y cola ordenada de mensajes del chat ──
+let _mq=Promise.resolve(), _mqN=0;
+function _mqPush(fn,typeMs){
+  _mqN++;
+  _mq=_mq.then(async()=>{
+    try{ if(typeMs>0) await _typingFor(typeMs); fn(); }catch(e){ console.error("cola de chat:",e); }
+    _mqN--;
+  });
+}
+function _typingFor(ms){
+  return new Promise(res=>{
+    const c=document.getElementById("myMsgs");
+    const w=document.createElement("div"); w.className="mw bot";
+    const b=document.createElement("div"); b.className="bub bot typing";
+    for(let i=0;i<3;i++) b.appendChild(document.createElement("span"));
+    w.appendChild(b); c.appendChild(w); c.scrollTop=c.scrollHeight;
+    setTimeout(()=>{ w.remove(); res(); },ms);
+  });
+}
+// ── Lista de lo que investiga el bot (pantalla, Hz, resolución, chip) ──
+// Muestra los datos REALES si se encontraron (✓) y marca como estimado (≈) lo que no.
+function _specsChecklistStart(marca,modelo){
+  const c=document.getElementById("myMsgs");
+  const w=document.createElement("div"); w.className="mw bot wide";
+  const b=document.createElement("div"); b.className="bub bot spk";
+  const t=document.createElement("div"); t.className="spk-t"; t.textContent="🔎 INVESTIGANDO "+marca+" "+modelo;
+  b.appendChild(t);
+  const rows=["Pantalla","Frecuencia","Resolución","Chip"].map(n=>{
+    const r=document.createElement("div"); r.className="spk-r load";
+    const l=document.createElement("span"); l.className="spk-l"; l.textContent=n;
+    const v=document.createElement("span"); v.className="spk-v"; v.textContent="…";
+    const s=document.createElement("span"); s.className="spk-s";
+    r.append(l,v,s); b.appendChild(r); return {r,v,s};
+  });
+  w.appendChild(b); c.appendChild(w); c.scrollTop=c.scrollHeight;
+  const wait=ms=>new Promise(res=>setTimeout(res,ms));
+  const nn=(x,f)=>(x!=null&&isFinite(x))?f(+x):"—";
+  return {async finish(){
+    try{
+      const sp=_deviceSpecsCache.get(_deviceKey(marca,modelo))||{}, pf=_screenProfile(marca,modelo);
+      const vals=[
+        sp.diagIn!=null?[nn(sp.diagIn,x=>x.toFixed(1)+"″"),1]:[nn(pf.diagIn,x=>x.toFixed(1)+"″"),0],
+        sp.refreshHz!=null?[nn(sp.refreshHz,x=>Math.round(x)+" Hz"),1]:[nn(pf.refreshHz,x=>Math.round(x)+" Hz"),0],
+        (sp.resLong!=null&&sp.resShort!=null)?[Math.round(sp.resLong)+"×"+Math.round(sp.resShort),1]:[nn(pf.resLong,x=>Math.round(x))+"×"+nn(pf.resShort,x=>Math.round(x)),0],
+        sp.chip?[String(sp.chip),1]:["Estimado por gama",0]
+      ];
+      for(let i=0;i<rows.length;i++){
+        await wait(380);
+        rows[i].v.textContent=vals[i][0]; rows[i].r.className="spk-r "+(vals[i][1]?"ok":"est"); rows[i].s.textContent=vals[i][1]?"✓":"≈";
+        c.scrollTop=c.scrollHeight;
+      }
+      t.textContent=sp.found?"✅ ESPECIFICACIONES ENCONTRADAS":"📊 CALIBRACIÓN ESTIMADA POR GAMA";
+      await wait(350);
+    }catch(e){ console.error("checklist:",e); }
+  }};
 }
 function addMsg(from,text,opts={}){
   // Avisos de estado (✅ ❌ ⛔ ⚠️ ⏳ 🎉) → notificación de 5 s en vez de burbuja en el chat
   if(from==="bot"&&!opts.copy&&!opts.regen&&!opts.adm&&typeof text==="string"&&text.length<=300&&/^(✅|🎉|❌|⛔|⚠️|⏳|ℹ️)/.test(text)){ notify(text); return document.createElement("div"); }
+  // Los mensajes del bot esperan su turno y salen tras las 3 bolitas "escribiendo…"
+  if(!opts._q&&((from==="bot"&&!opts.adm)||_mqN>0)){ _mqPush(()=>addMsg(from,text,{...opts,_q:1}),(from==="bot"&&!opts.adm)?(opts.table?380:Math.min(1100,450+String(text).length*9)):0); return; }
   const c=document.getElementById("myMsgs");
   const w=document.createElement("div"); w.className="mw "+from;
   const b=document.createElement("div"); b.className="bub "+(opts.adm?"adm":from);
@@ -2915,7 +2999,9 @@ function onBtn(lbl,bd,silent){
         // consulta specs reales (ver DEPLOY.md) antes de calibrar — con
         // timeout corto para que nunca trabe la generación si la Cloud
         // Function no está desplegada o tarda de más.
+        await _mq; const _ck=_specsChecklistStart(data.marca,data.modelo); // lista "investigando…"
         await _lookupDeviceSpecs(data.marca,data.modelo).catch(()=>{});
+        await _ck.finish();
         const r=genSensiMejorado(data.marca,data.modelo,data.nivel,data.dpi);
         myCount=await incServerCount(nickname); updateCounter();
         const hs=r.hs==="full"?"🎯 HEADSHOT CONFIG":r.hs==="mid"?"⚡ HEADSHOT MID":"";

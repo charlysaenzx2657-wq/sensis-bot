@@ -1,6 +1,11 @@
 # SensisBot (Sensis Good FF)
 
-> SensisBot (sensisbot.com) es un bot y generador web avanzado de sensibilidades personalizadas para Free Fire, creado por Sensis Good FF. Calcula configuraciones exactas en tiempo real utilizando datos de hardware del dispositivo, física y estadística.
+> SensisBot (sensisbot.com) es un bot y generador web avanzado de sensibilidades personalizadas para Free Fire, creado por Sensis Good FF. Calcula configuraciones exactas en tiempo real utilizando datos de hardware del dispositivo, física y estadística. Es gratuito, funciona en Android y iPhone, y es una herramienta independiente no afiliada a Garena.
+
+## Guías y respuestas
+- [Guía de sensibilidad Free Fire](https://sensisbot.com/guia-sensibilidad-free-fire.html): qué valores se configuran (General, Mira roja, 2X, 4X, Francotirador, Cámara 360°, Botón), cómo elegir el nivel y cómo generarla.
+- [Cómo funciona la calibración](https://sensisbot.com/como-funciona.html): cómo influyen la pantalla, la resolución, los Hz, el chip y el DPI en el resultado.
+- [Preguntas frecuentes](https://sensisbot.com/preguntas-frecuentes.html): respuestas cortas sobre uso, niveles, DPI, límites y cuenta.
 
 ## Cómo funciona y cómo se usa
 1. **Ingreso de dispositivo:** El usuario escribe la marca y el modelo exacto de su teléfono móvil (ejemplo: Honor X5C Plus).
@@ -29,4 +34,4 @@
 
 ## Enlaces oficiales
 - Plataforma web: https://sensisbot.com
-- Mapa del sitio: https://sensisbot.comsitemap.xml
+- Mapa del sitio: https://sensisbot.com/sitemap.xml

@@ -2897,10 +2897,11 @@ function _typingFor(ms){
 // Muestra los datos REALES si se encontraron (✓) y marca como estimado (≈) lo que no.
 function _specsChecklistStart(marca,modelo){
   const c=document.getElementById("myMsgs");
-  const w=document.createElement("div"); w.className="mw bot wide";
+  const w=document.createElement("div"); w.className="mw bot";
   const b=document.createElement("div"); b.className="bub bot spk";
   const t=document.createElement("div"); t.className="spk-t"; t.textContent="🔎 INVESTIGANDO "+marca+" "+modelo;
   b.appendChild(t);
+  const pg=document.createElement("div"); pg.className="spk-p"; const pgi=document.createElement("i"); pg.appendChild(pgi); b.appendChild(pg);
   const rows=["Pantalla","Frecuencia","Resolución","Chip"].map(n=>{
     const r=document.createElement("div"); r.className="spk-r load";
     const l=document.createElement("span"); l.className="spk-l"; l.textContent=n;
@@ -2922,7 +2923,7 @@ function _specsChecklistStart(marca,modelo){
       ];
       for(let i=0;i<rows.length;i++){
         await wait(380);
-        rows[i].v.textContent=vals[i][0]; rows[i].r.className="spk-r "+(vals[i][1]?"ok":"est"); rows[i].s.textContent=vals[i][1]?"✓":"≈";
+        rows[i].v.textContent=vals[i][0]; rows[i].r.className="spk-r "+(vals[i][1]?"ok":"est"); rows[i].s.textContent=vals[i][1]?"✓":"≈"; pgi.style.width=((i+1)/rows.length*100)+"%";
         c.scrollTop=c.scrollHeight;
       }
       t.textContent=sp.found?"✅ ESPECIFICACIONES ENCONTRADAS":"📊 CALIBRACIÓN ESTIMADA POR GAMA";

@@ -426,12 +426,12 @@ const _GB4=new Set(["Realme","Oppo","Vivo"]);
 const _GC=new Set(["Infinix","Tecno","Itel","iTel","itel","Alcatel","BLU","Wiko","Blackview","Doogee","Oukitel","Cubot","Ulefone","UMIDIGI","Gionee","Micromax","Lava","Intex","Karbonn","Celkon","Spice","QMobile","Walton","Symphony","MyPhone","Cherry Mobile",
   "ZTE","Acer","Panasonic","Amazon","BlackBerry","Spectra","Caterpillar","Coolpad","Xolo","Positivo","Multilaser","Philco","Hisense","Kyocera","CloudFone","Vsmart","Archos","Prestigio","BQ","Casper","General Mobile","Allview","Advan","Mito","Polytron","SPC","Maxtron","Evercoss","Torque","Starmobile","Verykool","iVoomi","Freetel","Vestel","Reeder","Konka","Haier","Elephone","Leagoo","Homtom","Vernee","Bluboo","AGM","Sugar","Neffos"]);
 const _GV=new Set(["iQOO"]); // gama "gaming": pantalla grande + touch de alta frecuencia (ver P.V)
-const MARCAS=["iPhone","Samsung","Motorola","Xiaomi","Honor","Huawei","Realme","Oppo","Vivo","Google Pixel","OnePlus","Sony","Asus","Lenovo","Nokia","LG","HTC","TCL","Poco","Infinix","Tecno","Alcatel","BLU","Blackview","Doogee","Oukitel","Cubot","Ulefone","UMIDIGI","Meizu","Nubia","RED","Razer","Sharp","ZTE","Acer","Panasonic","Microsoft","Amazon","BlackBerry","itel","Spectra","iQOO","Caterpillar","Wiko","Symphony","Walton","Coolpad","Gionee","Karbonn","Micromax","Lava","Xolo","QMobile","Positivo","Multilaser","Philco","Hisense","Kyocera","Cherry Mobile","CloudFone","MyPhone","Vsmart","Fairphone","Archos","Prestigio","BQ","Casper","General Mobile","Allview","Advan","Mito","Polytron","SPC","Maxtron","Evercoss","Torque","Starmobile","Verykool","ZUK","Vertu","iVoomi","Freetel","Vestel","Reeder","Konka","Haier","Elephone","Leagoo","Homtom","Vernee","Bluboo","AGM","Nothing","Sugar","Neffos"];
+const MARCAS=["iPhone","iPad","Samsung","Motorola","Xiaomi","Honor","Huawei","Realme","Oppo","Vivo","Google Pixel","OnePlus","Sony","Asus","Lenovo","Nokia","LG","HTC","TCL","Poco","Infinix","Tecno","Alcatel","BLU","Blackview","Doogee","Oukitel","Cubot","Ulefone","UMIDIGI","Meizu","Nubia","RED","Razer","Sharp","ZTE","Acer","Panasonic","Microsoft","Amazon","BlackBerry","itel","Spectra","iQOO","Caterpillar","Wiko","Symphony","Walton","Coolpad","Gionee","Karbonn","Micromax","Lava","Xolo","QMobile","Positivo","Multilaser","Philco","Hisense","Kyocera","Cherry Mobile","CloudFone","MyPhone","Vsmart","Fairphone","Archos","Prestigio","BQ","Casper","General Mobile","Allview","Advan","Mito","Polytron","SPC","Maxtron","Evercoss","Torque","Starmobile","Verykool","ZUK","Vertu","iVoomi","Freetel","Vestel","Reeder","Konka","Haier","Elephone","Leagoo","Homtom","Vernee","Bluboo","AGM","Nothing","Sugar","Neffos"];
 const P={A:{genMin:144,genMax:200,rojoD:[0,3],x2D:[-12,-6],franMin:62,franMax:76,camaraD:[16,28],dpiMin:530,dpiMax:610},B:{genMin:145,genMax:196,rojoD:[0,3],x2D:[-12,-6],franMin:55,franMax:72,camaraD:[14,26],dpiMin:530,dpiMax:600},B2:{genMin:143,genMax:188,rojoD:[0,2],x2D:[-14,-7],franMin:53,franMax:70,camaraD:[13,24],dpiMin:530,dpiMax:595},B3:{genMin:146,genMax:193,rojoD:[0,2],x2D:[-13,-7],franMin:55,franMax:73,camaraD:[14,26],dpiMin:530,dpiMax:598},B4:{genMin:143,genMax:196,rojoD:[0,3],x2D:[-13,-7],franMin:57,franMax:75,camaraD:[15,27],dpiMin:530,dpiMax:602},C:{genMin:148,genMax:182,rojoD:[0,2],x2D:[-10,-5],franMin:50,franMax:68,camaraD:[18,32],dpiMin:530,dpiMax:580},D:{genMin:145,genMax:192,rojoD:[0,3],x2D:[-12,-6],franMin:54,franMax:71,camaraD:[14,26],dpiMin:530,dpiMax:596},E:{genMin:85,genMax:200,rojoD:[0,4],x2D:[-18,-10],franMin:52,franMax:70,camaraD:[20,36],dpiMin:0,dpiMax:0},V:{genMin:162,genMax:200,rojoD:[0,2],x2D:[-6,-2],franMin:66,franMax:80,camaraD:[8,16],dpiMin:600,dpiMax:630}};
 function _grp(m){
   if(!m) return "D";
   const mm=String(m).trim().toLowerCase();
-  if(mm==="iphone") return "E";
+  if(mm==="iphone"||mm==="ipad") return "E"; // iPad comparte la lógica y los valores de iPhone (iOS)
   const find=(set)=>[...set].some(x=>x.toLowerCase()===mm);
   if(find(_GA)) return "A";
   if(find(_GB)) return "B";
@@ -449,12 +449,15 @@ const MARCA_ALIAS={
   "zte":"ZTE","axon":"ZTE","blade":"ZTE",
   "poco":"Poco","poko":"Poco",
   "acer":"Acer","liquid":"Acer",
+  "ipad":"iPad", // antes de "apple": "apple ipad" debe resolver a iPad
   "iphone":"iPhone","apple":"iPhone",
-  "pixel":"Google Pixel","google pixel":"Google Pixel",
+  "pixel":"Google Pixel","google pixel":"Google Pixel","google":"Google Pixel",
   "oneplus":"OnePlus","one plus":"OnePlus",
   "blackberry":"BlackBerry",
   "amazon fire":"Amazon","kindle fire":"Amazon",
 };
+// Alias de más largo a más corto: si no, "pixel" se borra antes que "google pixel" y el modelo queda "google 10"
+const _ALIAS_ORD=Object.keys(MARCA_ALIAS).sort((x,y)=>y.length-x.length);
 // Separar camelCase/palabras pegadas: "samsunggalaxy" → "samsung galaxy"
 // "redminote12" → "redmi note12", "honorx5c" → "honor x5c"
 function splitPegado(txt){
@@ -486,7 +489,7 @@ function exMod(txt,marca){
   // Quitar la marca (usando alias también)
   let m=expanded;
   // Quitar alias de marca del texto expandido
-  for(const [alias] of Object.entries(MARCA_ALIAS)){
+  for(const alias of _ALIAS_ORD){
     m=m.replace(new RegExp(alias,"gi")," ");
   }
   m=m.replace(new RegExp(marca,"gi")," ").trim();
@@ -495,7 +498,7 @@ function exMod(txt,marca){
   // Tomar el modelo del texto original (después de quitar la marca)
   const origExpanded=splitPegado(txt);
   let origMod=origExpanded;
-  for(const [alias] of Object.entries(MARCA_ALIAS)){
+  for(const alias of _ALIAS_ORD){
     origMod=origMod.replace(new RegExp(alias,"gi")," ");
   }
   origMod=origMod.replace(new RegExp(marca,"gi")," ");
@@ -758,9 +761,10 @@ async function _lookupDeviceSpecs(marca,modelo){
   return p;
 }
 function _screenProfile(marca,modelo){
-  const fallback=_SCREEN_PROFILES[_grp(marca)]||_SCREEN_REF;
+  const _ipad=/ipad/i.test(marca||""); // iPad: pantalla de tableta (≈10,9″, 2360×1640); los valores salen de la misma banda iOS que el iPhone
+  const fallback=_ipad?{diagIn:10.9,aspect:1.43}:(_SCREEN_PROFILES[_grp(marca)]||_SCREEN_REF);
   const def=_FIS_DEF[_grp(marca)]||_FIS_DEF.D;
-  const extra=(c)=>({refreshHz:c&&c.refreshHz!=null?c.refreshHz:def.refreshHz,chipScore:c&&c.chipScore!=null?c.chipScore:def.chipScore,resShort:c&&c.resShort!=null?c.resShort:_SCREEN_REF.resShort,resLong:c&&c.resLong!=null?c.resLong:_SCREEN_REF.resLong});
+  const extra=(c)=>({refreshHz:c&&c.refreshHz!=null?c.refreshHz:def.refreshHz,chipScore:c&&c.chipScore!=null?c.chipScore:def.chipScore,resShort:c&&c.resShort!=null?c.resShort:(_ipad?1640:_SCREEN_REF.resShort),resLong:c&&c.resLong!=null?c.resLong:(_ipad?2360:_SCREEN_REF.resLong)});
   if(modelo){
     const cached=_deviceSpecsCache.get(_deviceKey(marca,modelo));
     if(cached&&cached.found){

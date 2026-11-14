@@ -3575,7 +3575,7 @@ async function _rvLoadLogin(){
     const top=document.createElement("div"); const b=document.createElement("b"); b.textContent="★ "+_rvAvg(list).toFixed(1);
     top.append(b," · "+_rvCountTxt(list)+(list.length===1?" reseña":" reseñas")+" de la comunidad");
     const w=document.createElement("div"); w.className="rv-login"; w.appendChild(top);
-    list.slice(0,2).forEach(r=>{ const e=document.createElement("em"); e.textContent="“"+(r.text.length>100?r.text.slice(0,100)+"…":r.text)+"” — "+String(r.nick||"").slice(0,20); w.appendChild(e); });
+    list.slice(0,2).forEach(r=>{ const e=document.createElement("em"); e.textContent="“"+(r.text.length>100?r.text.slice(0,100)+"…":r.text)+"” — "+String(r.nick||"").slice(0,24); w.appendChild(e); });
     box.appendChild(w);
   }catch(e){ /* sin permiso o sin red: la franja simplemente no aparece */ }
 }
@@ -3594,7 +3594,7 @@ async function _rvRenderList(){
     list.forEach(r=>{
       const it=document.createElement("div"); it.className="rv-item";
       const hd=document.createElement("div"); hd.className="rv-h";
-      const l=document.createElement("span"); const nk=document.createElement("b"); nk.textContent=String(r.nick||"Jugador").slice(0,20);
+      const l=document.createElement("span"); const nk=document.createElement("b"); nk.textContent=String(r.nick||"Jugador").slice(0,24);
       const ss=document.createElement("span"); ss.className="rv-s"; ss.textContent=" "+_rvStars(r.stars); l.append(nk,ss);
       const rt=document.createElement("span"); rt.textContent=_rvAgo(r.ts);
       if(typeof _isAdmin!=="undefined"&&_isAdmin){ const d=document.createElement("button"); d.className="rv-del"; d.title="Borrar (solo admin)"; d.textContent="🗑️";
@@ -3631,14 +3631,14 @@ async function _rvSubmit(){
   try{
     let slot=0; for(let k=1;k<=_RV_MAX&&!slot;k++){ if(!(await getDoc(doc(db,_RV_COL,u+"_"+k))).exists()) slot=k; }
     if(!slot){ _rvStatus("Ya usaste tus "+_RV_MAX+" reseñas. ¡Gracias!",true); _rvEl("rvForm").style.display="none"; return; }
-    await setDoc(doc(db,_RV_COL,u+"_"+slot),{uid:u,nick:nick.slice(0,20),stars:_rvStar,text:text.slice(0,280),ts:serverTimestamp()});
+    await setDoc(doc(db,_RV_COL,u+"_"+slot),{uid:u,nick:nick,stars:_rvStar,text:text.slice(0,280),ts:serverTimestamp()});
     _rvStatus("¡Gracias! Tu reseña ya es pública.",true);
     const ask=_rvEl("reviewsModal").classList.contains("rv-ask");
     _rvStar=0; _rvPaintStars(); _rvEl("rvText").value=""; _rvEl("rvCount").textContent="0/280";
     if(await _rvCountMine()>=_RV_MAX) _rvEl("rvForm").style.display="none"; else _rvEl("rvLeft").textContent="Te queda 1 reseña";
     if(ask) setTimeout(()=>_rvEl("reviewsModal").classList.remove("show"),1200); else _rvRenderList();
     _rvLoadLogin();
-  }catch(e){ console.error("reseña:",e); _rvStatus("No se pudo publicar. Inténtalo de nuevo en un momento.",false); }
+  }catch(e){ console.error("reseña:",e); _rvStatus(e&&e.code==="permission-denied"?"Para opinar necesitas haber generado al menos 1 sensibilidad con tu cuenta y probarla dentro del juego, para que tu opinión sea justa.":"No se pudo publicar. Inténtalo de nuevo en un momento.",false); }
   finally{ _rvBusy=false; btn.disabled=false; }
 }
 // Ventana "danos tu opinión": solo si ya generó una sensi, en una visita POSTERIOR (otra sesión del navegador), y UNA sola vez.

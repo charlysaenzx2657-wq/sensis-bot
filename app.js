@@ -454,6 +454,7 @@ const MARCA_ALIAS={
   "pixel":"Google Pixel","google pixel":"Google Pixel","google":"Google Pixel",
   "oneplus":"OnePlus","one plus":"OnePlus",
   "blackberry":"BlackBerry",
+  "moto":"Motorola", // "Moto G Power" sin escribir "Motorola"
   "amazon fire":"Amazon","kindle fire":"Amazon",
 };
 // Alias de más largo a más corto: si no, "pixel" se borra antes que "google pixel" y el modelo queda "google 10"
@@ -482,14 +483,33 @@ function detectM(txt){
   }
   return f;
 }
+// ── Limpieza del texto del usuario: del mensaje solo debe quedar el MODELO ──
+// ("dame una sensibilidad para samsung a16" -> marca Samsung, modelo A16). Se usa al extraer el modelo
+// y otra vez justo antes de mandarlo al Worker, para que nunca viaje relleno que lo confunda.
+// OJO: no se agregan "a", "y", "fire" ni "phone" porque son parte de modelos reales (Galaxy A16, Vivo Y21, Amazon Fire, Nothing Phone).
+const _STOP_WORDS=["por favor","porfavor","free fire","freefire","dame","das","dás","da","es","que","qué","cual","cuál","como","cómo","ocupo","sirva","sirve","pasame","pásame","mandame","mándame","manda","hazme","dime","genera","generame","genérame","generar","quiero","quisiera","necesito","busco","ayudame","ayúdame","puedes","puede","pueden","podrias","podrías","dar","me","para","un","una","unos","unas","el","la","con","sin","de","del","en","dpi","sensibilidad","sensibilidades","sensi","sensis","sens","sensib","alta","media","baja","nivel","celular","celu","cel","telefono","teléfono","movil","móvil","smartphone","tengo","uso","usando","hola","buenas","buenos","dias","días","tardes","noches","gracias","porfa","modelo","marca","ff","mejor","calibrada","calibrado","give","please","pls","plis","my","for","the","sensitivity"];
+function _limpiaModelo(txt){
+  let m=" "+String(txt||"").replace(/[^\p{L}\p{N}\s+\-./()]/gu," ")+" "; // fuera signos, emojis y símbolos sueltos
+  _STOP_WORDS.forEach(w=>{ m=m.replace(new RegExp("(?<![\\p{L}\\p{N}])"+w+"(?![\\p{L}\\p{N}])","giu")," "); });
+  return m.replace(/\s+/g," ").trim().split(" ").map(_capModelo).join(" ");
+}
+const _CAPS={hd:"HD",fe:"FE",xl:"XL",se:"SE",gt:"GT",ge:"GE",fhd:"FHD",lte:"LTE",nfc:"NFC"};
+function _capModelo(w){ if(!w||w!==w.toLowerCase()) return w; if(_CAPS[w]) return _CAPS[w]; if(/^\d+g$/.test(w)) return w.toUpperCase(); return w.charAt(0).toUpperCase()+w.slice(1); }
+// "de mi redmi note 12" / "mi samsung a16": el "mi" posesivo se quita, pero "Mi 11" / "Mi Note" (modelos Xiaomi) se respetan
+function _sinPosesivo(t){
+  return String(t||"").replace(/(?<![\p{L}\p{N}])mi\s+(?=(?:redmi|redmagic|red magic|poco|iphone|ipad|samsung|honor|motorola|moto|huawei|oppo|vivo|realme|tecno|infinix|oneplus|nokia|sony|google|pixel|xiaomi|celular|celu|cel|telefono|teléfono|movil|móvil|equipo|smartphone)(?![\p{L}\p{N}]))/giu," ");
+}
+// Líneas de producto: sirven para detectar la marca (redmi -> Xiaomi) pero SON parte del modelo y no se borran
+const _ALIAS_KEEP=new Set(["moto","redmi","redmagic","red magic","axon","blade","liquid","amazon fire","kindle fire"]);
 function exMod(txt,marca){
+  txt=_sinPosesivo(txt);
   // Primero expandir el texto por si viene pegado
   const expanded=splitPegado(txt);
-  const stopWords=["para","un","una","el","la","con","sin","dpi","quiero","dame","necesito","sensibilidad","alta","media","baja","por favor","porfavor","me","puedes","dar","genera","generame","generar"];
+  const stopWords=_STOP_WORDS;
   // Quitar la marca (usando alias también)
   let m=expanded;
   // Quitar alias de marca del texto expandido
-  for(const alias of _ALIAS_ORD){
+  for(const alias of _ALIAS_ORD){ if(_ALIAS_KEEP.has(alias)) continue;
     m=m.replace(new RegExp(alias,"gi")," ");
   }
   m=m.replace(new RegExp(marca,"gi")," ").trim();
@@ -498,13 +518,13 @@ function exMod(txt,marca){
   // Tomar el modelo del texto original (después de quitar la marca)
   const origExpanded=splitPegado(txt);
   let origMod=origExpanded;
-  for(const alias of _ALIAS_ORD){
+  for(const alias of _ALIAS_ORD){ if(_ALIAS_KEEP.has(alias)) continue;
     origMod=origMod.replace(new RegExp(alias,"gi")," ");
   }
   origMod=origMod.replace(new RegExp(marca,"gi")," ");
   stopWords.forEach(w=>{origMod=origMod.replace(new RegExp("\\b"+w+"\\b","gi")," ");});
   // splitPegado separa letra y número ("x5c" -> "x 5c"); una letra suelta + número es parte del modelo (X5c, A12, C11): se vuelve a pegar.
-  const clean=origMod.replace(/\s+/g," ").trim().replace(/\b([a-z])\s+(\d)/gi,"$1$2");
+  const clean=_limpiaModelo(origMod.replace(/\s+/g," ").trim().replace(/\b([a-z])\s+(\d)/gi,"$1$2"));
   return clean||marca;
 }
 
@@ -665,7 +685,7 @@ function _deviceKey(marca,modelo){
   return (String(marca||"").trim()+"|"+String(modelo||"").trim()).toLowerCase().replace(/\s+/g," ").slice(0,180);
 }
 async function _lookupDeviceSpecs(marca,modelo){
-  if(!marca||!modelo) return null;
+  if(!marca||!modelo||String(modelo).trim().toLowerCase()===String(marca).trim().toLowerCase()) return null; // sin modelo real no hay nada que investigar
   const key=_deviceKey(marca,modelo);
   if(_deviceSpecsCache.has(key)){
     const c=_deviceSpecsCache.get(key);
@@ -710,7 +730,7 @@ async function _lookupDeviceSpecs(marca,modelo){
       const resp=await _withTimeout(fetch(_DEVICE_LOOKUP_URL,{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({marca,modelo})
+        body:JSON.stringify({marca,modelo:_limpiaModelo(modelo)||modelo})
       }),24000,"timeout");
       const data=await resp.json();
       console.log("📱 [device_specs] Worker respondió:",JSON.stringify(data));
@@ -3008,7 +3028,7 @@ function onBtn(lbl,bd,silent){
         await _lookupDeviceSpecs(data.marca,data.modelo).catch(()=>{});
         await _ck.finish();
         const r=genSensiMejorado(data.marca,data.modelo,data.nivel,data.dpi);
-        myCount=await incServerCount(nickname); updateCounter();
+        myCount=await incServerCount(nickname); updateCounter(); _rvMarkGen();
         const hs=r.hs==="full"?"🎯 HEADSHOT CONFIG":r.hs==="mid"?"⚡ HEADSHOT MID":"";
         const dL=r.dpi?"\n🔵 DPI: "+r.dpi:"";
         const premL=isPremiumGen?"\n✨ PREMIUM (privada, no va al feed)":"";
@@ -3059,8 +3079,9 @@ function handleSend(){
   if(step!=="idle"){ addMsg("user",msg); return; }
   if(/^\d{6}$/.test(msg)){ addMsg("user",msg); redeemCode(msg); return; }
   _winTick(); if(myCount>=_effectiveMax()){ addMsg("user",msg); setTimeout(()=>addMsg("bot","⛔ Llegaste al límite.\n\nSe restablece en "+_winLeft()+". ☠️⚡"),300); return; }
-  const marca=detectM(msg); addMsg("user",msg);
-  if(marca){ const modelo=exMod(msg,marca); data={marca,modelo,nivel:"",dpi:false}; step="nivel"; setTimeout(()=>addMsg("bot","📱 "+marca+" "+modelo+"\n\n¿Qué nivel de sensibilidad?",{btns:["🟢 Baja","🔵 Media","🔴 Alta"]}),300); }
+  const marca=detectM(msg); const modelo=marca?exMod(msg,marca):""; const _txt=marca?(modelo&&modelo.toLowerCase()!==marca.toLowerCase()?marca+" "+modelo:marca):msg; // se muestra solo marca + modelo, no la frase completa
+  addMsg("user",_txt);
+  if(marca){ data={marca,modelo,nivel:"",dpi:false}; step="nivel"; setTimeout(()=>addMsg("bot","📱 "+_txt+"\n\n¿Qué nivel de sensibilidad?",{btns:["🟢 Baja","🔵 Media","🔴 Alta"]}),300); }
   else { setTimeout(()=>addMsg("bot","No reconocí la marca. Ej:\n📱 Honor X5C Plus\n📱 Samsung Galaxy A54\n📱 Xiaomi Redmi Note 12"),300); }
 }
 
@@ -3517,6 +3538,129 @@ const _SUP_MAIL="charlysaenzx2657@gmail.com";
     try{ await navigator.clipboard.writeText(_SUP_MAIL); status("Correo copiado: "+_SUP_MAIL,true); }
     catch(e){ status("Correo de soporte: "+_SUP_MAIL,true); }
   });
+})();
+// ── Reseñas reales de la comunidad ──
+// Colección "reviews": un doc por reseña con id "<uid>_1" o "<uid>_2" → máximo 2 por persona (lo exigen las reglas).
+// Solo se muestran reseñas escritas por usuarios; no hay ninguna precargada ni inventada.
+const _RV_COL="reviews", _RV_MAX=2;
+let _rvStar=0, _rvBusy=false;
+const _rvEl=id=>document.getElementById(id);
+const _rvUid=()=>{ try{ return (auth&&auth.currentUser&&auth.currentUser.uid)||""; }catch(e){ return ""; } };
+const _rvNick=()=>(typeof nickname==="string"&&nickname)?nickname:"";
+const _rvStars=n=>"★".repeat(n)+"☆".repeat(5-n);
+function _rvAgo(ts){
+  const t=ts&&ts.toMillis?ts.toMillis():0; if(!t) return "";
+  const m=Math.max(0,Math.round((Date.now()-t)/60000));
+  if(m<60) return "hace "+Math.max(1,m)+" min";
+  if(m<1440) return "hace "+Math.round(m/60)+" h";
+  return "hace "+Math.round(m/1440)+" d";
+}
+async function _rvFetch(){
+  const s=await getDocs(query(collection(db,_RV_COL),orderBy("ts","desc"),limit(50)));
+  return s.docs.map(d=>({id:d.id,...d.data()})).filter(r=>Number.isInteger(r.stars)&&r.stars>=1&&r.stars<=5&&typeof r.text==="string"&&r.text.length>0);
+}
+function _rvAvg(list){ return list.reduce((x,r)=>x+r.stars,0)/list.length; }
+function _rvCountTxt(list){ return list.length>=50?"50+":String(list.length); }
+async function _rvCountMine(){
+  const u=_rvUid(); if(!u) return 0; let c=0;
+  for(let k=1;k<=_RV_MAX;k++){ try{ if((await getDoc(doc(db,_RV_COL,u+"_"+k))).exists()) c++; }catch(e){} }
+  return c;
+}
+// Franja del inicio de sesión: promedio y las 2 últimas reseñas (se oculta sola si no hay ninguna o no se puede leer)
+async function _rvLoadLogin(){
+  const box=_rvEl("rvLogin"); if(!box) return;
+  try{
+    const list=await _rvFetch(); box.textContent="";
+    if(!list.length) return;
+    const top=document.createElement("div"); const b=document.createElement("b"); b.textContent="★ "+_rvAvg(list).toFixed(1);
+    top.append(b," · "+_rvCountTxt(list)+(list.length===1?" reseña":" reseñas")+" de la comunidad");
+    const w=document.createElement("div"); w.className="rv-login"; w.appendChild(top);
+    list.slice(0,2).forEach(r=>{ const e=document.createElement("em"); e.textContent="“"+(r.text.length>100?r.text.slice(0,100)+"…":r.text)+"” — "+String(r.nick||"").slice(0,20); w.appendChild(e); });
+    box.appendChild(w);
+  }catch(e){ /* sin permiso o sin red: la franja simplemente no aparece */ }
+}
+setTimeout(_rvLoadLogin,1800); setTimeout(()=>{ const bx=_rvEl("rvLogin"); if(bx&&!bx.childNodes.length) _rvLoadLogin(); },6000);
+
+function _rvStatus(t,ok){ const s=_rvEl("rvStatus"); s.textContent=t; s.style.color=ok?"#3DFF8F":"#FF5566"; }
+function _rvPaintStars(){ _rvEl("rvStars").querySelectorAll("button").forEach(b=>b.classList.toggle("on",+b.dataset.s<=_rvStar)); }
+async function _rvRenderList(){
+  const sum=_rvEl("rvSum"), box=_rvEl("rvList"); sum.textContent=""; box.textContent="";
+  try{
+    const list=await _rvFetch();
+    if(!list.length){ const e=document.createElement("div"); e.className="rv-empty"; e.textContent="Todavía no hay reseñas. ¡Sé la primera persona en opinar!"; box.appendChild(e); return; }
+    const av=_rvAvg(list), bb=document.createElement("b"); bb.textContent=av.toFixed(1);
+    const st=document.createElement("span"); st.className="rv-st"; st.textContent=_rvStars(Math.round(av));
+    sum.append(bb,"de 5 · "+_rvCountTxt(list)+(list.length===1?" reseña":" reseñas"),st);
+    list.forEach(r=>{
+      const it=document.createElement("div"); it.className="rv-item";
+      const hd=document.createElement("div"); hd.className="rv-h";
+      const l=document.createElement("span"); const nk=document.createElement("b"); nk.textContent=String(r.nick||"Jugador").slice(0,20);
+      const ss=document.createElement("span"); ss.className="rv-s"; ss.textContent=" "+_rvStars(r.stars); l.append(nk,ss);
+      const rt=document.createElement("span"); rt.textContent=_rvAgo(r.ts);
+      if(typeof _isAdmin!=="undefined"&&_isAdmin){ const d=document.createElement("button"); d.className="rv-del"; d.title="Borrar (solo admin)"; d.textContent="🗑️";
+        d.onclick=async()=>{ if(!confirm("¿Borrar esta reseña?")) return; try{ await deleteDoc(doc(db,_RV_COL,r.id)); _rvRenderList(); }catch(e){ alert("No se pudo borrar."); } };
+        rt.appendChild(d); }
+      hd.append(l,rt);
+      const p=document.createElement("p"); p.textContent=r.text.slice(0,280);
+      it.append(hd,p); box.appendChild(it);
+    });
+  }catch(e){ const x=document.createElement("div"); x.className="rv-empty"; x.textContent="No se pudieron cargar las reseñas ahora mismo."; box.appendChild(x); }
+}
+async function _rvOpen(ask){
+  const m=_rvEl("reviewsModal"); m.classList.toggle("rv-ask",!!ask);
+  _rvEl("rvTitle").textContent=ask?"¿QUÉ TAL TE FUE?":"RESEÑAS";
+  _rvEl("rvSub").textContent=ask?"Danos tu opinión sobre SENSIS BOT. Es opcional y solo te lo preguntamos esta vez; después puedes opinar desde ☰ Menú → Reseñas.":"Opiniones reales de la comunidad. Cada persona puede dejar máximo 2.";
+  _rvEl("rvLater").style.display=ask?"":"none";
+  _rvStar=0; _rvPaintStars(); _rvEl("rvText").value=""; _rvEl("rvCount").textContent="0/280"; _rvStatus("",true);
+  m.classList.add("show");
+  const mine=await _rvCountMine(), left=_RV_MAX-mine, form=_rvEl("rvForm");
+  const canWrite=!!_rvUid()&&!!_rvNick()&&left>0;
+  form.style.display=canWrite?"":"none";
+  _rvEl("rvLeft").textContent=left===1?"Te queda 1 reseña":"Te quedan "+left+" reseñas";
+  if(!canWrite){ _rvStatus(!_rvNick()?"Inicia sesión para dejar tu reseña.":"Ya usaste tus "+_RV_MAX+" reseñas. ¡Gracias por opinar!",true); }
+  if(!ask) _rvRenderList();
+}
+async function _rvSubmit(){
+  if(_rvBusy) return;
+  const u=_rvUid(), nick=_rvNick();
+  if(!u||!nick){ _rvStatus("Inicia sesión para dejar tu reseña.",false); return; }
+  if(!_rvStar){ _rvStatus("Elige de 1 a 5 estrellas.",false); return; }
+  const text=_rvEl("rvText").value.trim().replace(/\s+/g," ");
+  if(text.length<10){ _rvStatus("Escribe al menos 10 caracteres.",false); return; }
+  _rvBusy=true; const btn=_rvEl("rvSend"); btn.disabled=true;
+  try{
+    let slot=0; for(let k=1;k<=_RV_MAX&&!slot;k++){ if(!(await getDoc(doc(db,_RV_COL,u+"_"+k))).exists()) slot=k; }
+    if(!slot){ _rvStatus("Ya usaste tus "+_RV_MAX+" reseñas. ¡Gracias!",true); _rvEl("rvForm").style.display="none"; return; }
+    await setDoc(doc(db,_RV_COL,u+"_"+slot),{uid:u,nick:nick.slice(0,20),stars:_rvStar,text:text.slice(0,280),ts:serverTimestamp()});
+    _rvStatus("¡Gracias! Tu reseña ya es pública.",true);
+    const ask=_rvEl("reviewsModal").classList.contains("rv-ask");
+    _rvStar=0; _rvPaintStars(); _rvEl("rvText").value=""; _rvEl("rvCount").textContent="0/280";
+    if(await _rvCountMine()>=_RV_MAX) _rvEl("rvForm").style.display="none"; else _rvEl("rvLeft").textContent="Te queda 1 reseña";
+    if(ask) setTimeout(()=>_rvEl("reviewsModal").classList.remove("show"),1200); else _rvRenderList();
+    _rvLoadLogin();
+  }catch(e){ console.error("reseña:",e); _rvStatus("No se pudo publicar. Inténtalo de nuevo en un momento.",false); }
+  finally{ _rvBusy=false; btn.disabled=false; }
+}
+// Ventana "danos tu opinión": solo si ya generó una sensi, en una visita POSTERIOR (otra sesión del navegador), y UNA sola vez.
+function _rvMarkGen(){ try{ localStorage.setItem("sg_rv_gen","1"); sessionStorage.setItem("sg_rv_s","1"); }catch(e){} }
+async function _rvAfterLogin(){
+  try{
+    if(localStorage.getItem("sg_rv_gen")!=="1"||localStorage.getItem("sg_rv_asked")==="1"||sessionStorage.getItem("sg_rv_s")==="1") return;
+    localStorage.setItem("sg_rv_asked","1");
+  }catch(e){ return; }
+  try{ if(await _rvCountMine()>0) return; }catch(e){}
+  setTimeout(()=>{ if(document.body.classList.contains("in-app")) _rvOpen(true); },2500);
+}
+(function(){
+  const m=_rvEl("reviewsModal"), btn=_rvEl("reviewsBtn"); if(!m||!btn) return;
+  const close=()=>m.classList.remove("show");
+  btn.addEventListener("click",()=>_rvOpen(false));
+  _rvEl("reviewsCloseX").addEventListener("click",close);
+  _rvEl("rvLater").addEventListener("click",close);
+  m.addEventListener("click",e=>{ if(e.target===m) close(); });
+  _rvEl("rvStars").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; _rvStar=+b.dataset.s; _rvPaintStars(); });
+  _rvEl("rvText").addEventListener("input",e=>{ _rvEl("rvCount").textContent=e.target.value.length+"/280"; });
+  _rvEl("rvSend").addEventListener("click",_rvSubmit);
 })();
 // ── Ocultar / mostrar la barra superior (logo, créditos, nombre, menú, notificaciones) ──
 // La barra se desliza hacia arriba y se desvanece mientras el contenido sube; vuelve igual al mostrarla.
@@ -4610,6 +4754,7 @@ async function entrar(googleUID=null){
   document.getElementById("cfgBtn").style.display="";
   document.getElementById("menuBtn").style.display="";
   _startInboxDot();
+  _rvAfterLogin(); // ventana de reseña: UNA sola vez, en una visita posterior a haber generado una sensi
   // Re-evaluar mantenimiento ahora que el chat está visible (y no es admin)
   if(!_isAdmin){
     const mSnap2=await getDoc(_maintDocRef).catch(()=>null);

@@ -880,3 +880,27 @@ body #myInputArea,body.glass #myInputArea{background:none!important;border:none!
 #streakFloat{touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;}
 #streakFloat .racha-ico{width:15px;height:22px;vertical-align:middle;filter:drop-shadow(0 0 4px rgba(255,120,30,.55));}
 #streakFloat.dragging{cursor:grabbing;animation:none;transition:none;}
+
+/* ── Reseñas reales ── */
+.rv-sum{text-align:center;font-size:12px;color:rgba(160,215,255,0.7);margin-bottom:12px;}
+.rv-sum b{font-size:26px;color:var(--ac);font-weight:900;margin-right:4px;}
+.rv-sum .rv-st{display:block;font-size:16px;letter-spacing:2px;color:#FFC24D;}
+.rv-form{margin-bottom:6px;}
+.rv-stars{display:flex;justify-content:center;gap:4px;margin-bottom:10px;}
+.rv-stars button{background:none;border:0;font-size:32px;line-height:1;color:rgba(160,215,255,0.22);cursor:pointer;padding:0 3px;transition:transform .15s,color .15s;}
+.rv-stars button.on{color:#FFC24D;}
+.rv-stars button:active{transform:scale(1.25);}
+.rv-list{display:flex;flex-direction:column;gap:8px;margin-top:12px;max-height:44vh;overflow-y:auto;}
+.rv-item{background:rgba(var(--ac-rgb),0.07);border:1px solid rgba(var(--ac-rgb),0.16);border-radius:12px;padding:10px 12px;}
+.rv-item .rv-h{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:rgba(160,215,255,0.55);}
+.rv-item .rv-h b{color:var(--ac);font-weight:900;}
+.rv-item .rv-s{color:#FFC24D;letter-spacing:1px;font-size:13px;}
+.rv-item p{font-size:12.5px;line-height:1.45;margin-top:5px;word-break:break-word;white-space:pre-wrap;}
+.rv-item .rv-del{background:none;border:0;cursor:pointer;font-size:13px;opacity:.7;}
+.rv-empty{text-align:center;font-size:12px;color:rgba(160,215,255,0.5);padding:14px 6px;}
+#reviewsModal.rv-ask .rv-list,#reviewsModal.rv-ask .rv-sum{display:none;}
+#rvLogin:empty{display:none;}
+.rv-login{text-align:center;font-size:11px;line-height:1.5;color:rgba(160,215,255,0.65);padding:8px 10px;border:1px solid rgba(var(--ac-rgb),0.16);border-radius:12px;background:rgba(var(--ac-rgb),0.05);}
+.rv-login b{color:#FFC24D;}
+.rv-login em{display:block;font-style:normal;color:rgba(228,242,255,0.8);margin-top:4px;}
+

@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#03070D">
 <meta name="monetag" content="bf35e2962ec45134f9335b0f05f06a6b">
-<title>Sensibilidad Free Fire para tu celular — SENSIS BOT</title>
+<title>Generador de sensibilidades para Free Fire gratis - SENSIS BOT</title>
 <meta name="description" content="Genera tu sensibilidad de Free Fire calibrada para tu celular: general, punto rojo, 2X, 4X, francotirador y botón de disparo. Android y iPhone.">
 <meta name="keywords" content="sensibilidad free fire, generador de sensibilidad free fire, mejor sensibilidad free fire, sensibilidad free fire android, sensibilidad free fire iphone, sensibilidad free fire para mi celular, configuración de sensibilidad free fire, sensibilidad headshot free fire, sensibilidad punto rojo free fire, sensibilidad francotirador free fire, dpi free fire, sensis free fire, sensis bot">
 <meta name="robots" content="index, follow, max-image-preview:large">
@@ -20,11 +20,11 @@
 <meta property="og:site_name" content="SENSIS BOT">
 <meta property="og:locale" content="es_LA">
 <meta property="og:url" content="https://sensisbot.com/">
-<meta property="og:title" content="Sensibilidad Free Fire para tu celular — SENSIS BOT">
+<meta property="og:title" content="Generador de sensibilidades para Free Fire gratis - SENSIS BOT">
 <meta property="og:description" content="Genera tu sensibilidad de Free Fire calibrada para tu celular: general, punto rojo, 2X, 4X, francotirador y botón de disparo. Android y iPhone.">
 <meta property="og:image" content="https://sensisbot.com/icon-512.png">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Sensibilidad Free Fire para tu celular — SENSIS BOT">
+<meta name="twitter:title" content="Generador de sensibilidades para Free Fire gratis - SENSIS BOT">
 <meta name="twitter:description" content="Genera tu sensibilidad de Free Fire calibrada para tu celular: general, punto rojo, 2X, 4X, francotirador y botón de disparo. Android y iPhone.">
 <meta name="twitter:image" content="https://sensisbot.com/icon-512.png">
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "SENSIS BOT", "alternateName": ["SENSIS GOOD FF", "Sensis Bot Free Fire"], "url": "https://sensisbot.com/", "applicationCategory": "GameApplication", "operatingSystem": "Android, iOS, Web", "inLanguage": "es", "description": "Generador de sensibilidad para Free Fire calibrado según tu celular: pantalla, resolución, frecuencia de refresco (Hz) y chip. Calcula general, punto rojo, mira 2X y 4X, francotirador, cámara 360° y botón de disparo, en nivel bajo, medio o alto, con o sin DPI. Herramienta independiente, no afiliada a Garena.", "featureList": ["Sensibilidad de Free Fire para Android y iPhone", "Calibración según Hz, resolución, pantalla y chip del celular", "Niveles de sensibilidad baja, media y alta", "General, punto rojo, mira 2X, mira 4X, francotirador y cámara 360°", "Tamaño del botón de disparo calibrado", "Opción con DPI o sin DPI", "Chat en vivo con otros jugadores"], "keywords": "sensibilidad free fire, generador de sensibilidad free fire, mejor sensibilidad free fire, sensibilidad free fire android, sensibilidad free fire iphone, sensibilidad free fire para mi celular, configuración de sensibilidad free fire, sensibilidad headshot free fire, sensibilidad punto rojo free fire, sensibilidad francotirador free fire, dpi free fire, sensis free fire, sensis bot"}</script>
@@ -94,6 +94,7 @@
     <div id="lgBar"><i></i></div>
     <div id="lgNameBox"><input class="inp" id="lgName" maxlength="20" autocomplete="off" placeholder="Tu nombre de jugador"/><button class="btn-main" id="lgNameBtn">💾 GUARDAR NOMBRE</button><small id="lgNameErr" style="color:#ff6677;font-size:11px;min-height:14px;text-align:center;"></small></div>
     <p style="font-size:10px;color:rgba(160,215,255,0.25);text-align:center;letter-spacing:1px;margin-top:-6px;">Google: límite por cuenta · Sin cuenta: por dispositivo</p>
+    <div id="rvLogin"></div>
     <p style="font-size:11px;text-align:center;margin-top:-2px;line-height:1.8;"><a href="/guia-sensibilidad-free-fire.html" style="color:rgba(160,215,255,0.55);">📘 Guía de sensibilidad</a> · <a href="/como-funciona.html" style="color:rgba(160,215,255,0.55);">⚙️ Cómo funciona</a> · <a href="/preguntas-frecuentes.html" style="color:rgba(160,215,255,0.55);">❓ Preguntas frecuentes</a></p>
   </div>
 
@@ -365,6 +366,7 @@
       <div style="font-size:9px;font-weight:900;letter-spacing:2px;color:rgba(160,215,255,0.45);margin:8px 4px 0;">COMUNIDAD</div>
       <button class="menu-item" id="rankBtn" title="Ranking">🏆 Ranking</button>
       <button class="menu-item" id="creatorBtn" title="Programa Creadores">🎬 Programa Creadores</button>
+      <button class="menu-item" id="reviewsBtn" title="Reseñas">⭐ Reseñas</button>
       <div style="font-size:9px;font-weight:900;letter-spacing:2px;color:rgba(160,215,255,0.45);margin:8px 4px 0;">AJUSTES</div>
       <button class="menu-item" id="cfgBtn">⚙️ Configuración</button>
       <button class="menu-item" id="infoBtn" title="Información">ℹ️ Información</button>
@@ -453,6 +455,26 @@
     <button class="cbtn cbtn-p" id="supSendBtn">📨 ENVIAR REPORTE</button>
     <button class="cbtn cbtn-g" id="supCopyBtn">📋 COPIAR CORREO DE SOPORTE</button>
     <div id="supStatus" class="sup-status"></div>
+  </div>
+</div>
+
+<!-- PANEL: RESEÑAS (reales, de usuarios con cuenta; máximo 2 por persona) -->
+<div class="overlay" id="reviewsModal">
+  <div class="mbox" style="position:relative;">
+    <span id="reviewsCloseX" title="Cerrar" style="position:absolute;top:10px;right:14px;font-size:18px;color:rgba(160,215,255,0.5);cursor:pointer;line-height:1;">✕</span>
+    <div style="text-align:center;font-size:36px;margin:6px 0 4px;">⭐</div>
+    <div id="rvTitle" style="text-align:center;font-size:16px;font-weight:900;color:var(--ac);margin-bottom:6px;">RESEÑAS</div>
+    <div id="rvSub" style="text-align:center;font-size:12px;color:rgba(160,215,255,0.55);line-height:1.5;margin-bottom:14px;">Opiniones reales de la comunidad. Cada persona puede dejar máximo 2.</div>
+    <div class="rv-sum" id="rvSum"></div>
+    <div class="rv-form" id="rvForm">
+      <div class="rv-stars" id="rvStars"><button type="button" data-s="1" aria-label="1 estrella">★</button><button type="button" data-s="2" aria-label="2 estrellas">★</button><button type="button" data-s="3" aria-label="3 estrellas">★</button><button type="button" data-s="4" aria-label="4 estrellas">★</button><button type="button" data-s="5" aria-label="5 estrellas">★</button></div>
+      <textarea class="inp" id="rvText" rows="3" maxlength="280" placeholder="Cuéntanos cómo te fue con tu sensibilidad..." style="resize:none;"></textarea>
+      <div class="sup-meta"><span id="rvCount">0/280</span><span id="rvLeft"></span></div>
+      <button class="cbtn cbtn-p" id="rvSend">⭐ PUBLICAR RESEÑA</button>
+      <button class="cbtn cbtn-g" id="rvLater" style="display:none;">AHORA NO</button>
+    </div>
+    <div class="sup-status" id="rvStatus"></div>
+    <div class="rv-list" id="rvList"></div>
   </div>
 </div>
 

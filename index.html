@@ -492,7 +492,8 @@
     </div>
     <div id="calPanel" style="display:none;">
       <div class="cal-row"><span>Calibración de prueba<small>genSensiMejorado2 + recorrido a 180°</small></span><button type="button" class="cal-sw" id="calToggle">APAGADA</button></div>
-      <div class="cal-note">Con la prueba activada, tus sensibilidades salen con la lógica nueva y la tabla agrega "Recorrido 180°": los píxeles que recorre el dedo para girar 180° en tu celular. Es un modelo de prueba, no un dato oficial del juego.</div>
+      <div class="cal-note">Con la prueba activada, tus sensibilidades salen calibradas con la lógica nueva: la General se despeja del recorrido que debe hacer el dedo para girar 180° en tu celular, y de ahí salen los demás valores. La tabla muestra los mismos valores de siempre. Es un modelo de prueba, no un dato oficial del juego.</div>
+      <div class="cal-out" id="calLast" style="font-size:11.5px;font-weight:700;"></div>
       <div class="cal-sec">📐 MEDIR UN ARRASTRE</div>
       <div class="cal-grid">
         <label>d: recorrido del dedo (px)<input class="inp" id="calD" inputmode="decimal" autocomplete="off"></label>

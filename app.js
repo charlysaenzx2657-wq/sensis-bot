@@ -1124,6 +1124,19 @@ function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
   const _tr=_generalPorRecorrido(sp,nivel,iP), _cen=clamp(_tr.g*(((gLo+gHi)/2)/((_gB[0]+_gB[1])/2)),_gB[0],_gB[1]);
   const _refl=v=>{for(let k=0;k<4&&(v<_gB[0]||v>_gB[1]);k++)v=v<_gB[0]?2*_gB[0]-v:2*_gB[1]-v;return clamp(v,_gB[0],_gB[1]);}; // el azar rebota en los bordes (no se amontona)
   let general=_spread("gen_"+(iP?"i":"a")+nivel,()=>_refl(_cen*Math.exp(_CAL2.RUIDO*_gauss())),_gB[0],_gB[1],3,2);
+  // ── BOTÓN (lógica de Hz) acoplado con la General ──
+  // El RANGO del botón sale solo de los Hz (60 / 90 / 120+ según el nivel), sin que la resolución o el chip lo achiquen.
+  // Dentro de ese rango el botón crece con la General (más alta de lo esperado para sus Hz = botón más alto), y después la General se acerca un poco al
+  // botón ya redondeado: los dos se adaptan entre sí. Sin "anti-repetición" forzada, que mandaba el botón a los extremos.
+  const _BTA={baja:[[32,35],[35,38],[38,41]],media:[[36,39],[40,43],[43,46]],alta:[[40,43],[43,47],[45,51]]};
+  const _BTI={baja:[[36,40],[39,43],[42,46]],media:[[40,44],[43,47],[46,50]],alta:[[44,47],[47,50],[49,52]]};
+  const _BT=(iP?_BTI:_BTA)[nivel]||(iP?_BTI:_BTA).media, _lh=(x,y,z)=>th0<0.5?x+(y-x)*(th0/0.5):y+(z-y)*((th0-0.5)/0.5);
+  const _bL=Math.round(_lh(_BT[0][0],_BT[1][0],_BT[2][0])), _bH=Math.round(_lh(_BT[0][1],_BT[1][1],_BT[2][1])), _bn=_bH-_bL+1;
+  const _wd=Math.max(6,gHi-gLo), _sg=clamp(0.5+(general-(gLo+gHi)/2)/_wd,0,1);          // General respecto a lo que se espera con SUS Hz (0 = abajo, 1 = arriba)
+  const _KB=0.6, _u=0.5+_KB*(_sg-0.5);                                                   // el botón sigue a la General con peso 0.6 (nunca se clava en un extremo)
+  let boton=clamp(Math.round(_bL-0.5+_bn*_u+0.3*_gauss()),_bL,_bH);                     // posición dentro de su rango de Hz
+  const _sb=clamp(0.5+((boton-_bL+0.5)/_bn-0.5)/_KB,0,1);                                // a qué General corresponde ese botón ya redondeado
+  general=clamp(Math.round(general+0.5*(_sb-_sg)*_wd),_gB[0],_gB[1]);                  // la General se acerca al botón
   // ── PUNTO ROJO: offset sobre General (más alto con hs "normal", más pegado con "full") ──
   // Separación rojo-General: 10 a 15 puntos. Táctil rápido (th alto) = parte baja (no se pasa de la cabeza); lento = parte alta (no se pega al pecho).
   // Solo cuando el techo de 199 no deja espacio (General muy alto) puede quedar más junto.
@@ -1158,24 +1171,7 @@ function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
   const topC=199-Math.round(7*_sigm(_gauss())),hiC=Math.max(2,Math.min(cHi,topC-general)),loC=Math.min(cLo,Math.max(2,hiC-3));
   const offC=_spread("cam_"+nivel,()=>loC+(hiC-loC)*_sigm(0.7*z0+zs*_gauss()),loC,hiC,3,2);
   let camara=general+offC;
-  // ── BOTÓN (giroscopio): menos ganancia pide más control fino ──
-  let bw;
-  if(iP)bw=nivel==="baja"?[38,46]:nivel==="media"?[42,49]:[44,52];
-  else if(nivel==="baja")bw=hs==="full"?[32,34]:hs==="mid"?[33,35]:[34,36];
-  else if(nivel==="media")bw=hs==="full"?[36,39]:hs==="mid"?[38,41]:[40,43];
-  else bw=hs==="full"?[34,36]:hs==="mid"?[36,37]:[38,39];
-  const bLo=Math.max(32,bw[0]-2),bHi=Math.min(52,bw[1]+2);
-  let boton=_spread("bot_"+nivel+(iP?"i":""),()=>bLo+(bHi-bLo)*_sigm(-0.7*z0+zs*_gauss()),bLo,bHi,2,2);
-  const rd=rojo-general;
-  if(hs==="full"||rd>=3)boton-=(rd>=6?3:2);else if(rd>=1)boton-=1;
-  {
-    // Rango del botón [60 Hz, 90 Hz, 120+ Hz] según el nivel que eligió el usuario; la respuesta del táctil (Hz, resolución, chip) sube o baja el rango.
-    const BTA={baja:[[32,35],[35,38],[38,41]],media:[[36,39],[40,43],[43,46]],alta:[[40,43],[43,47],[45,51]]};
-    const BTI={baja:[[36,40],[39,43],[42,46]],media:[[40,44],[43,47],[46,50]],alta:[[44,47],[47,50],[49,52]]};
-    const BT=(iP?BTI:BTA)[nivel]||(iP?BTI:BTA).media;
-    const bL=Math.round(_l3(BT[0][0],BT[1][0],BT[2][0])),bH=Math.round(_l3(BT[0][1],BT[1][1],BT[2][1]));
-    boton=_spread("bot_"+nivel+(iP?"i":"")+"_hz",()=>bL+(bH-bL)*_sigm(-0.5*z0+zs*_gauss()),bL,bH,2,2);
-  }
+  // ── BOTÓN: ya se calculó junto con la General (lógica de Hz acoplada, ver arriba) ──
   boton=clamp(Math.round(boton),32,52);
   // ── Orden final de seguridad ──
   rojo=clamp(rojo,FLOOR,200);x2=clamp(Math.round(x2),FLOOR,200);x4=clamp(x4,FLOOR,200);camara=clamp(camara,FLOOR,200);
@@ -1187,6 +1183,7 @@ function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
   const I=Math.round;
   const _out={general:I(general),rojo:I(rojo),x2:I(x2),x4:I(x4),franco:I(franco),camara:I(camara),boton:I(boton),dpi:uD?I(uD):(dpiV==null?null:I(dpiV)),nivel,hs,motor:"mejorado2"};
   _out.rec=_recorrido180(sp,_out.general,iP); // lógica nueva: recorrido del dedo para girar 180°
+  if(_out.rec) _out.rec.spec={diagIn:sp.diagIn,resShort:sp.resShort,resLong:sp.resLong,refreshHz:sp.refreshHz,real:_fisFuentes(marca,modelo)};
   return _out;
 }
 
@@ -3832,16 +3829,10 @@ function _calStatus(t,ok){ const s=_calEl("calStatus"); s.textContent=t; s.style
 function _calRender(){
   const ok=_cal2Ok(); _calEl("calLock").style.display=ok?"none":""; _calEl("calPanel").style.display=ok?"":"none";
   const on=_cal2On(); const t=_calEl("calToggle"); t.textContent=on?"ACTIVADA ✅":"APAGADA"; t.classList.toggle("on",on);
-  const L=_calEl("calLast"); if(L) L.textContent=_cal2LastRec?("Última sensi de prueba · recorrido del dedo para girar 180°: "+_cal2LastRec.px+" px ("+_cal2LastRec.D+" % de la altura · "+_cal2LastRec.cm+" cm)"):"Genera una sensi con la prueba activada y aquí verás el recorrido que salió.";
-}
-function _calMeasure(){
-  const n=id=>parseFloat(String(_calEl(id).value).replace(",",".")), d=n("calD"), dy=n("calDy"), T=n("calT"), H=n("calH"), out=_calEl("calOut");
-  if(!(H>0)){ out.textContent="Escribe la altura H (px, con el juego en horizontal) para calcular."; return; }
-  const p=[]; let Dn=null;
-  if(Number.isFinite(d)){ Dn=_calD(d,H); p.push("D = "+Dn.toFixed(1)+" %"); }
-  if(Number.isFinite(dy)) p.push("R = "+_calR(dy,H).toFixed(1)+" %");
-  if(Dn!=null&&T>0){ const V=_calV(Dn,T); p.push("V = "+V.toFixed(1)+" %/s (≈ "+Math.round(V/100*H)+" px/s)"); }
-  out.textContent=p.length?p.join("  ·  "):"Escribe d, Δy y/o T para ver los resultados.";
+  const L=_calEl("calLast"), rc=_cal2LastRec;
+  if(L){ if(rc&&rc.spec){ const sc=rc.spec,f=sc.real||{},mk=o=>o?"✓":"≈";
+      L.textContent="Última sensi de prueba · pantalla "+Number(sc.diagIn).toFixed(1)+"″ "+mk(f.diagIn)+" · "+Math.round(sc.resLong)+"×"+Math.round(sc.resShort)+" "+mk(f.res)+" · "+Math.round(sc.refreshHz)+" Hz "+mk(f.refreshHz)+" · recorrido para girar 180°: "+rc.px+" px ("+rc.D+" % de la altura · "+rc.cm+" cm). ✓ = dato real del Worker · ≈ = estimado por gama."; }
+    else L.textContent="Genera una sensi con la prueba activada y aquí verás los datos del celular que usó y el recorrido que salió."; }
 }
 (function(){
   const m=_calEl("calModal"), btn=_calEl("calBtn"); if(!m||!btn) return;
@@ -3865,7 +3856,6 @@ function _calMeasure(){
   _calEl("calToggle").addEventListener("click",()=>{ if(!_cal2Ok()) return; try{ sessionStorage.setItem("sg_cal2_on",_cal2On()?"0":"1"); }catch(e){} _calRender();
     _calStatus(_cal2On()?"Prueba activada: tus próximas sensis salen calibradas con la lógica del recorrido a 180° (genSensiMejorado2).":"Prueba apagada: vuelve el motor normal.",true); });
   _calEl("calLockBtn").addEventListener("click",()=>{ try{ sessionStorage.removeItem("sg_cal2_ok"); sessionStorage.removeItem("sg_cal2_on"); }catch(e){} _calStatus("Sección bloqueada.",true); _calRender(); });
-  ["calD","calDy","calT","calH"].forEach(id=>_calEl(id).addEventListener("input",_calMeasure));
 })();
 // ── Ocultar / mostrar la barra superior (logo, créditos, nombre, menú, notificaciones) ──
 // La barra se desliza hacia arriba y se desvanece mientras el contenido sube; vuelve igual al mostrarla.

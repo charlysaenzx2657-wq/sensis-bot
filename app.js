@@ -1125,18 +1125,25 @@ function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
   const _refl=v=>{for(let k=0;k<4&&(v<_gB[0]||v>_gB[1]);k++)v=v<_gB[0]?2*_gB[0]-v:2*_gB[1]-v;return clamp(v,_gB[0],_gB[1]);}; // el azar rebota en los bordes (no se amontona)
   let general=_spread("gen_"+(iP?"i":"a")+nivel,()=>_refl(_cen*Math.exp(_CAL2.RUIDO*_gauss())),_gB[0],_gB[1],3,2);
   // ── BOTÓN (lógica de Hz) acoplado con la General ──
-  // El RANGO del botón sale solo de los Hz (60 / 90 / 120+ según el nivel), sin que la resolución o el chip lo achiquen.
-  // Dentro de ese rango el botón crece con la General (más alta de lo esperado para sus Hz = botón más alto), y después la General se acerca un poco al
-  // botón ya redondeado: los dos se adaptan entre sí. Sin "anti-repetición" forzada, que mandaba el botón a los extremos.
-  const _BTA={baja:[[32,35],[35,38],[38,41]],media:[[36,39],[40,43],[43,46]],alta:[[40,43],[43,47],[45,51]]};
-  const _BTI={baja:[[36,40],[39,43],[42,46]],media:[[40,44],[43,47],[46,50]],alta:[[44,47],[47,50],[49,52]]};
-  const _BT=(iP?_BTI:_BTA)[nivel]||(iP?_BTI:_BTA).media, _lh=(x,y,z)=>th0<0.5?x+(y-x)*(th0/0.5):y+(z-y)*((th0-0.5)/0.5);
-  const _bL=Math.round(_lh(_BT[0][0],_BT[1][0],_BT[2][0])), _bH=Math.round(_lh(_BT[0][1],_BT[1][1],_BT[2][1])), _bn=_bH-_bL+1;
-  const _wd=Math.max(6,gHi-gLo), _sg=clamp(0.5+(general-(gLo+gHi)/2)/_wd,0,1);          // General respecto a lo que se espera con SUS Hz (0 = abajo, 1 = arriba)
-  const _KB=0.6, _u=0.5+_KB*(_sg-0.5);                                                   // el botón sigue a la General con peso 0.6 (nunca se clava en un extremo)
-  let boton=clamp(Math.round(_bL-0.5+_bn*_u+0.3*_gauss()),_bL,_bH);                     // posición dentro de su rango de Hz
-  const _sb=clamp(0.5+((boton-_bL+0.5)/_bn-0.5)/_KB,0,1);                                // a qué General corresponde ese botón ya redondeado
-  general=clamp(Math.round(general+0.5*(_sb-_sg)*_wd),_gB[0],_gB[1]);                  // la General se acerca al botón
+  // Android: el botón es una función CONTINUA de la General (sin escalones entre niveles: sube más rápido por debajo de la
+  // General media y más suave por encima) más un desplazamiento por Hz (60 Hz más chico, 120 Hz más grande). El azar va de
+  // 3 abajo a 2 arriba del centro y los botones SE PUEDEN REPETIR (sin anti-repetición). Con General 173 sale de ~41 a 46.
+  // iPhone / iPad: como antes (rango por Hz del nivel y posición según la General).
+  const _lh=(x,y,z)=>th0<0.5?x+(y-x)*(th0/0.5):y+(z-y)*((th0-0.5)/0.5);
+  let boton;
+  if(!iP){
+    const _sl=general<166.5?0.33:0.23, _cB=42+_sl*(general-166.5)+_lh(-4,0,3);                       // centro del botón para esta General y estos Hz
+    boton=clamp(Math.round(_cB+clamp(0.9*_gauss(),-2.2,2.2)),Math.round(_cB)-3,Math.min(50,Math.round(_cB)+2));
+    general=clamp(Math.round(general+clamp(0.5*(boton-_cB)/_sl,-1.5,1.5)),_gB[0],_gB[1]);          // la General se acerca al botón
+  }else{
+    const _BTI={baja:[[36,40],[39,43],[42,46]],media:[[40,44],[43,47],[46,50]],alta:[[44,47],[47,50],[49,52]]};
+    const _BT=_BTI[nivel]||_BTI.media;
+    const _bL=Math.round(_lh(_BT[0][0],_BT[1][0],_BT[2][0])), _bH=Math.round(_lh(_BT[0][1],_BT[1][1],_BT[2][1])), _bn=_bH-_bL+1;
+    const _wd=Math.max(6,gHi-gLo), _sg=clamp(0.5+(general-(gLo+gHi)/2)/_wd,0,1), _KB=0.6, _u=0.5+_KB*(_sg-0.5);
+    boton=clamp(Math.round(_bL-0.5+_bn*_u+0.3*_gauss()),_bL,_bH);
+    const _sb=clamp(0.5+((boton-_bL+0.5)/_bn-0.5)/_KB,0,1);
+    general=clamp(Math.round(general+0.5*(_sb-_sg)*_wd),_gB[0],_gB[1]);
+  }
   // ── PUNTO ROJO: offset sobre General (más alto con hs "normal", más pegado con "full") ──
   // Separación rojo-General: 10 a 15 puntos. Táctil rápido (th alto) = parte baja (no se pasa de la cabeza); lento = parte alta (no se pega al pecho).
   // Solo cuando el techo de 199 no deja espacio (General muy alto) puede quedar más junto.

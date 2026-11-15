@@ -1041,6 +1041,138 @@ function genSensiMejorado(marca,modelo,nivel,dpi,dpiUser){
   return{general:I(general),rojo:I(rojo),x2:I(x2),x4:I(x4),franco:I(franco),camara:I(camara),boton:I(boton),dpi:uD?I(uD):(dpiV==null?null:I(dpiV)),nivel,hs,motor:"mejorado"};
 }
 
+// ── CALIBRACIÓN DE PRUEBA: recorrido del dedo en un giro de 180° ──────────────────
+// Mediciones (3.1–3.3): D = d/H·100 (arrastre como % de la altura de pantalla), R = Δy/H·100 (elevación de la mira,
+// positivo = hacia arriba) y V = D/T. H es la altura con el juego en HORIZONTAL (el lado corto de la pantalla, en px).
+const _calD=(d,H)=>d/H*100, _calR=(dy,H)=>dy/H*100, _calV=(D,T)=>D/T;
+// Modelo (se ajusta con mediciones reales): los grados por cm que da el juego crecen con la General (potencia P_EXP) y con la
+// densidad de píxeles (potencia GAMMA_RES, la misma del motor). Se ancla al celular de referencia: con General = G_REF ese
+// celular necesita barrer SWEEP (42 %) de su altura para girar 180°. Todo sale de la General de ESA generación y de la pantalla.
+const _CAL2={P_EXP:1,G_REF_A:166,G_REF_I:145};
+function _recorrido180(sp,general,iP){
+  const gR=_fisGeom(_SCREEN_REF),R=_SCREEN_REF;
+  const ppi=Math.sqrt(sp.resShort*sp.resShort+sp.resLong*sp.resLong)/sp.diagIn, ppiR=Math.sqrt(R.resShort*R.resShort+R.resLong*R.resLong)/R.diagIn;
+  if(!(ppi>0&&sp.resShort>0&&general>0)) return null;
+  const degCm=(180/(_FIS.SWEEP*gR.W))*Math.pow(general/(iP?_CAL2.G_REF_I:_CAL2.G_REF_A),_CAL2.P_EXP)*Math.pow(ppi/ppiR,_FIS.GAMMA_RES);
+  const cm=180/degCm, px=cm*ppi/2.54, H=sp.resShort, D=_calD(px,H), V=_calV(D,_FIS.T_FLICK), r1=x=>Math.round(x*10)/10;
+  return{px:Math.round(px),cm:r1(cm),D:r1(D),V:r1(V),Vpx:Math.round(V/100*H),T:_FIS.T_FLICK,H:H};
+}
+// Copia de genSensiMejorado (idéntica) + el recorrido de 180°. Solo se usa con la prueba activada (☰ Menú → Prueba de calibración).
+function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
+  const grp=_grp(marca),iP=(grp==="E"),p=P[grp];
+  // ── Ventana de la General según el nivel (banda del nivel ∩ límites del grupo) ──
+  const BANDA={baja:[145,158],media:[159,174],alta:[176,200]},BANDA_I={baja:[89,120],media:[121,169],alta:[172,200]};
+  const bd=(iP?BANDA_I:BANDA)[nivel]||(iP?BANDA_I:BANDA).media;
+  let gLo=iP?bd[0]:clamp(Math.max(p.genMin,bd[0]),bd[0],bd[1]),gHi=iP?bd[1]:clamp(Math.min(bd[1],p.genMax),bd[0],bd[1]);
+  if(gLo>gHi){gLo=p.genMin;gHi=p.genMax;}
+  gHi=Math.min(gHi,197); // deja sitio para que Punto Rojo siempre quede por encima
+  if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.round(c-3);gHi=Math.min(197,Math.round(c+3));} // ventana mínima: nunca un valor único
+  const FLOOR=iP?60:100; // piso de los valores (iPhone baja por debajo de 100)
+  const hsR=Math.random(),hs=hsR<0.60?"full":hsR<0.90?"mid":"normal";
+  // ── DPI (se calcula primero porque entra en la física: sensi ∝ DPI^-½) ──
+  let dpiV=null;
+  if(dpi&&!iP&&p.dpiMin>0){
+    const f=nivel==="baja"?[0.55,1]:nivel==="media"?[0.25,0.75]:[0,0.45],span=p.dpiMax-p.dpiMin;
+    dpiV=_spread("dpi_"+nivel,()=>p.dpiMin+span*(f[0]+(f[1]-f[0])*_sigm(1.1*_gauss())),p.dpiMin+span*f[0],p.dpiMin+span*f[1],8,4);
+    dpiV=clamp(dpiV,530,630);
+  }
+  // ── Física del dispositivo → ln g y su incertidumbre σ ──
+  const sp=_screenProfile(marca,modelo);
+  // La física usa un refresco NEUTRO (90 Hz): los Hz se aplican de forma explícita más abajo (General y botón), sin doble conteo.
+  const dpiDef=_dpiFabrica(sp), uD=(!iP&&dpiUser>=240&&dpiUser<=800)?dpiUser:null;
+  // El DPI escrito por el usuario NO entra a la física: se coordina con los Hz en un solo reparto (ver dSh más abajo).
+  const F=_fisGanancia({...sp,refreshHz:_SCREEN_REF.refreshHz},dpiV,_fisFuentes(marca,modelo));
+  // Reparto coordinado Hz + DPI sobre el General: los Hz mueven la ventana 0.25 de la banda (60 -> 120 Hz) y el DPI recibe una parte
+  // PROPIA y limitada (2/3 de ese recorrido, +-1/6 de la banda): así un DPI extremo nunca borra la diferencia entre 60 y 120 Hz.
+  // Con el DPI de fábrica no hay ajuste (igual que "Sin DPI"); más DPI que el de fábrica baja el General y menos DPI lo sube.
+  const _HZ_SPAN=0.25, _DPI_SHARE=2/3;
+  const dSh=uD?-(_HZ_SPAN*_DPI_SHARE/2)*clamp(Math.log(uD/dpiDef)/0.7,-1,1):0;
+  // ── Respuesta del táctil (Android e iPhone). ≤60 Hz = pantalla lenta; 90 = media; ≥120 = rápida (144/165/180/185 cuentan como 120).
+  // th0: 0 en 60 Hz, 0.5 en 90 Hz, 1 en 120 Hz o más (los Hz intermedios se interpolan).
+  // La resolución (rf: ~720p=0, ~1080p=0.5, ~1440p=1) y el chip corren esa escala: más resolución/chip = se siente más rápido.
+  const th0=clamp((Math.min(sp.refreshHz||90,120)-60)/60,0,1);
+  const rf=clamp((Math.sqrt((sp.resShort||1080)*(sp.resLong||2400))-1000)/1200,0,1);
+  const th=clamp(th0+0.60*(rf-0.5)+0.20*((sp.chipScore!=null?sp.chipScore:0.5)-0.5),0,1);
+  const _l3=(a,b,c)=>th<0.5?a+(b-a)*(th/0.5):b+(c-b)*((th-0.5)/0.5);
+  // Centro del resultado según el celular: los datos del Worker mueven el centro de forma suave y acotada (±1.8),
+  // y el azar físico (zs) reparte alrededor de ese centro, así no se amontona en los bordes de la banda.
+  const z0=1.8*Math.tanh(_FIS.DEV*F.lng/_FIS.ESC/1.8),zs=F.sigma/_FIS.ESC;
+  // ── Hz -> ventana del General DENTRO de la banda del nivel elegido (Android) ──
+  // Hz bajos (táctil lento) = parte alta de la banda (así "baja" no se queda en el fondo y no da puro pecho);
+  // 90 Hz = centro; 120 Hz o más = centro-bajo, y el botón grande compensa. Ancho de la ventana = 50% de la banda.
+  {
+    const g0=gLo,gs=gHi-gLo,pc=clamp(_l3(0.70,0.52,0.45)+0.06*_gauss()+dSh,0.16,0.86); // el azar mueve la ventana para que no salga siempre en lo mismo
+    gLo=Math.max(g0,Math.round(g0+gs*(pc-0.25)));gHi=Math.min(gHi,Math.round(g0+gs*(pc+0.25)));
+    if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.round(c-3);gHi=Math.min(197,Math.round(c+3));}
+  }
+  // ── GENERAL ──
+  let general=_spread("gen_"+(iP?"i":"a")+nivel,()=>gLo+(gHi-gLo)*_sigm(z0+zs*_gauss()),gLo,gHi,clamp(Math.round((gHi-gLo)/5),3,8),2); // solo se aleja de los 2 últimos: separa sin borrar el sesgo del celular
+  // ── PUNTO ROJO: offset sobre General (más alto con hs "normal", más pegado con "full") ──
+  // Separación rojo-General: 10 a 15 puntos. Táctil rápido (th alto) = parte baja (no se pasa de la cabeza); lento = parte alta (no se pega al pecho).
+  // Solo cuando el techo de 199 no deja espacio (General muy alto) puede quedar más junto.
+  const cg=clamp(14-3*th+(hs==="full"?-1:hs==="normal"?1:0),10.5,14.5);
+  const rLo=Math.max(10,Math.round(cg-2)),rHi=Math.min(15,Math.round(cg+2));
+  const zh=hs==="full"?-0.9:hs==="mid"?0:0.9;
+  // Las ventanas se acotan con el espacio libre hasta 199: así nada se amontona en el 200.
+  const topR=199-Math.round(4*_sigm(_gauss())); // techo variable (195-199): evita que varios valores terminen clavados en 199
+  const rHi2=Math.max(2,Math.min(rHi,topR-general)),rLo2=Math.min(rLo,rHi2);
+  const off=_spread("roj_"+nivel,()=>rLo2+(rHi2-rLo2)*_sigm(0.8*z0+zh+zs*_gauss()),rLo2,rHi2,3,2);
+  let rojo=general+off;
+  // ── ZOOM 2x: reducción por monitor-distance matching, k dentro de la ventana del nivel ──
+  const xLo=Math.abs(p.x2D[1]),xHi=Math.abs(p.x2D[0]),dMin=Math.max(8,xLo),dMax=xHi+12;
+  const kr=_FIS_K[nivel]||_FIS_K.media,r2ref=_mdm(2,_FIS.K_REF);
+  const dX2=_spread("x2d_"+nivel,()=>{const k=kr[0]*Math.pow(kr[1]/kr[0],_sigm(0.6*z0+zs*_gauss()));return rojo*(1-_mdm(2,k)/r2ref);},dMin,dMax,3,2);
+  let x2=clamp(rojo-dX2,FLOOR,rojo-3);
+  // ── ZOOM 4x: compensación ∝ √(r2/r4) − 1 (la raíz amortigua la respuesta del juego) ──
+  const kq=_kDeRatio(2,clamp(x2/rojo,0.3,0.999)*r2ref);
+  const fq=Math.sqrt(_mdm(2,kq)/_mdm(4,kq))-1;
+  const topX=199-Math.round(7*_sigm(_gauss())),hi4=Math.max(3,Math.min(40,topX-x2)),lo4=Math.min(16,Math.max(Math.min(8,hi4),hi4-5));
+  const d4=_spread("x4d_"+nivel,()=>x2*(0.32+0.22*_sigm(0.5*z0+zs*_gauss()))*fq,lo4,hi4,4,2);
+  let x4=x2+d4;
+  // ── FRANCOTIRADOR: ventana propia del grupo, posición por física ──
+  const fMin=p.franMin,fMax=p.franMax,fD=fMax-fMin;
+  const fr=nivel==="baja"?[0,0.55]:nivel==="media"?[0.25,0.80]:[0.45,1];
+  const fLo=fMin+fD*fr[0],fHi=fMin+fD*fr[1];
+  let franco=_spread("fran_"+nivel,()=>fLo+(fHi-fLo)*_sigm(0.7*z0+zs*_gauss()),Math.max(fMin,fLo-1),Math.min(fMax,fHi+1),3,2);
+  // ── CÁMARA LIBRE: offset sobre General ──
+  const cD=p.camaraD[1]-p.camaraD[0],wd=Math.max(3,Math.round(cD*0.25));
+  const cr=nivel==="baja"?[0,0.38]:nivel==="media"?[0.22,0.72]:[0.50,1];
+  const cLo=p.camaraD[0]+cD*cr[0]-wd,cHi=p.camaraD[0]+cD*cr[1]+wd;
+  const topC=199-Math.round(7*_sigm(_gauss())),hiC=Math.max(2,Math.min(cHi,topC-general)),loC=Math.min(cLo,Math.max(2,hiC-3));
+  const offC=_spread("cam_"+nivel,()=>loC+(hiC-loC)*_sigm(0.7*z0+zs*_gauss()),loC,hiC,3,2);
+  let camara=general+offC;
+  // ── BOTÓN (giroscopio): menos ganancia pide más control fino ──
+  let bw;
+  if(iP)bw=nivel==="baja"?[38,46]:nivel==="media"?[42,49]:[44,52];
+  else if(nivel==="baja")bw=hs==="full"?[32,34]:hs==="mid"?[33,35]:[34,36];
+  else if(nivel==="media")bw=hs==="full"?[36,39]:hs==="mid"?[38,41]:[40,43];
+  else bw=hs==="full"?[34,36]:hs==="mid"?[36,37]:[38,39];
+  const bLo=Math.max(32,bw[0]-2),bHi=Math.min(52,bw[1]+2);
+  let boton=_spread("bot_"+nivel+(iP?"i":""),()=>bLo+(bHi-bLo)*_sigm(-0.7*z0+zs*_gauss()),bLo,bHi,2,2);
+  const rd=rojo-general;
+  if(hs==="full"||rd>=3)boton-=(rd>=6?3:2);else if(rd>=1)boton-=1;
+  {
+    // Rango del botón [60 Hz, 90 Hz, 120+ Hz] según el nivel que eligió el usuario; la respuesta del táctil (Hz, resolución, chip) sube o baja el rango.
+    const BTA={baja:[[32,35],[35,38],[38,41]],media:[[36,39],[40,43],[43,46]],alta:[[40,43],[43,47],[45,51]]};
+    const BTI={baja:[[36,40],[39,43],[42,46]],media:[[40,44],[43,47],[46,50]],alta:[[44,47],[47,50],[49,52]]};
+    const BT=(iP?BTI:BTA)[nivel]||(iP?BTI:BTA).media;
+    const bL=Math.round(_l3(BT[0][0],BT[1][0],BT[2][0])),bH=Math.round(_l3(BT[0][1],BT[1][1],BT[2][1]));
+    boton=_spread("bot_"+nivel+(iP?"i":"")+"_hz",()=>bL+(bH-bL)*_sigm(-0.5*z0+zs*_gauss()),bL,bH,2,2);
+  }
+  boton=clamp(Math.round(boton),32,52);
+  // ── Orden final de seguridad ──
+  rojo=clamp(rojo,FLOOR,200);x2=clamp(Math.round(x2),FLOOR,200);x4=clamp(x4,FLOOR,200);camara=clamp(camara,FLOOR,200);
+  if(rojo<=general){rojo=Math.min(200,general+1);if(rojo<=general)general=rojo-1;}
+  if(x2>=rojo)x2=rojo-3;
+  if(x4<=x2)x4=Math.min(200,x2+8);
+  franco=clamp(franco,fMin,Math.min(fMax,x2-1));
+  // Garantía final: TODOS los valores salen como enteros (nada de decimales).
+  const I=Math.round;
+  const _out={general:I(general),rojo:I(rojo),x2:I(x2),x4:I(x4),franco:I(franco),camara:I(camara),boton:I(boton),dpi:uD?I(uD):(dpiV==null?null:I(dpiV)),nivel,hs,motor:"mejorado2"};
+  _out.rec=_recorrido180(sp,_out.general,iP); // lógica nueva: recorrido del dedo para girar 180°
+  return _out;
+}
+
 // ── CANVAS FX ─────────────────────────────────────────
 const cv=document.getElementById("fx"),ctx=cv.getContext("2d",{desynchronized:true})||cv.getContext("2d");
 let fxMode="none",fxRAF=null,drops=[],_fxHoldUntil=0,_fxLast=0; // _fxHoldUntil: el fondo se pausa SOLO hasta ese instante (cambios de pestaña, ventanas), nunca por scroll
@@ -2858,9 +2990,9 @@ function _stblAnimate(b){
     b.querySelectorAll(".stbl-val").forEach(v=>{
       const to=+v.dataset.to||0;
       if(g&&v.closest(".stbl-gw")) g.style.strokeDashoffset=String(100*(1-Math.min(200,to)/200));
-      if(reduce){ v.textContent=String(to); return; }
+      if(reduce){ v.textContent=String(to)+(v.dataset.suf?" "+v.dataset.suf:""); return; }
       const t0=performance.now();
-      (function f(t){ const p=Math.min(1,(t-t0)/1000); v.textContent=String(Math.round(to*(1-Math.pow(1-p,3)))); if(p<1)requestAnimationFrame(f); })(t0);
+      (function f(t){ const p=Math.min(1,(t-t0)/1000); v.textContent=String(Math.round(to*(1-Math.pow(1-p,3))))+(v.dataset.suf?" "+v.dataset.suf:""); if(p<1)requestAnimationFrame(f); })(t0);
     });
     b.querySelectorAll(".stbl-bar i").forEach(i=>{ i.style.width=i.dataset.w+"%"; });
   };
@@ -2879,18 +3011,19 @@ function _buildSensiTable(b,t){
   b.appendChild(tags);
   const grid=el("div","stbl-grid");
   t.rows.forEach((r,i)=>{
-    const cell=el("div","stbl-cell"+(i===0?" main":"")); cell.dataset.i=i;
+    const cell=el("div","stbl-cell"+(i===0?" main":"")+(r[0]==="recorrido"?" wide":"")); cell.dataset.i=i;
     const lab=el("div","stbl-lab"), ico=el("span","stbl-ico");
     ico.innerHTML=_STBL_ICONS[r[0]]||""; // SVG constante (sin datos del usuario)
     lab.appendChild(ico); lab.appendChild(el("span",null,r[1]));
     cell.appendChild(lab);
-    const val=el("div","stbl-val","0"); val.dataset.to=r[2];
+    const val=el("div","stbl-val","0"); val.dataset.to=r[2]; if(r[5]) val.dataset.suf=r[5];
     if(i===0){ const gw=el("div","stbl-gw"); gw.innerHTML=_STBL_GAUGE; gw.appendChild(val); cell.appendChild(gw); } // SVG constante
     else{
       cell.appendChild(val);
       const bar=el("div","stbl-bar"), fl=el("i"); // botón de disparo va de 32 a 52; el resto de 0 a 200
-      fl.dataset.w=String(r[0]==="boton"?Math.max(0,Math.min(100,(r[2]-32)/20*100)):Math.min(100,r[2]/2));
+      fl.dataset.w=String(r[4]!=null?Math.max(0,Math.min(100,r[4])):(r[0]==="boton"?Math.max(0,Math.min(100,(r[2]-32)/20*100)):Math.min(100,r[2]/2)));
       bar.appendChild(fl); cell.appendChild(bar);
+      if(r[3]) cell.appendChild(el("div","stbl-sub",r[3]));
     }
     _paintSensiCell(cell,i); grid.appendChild(cell);
   });
@@ -3027,15 +3160,15 @@ function onBtn(lbl,bd,silent){
         await _mq; const _ck=_specsChecklistStart(data.marca,data.modelo); // lista "investigando…"
         await _lookupDeviceSpecs(data.marca,data.modelo).catch(()=>{});
         await _ck.finish();
-        const r=genSensiMejorado(data.marca,data.modelo,data.nivel,data.dpi);
+        const r=_cal2On()?genSensiMejorado2(data.marca,data.modelo,data.nivel,data.dpi):genSensiMejorado(data.marca,data.modelo,data.nivel,data.dpi);
         myCount=await incServerCount(nickname); updateCounter(); _rvMarkGen();
         const hs=r.hs==="full"?"🎯 HEADSHOT CONFIG":r.hs==="mid"?"⚡ HEADSHOT MID":"";
         const dL=r.dpi?"\n🔵 DPI: "+r.dpi:"";
         const premL=isPremiumGen?"\n✨ PREMIUM (privada, no va al feed)":"";
-        const txt="✅ SENSIBILIDAD GENERADA\n📱 "+data.marca+" "+data.modelo+"\n"+NL[r.nivel]+" "+hs+premL+"\n\n🎮 General: "+r.general+"\n🔴 Mira Rojo: "+r.rojo+"\n🔭 Mira 2X: "+r.x2+"\n🔬 Mira 4X: "+r.x4+"\n🏹 Francotirador: "+r.franco+"\n📷 Cámara 360°: "+r.camara+"\n🕹️ Botón Disparo: "+r.boton+dL+"\n\n— SENSIS GOOD FF ☠️⚡";
+        const txt="✅ SENSIBILIDAD GENERADA\n📱 "+data.marca+" "+data.modelo+"\n"+NL[r.nivel]+" "+hs+premL+"\n\n🎮 General: "+r.general+"\n🔴 Mira Rojo: "+r.rojo+"\n🔭 Mira 2X: "+r.x2+"\n🔬 Mira 4X: "+r.x4+"\n🏹 Francotirador: "+r.franco+"\n📷 Cámara 360°: "+r.camara+"\n🕹️ Botón Disparo: "+r.boton+(r.rec?"\n📏 Recorrido 180°: "+r.rec.px+" px ("+r.rec.D+" % de la altura · "+r.rec.cm+" cm)":"")+dL+"\n\n— SENSIS GOOD FF ☠️⚡";
         addMsg("bot",txt,{copy:txt,table:{
           device:data.marca+" "+data.modelo, nivel:NL[r.nivel], hs:hs, prem:isPremiumGen, dpi:r.dpi,
-          rows:[["general","General",r.general],["rojo","Mira Rojo",r.rojo],["x2","Mira 2X",r.x2],["x4","Mira 4X",r.x4],["franco","Francotirador",r.franco],["camara","Cámara 360°",r.camara],["boton","Botón Disparo",r.boton]]
+          rows:[["general","General",r.general],["rojo","Mira Rojo",r.rojo],["x2","Mira 2X",r.x2],["x4","Mira 4X",r.x4],["franco","Francotirador",r.franco],["camara","Cámara 360°",r.camara],["boton","Botón Disparo",r.boton]].concat(r.rec?[["recorrido","Recorrido 180°",r.rec.px,"≈ "+r.rec.D+" % de la altura · "+r.rec.cm+" cm · "+r.rec.Vpx+" px/s",r.rec.D,"px"]]:[])
         },regen:()=>{
           // Repite la generación con la misma marca/modelo/nivel/dpi ya elegidos (fix #7)
           // IMPORTANTE: al terminar la generación step vuelve a "idle", así que hay que
@@ -3661,6 +3794,60 @@ async function _rvAfterLogin(){
   _rvEl("rvStars").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; _rvStar=+b.dataset.s; _rvPaintStars(); });
   _rvEl("rvText").addEventListener("input",e=>{ _rvEl("rvCount").textContent=e.target.value.length+"/280"; });
   _rvEl("rvSend").addEventListener("click",_rvSubmit);
+})();
+// ── Prueba de calibración (protegida con contraseña) ──
+// Solo se guarda una derivada PBKDF2-SHA256 con sal (nunca la contraseña). OJO: es un candado del lado del navegador:
+// sirve para que nadie la use sin querer, pero no es seguridad real (la lógica de prueba vive en esta misma página).
+const _CAL2_SALT="ae0bd13e5f5d18279778bbe2f62c8f54", _CAL2_HASH="12ff51e8aeeba1e420ef9f2ad65aced41260dfb1dd73ab377ba2161b7d4984cb", _CAL2_ITER=150000;
+const _calEl=id=>document.getElementById(id);
+const _cal2Ok=()=>{ try{ return sessionStorage.getItem("sg_cal2_ok")==="1"; }catch(e){ return false; } };
+function _cal2On(){ try{ return _cal2Ok()&&sessionStorage.getItem("sg_cal2_on")==="1"; }catch(e){ return false; } }
+let _cal2Fails=0,_cal2Until=0;
+async function _cal2Check(pw){
+  const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+  const salt=Uint8Array.from(_CAL2_SALT.match(/../g).map(h=>parseInt(h,16)));
+  const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveBits"]);
+  const h=hex(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt,iterations:_CAL2_ITER},key,256));
+  let d=h.length^_CAL2_HASH.length; for(let i=0;i<h.length;i++) d|=h.charCodeAt(i)^(_CAL2_HASH.charCodeAt(i)||0);
+  return d===0;
+}
+function _calStatus(t,ok){ const s=_calEl("calStatus"); s.textContent=t; s.style.color=ok?"#3DFF8F":"#FF5566"; }
+function _calRender(){
+  const ok=_cal2Ok(); _calEl("calLock").style.display=ok?"none":""; _calEl("calPanel").style.display=ok?"":"none";
+  const on=_cal2On(); const t=_calEl("calToggle"); t.textContent=on?"ACTIVADA ✅":"APAGADA"; t.classList.toggle("on",on);
+}
+function _calMeasure(){
+  const n=id=>parseFloat(String(_calEl(id).value).replace(",",".")), d=n("calD"), dy=n("calDy"), T=n("calT"), H=n("calH"), out=_calEl("calOut");
+  if(!(H>0)){ out.textContent="Escribe la altura H (px, con el juego en horizontal) para calcular."; return; }
+  const p=[]; let Dn=null;
+  if(Number.isFinite(d)){ Dn=_calD(d,H); p.push("D = "+Dn.toFixed(1)+" %"); }
+  if(Number.isFinite(dy)) p.push("R = "+_calR(dy,H).toFixed(1)+" %");
+  if(Dn!=null&&T>0){ const V=_calV(Dn,T); p.push("V = "+V.toFixed(1)+" %/s (≈ "+Math.round(V/100*H)+" px/s)"); }
+  out.textContent=p.length?p.join("  ·  "):"Escribe d, Δy y/o T para ver los resultados.";
+}
+(function(){
+  const m=_calEl("calModal"), btn=_calEl("calBtn"); if(!m||!btn) return;
+  const close=()=>m.classList.remove("show");
+  btn.addEventListener("click",()=>{ _calStatus("",true); _calEl("calPass").value=""; _calRender(); m.classList.add("show"); });
+  _calEl("calCloseX").addEventListener("click",close);
+  m.addEventListener("click",e=>{ if(e.target===m) close(); });
+  async function unlock(){
+    const now=Date.now(); if(now<_cal2Until){ _calStatus("Demasiados intentos. Espera "+Math.ceil((_cal2Until-now)/1000)+" s.",false); return; }
+    const pw=_calEl("calPass").value; if(!pw){ _calStatus("Escribe la contraseña.",false); return; }
+    if(!(window.crypto&&crypto.subtle)){ _calStatus("Este navegador no puede verificar la contraseña aquí (hace falta https).",false); return; }
+    const b=_calEl("calUnlock"); b.disabled=true;
+    try{
+      if(await _cal2Check(pw)){ _cal2Fails=0; try{ sessionStorage.setItem("sg_cal2_ok","1"); }catch(e){} _calEl("calPass").value=""; _calStatus("Sección desbloqueada.",true); _calRender(); }
+      else{ _cal2Fails++; if(_cal2Fails>=5){ _cal2Until=Date.now()+60000; _cal2Fails=0; _calStatus("Contraseña incorrecta. Espera 60 s para volver a intentar.",false); } else _calStatus("Contraseña incorrecta.",false); }
+    }catch(e){ _calStatus("No se pudo verificar la contraseña.",false); }
+    finally{ b.disabled=false; }
+  }
+  _calEl("calUnlock").addEventListener("click",unlock);
+  _calEl("calPass").addEventListener("keydown",e=>{ if(e.key==="Enter") unlock(); });
+  _calEl("calToggle").addEventListener("click",()=>{ if(!_cal2Ok()) return; try{ sessionStorage.setItem("sg_cal2_on",_cal2On()?"0":"1"); }catch(e){} _calRender();
+    _calStatus(_cal2On()?"Prueba activada: tus próximas sensis usan genSensiMejorado2 y muestran el recorrido a 180°.":"Prueba apagada: vuelve el motor normal.",true); });
+  _calEl("calLockBtn").addEventListener("click",()=>{ try{ sessionStorage.removeItem("sg_cal2_ok"); sessionStorage.removeItem("sg_cal2_on"); }catch(e){} _calStatus("Sección bloqueada.",true); _calRender(); });
+  ["calD","calDy","calT","calH"].forEach(id=>_calEl(id).addEventListener("input",_calMeasure));
 })();
 // ── Ocultar / mostrar la barra superior (logo, créditos, nombre, menú, notificaciones) ──
 // La barra se desliza hacia arriba y se desvanece mientras el contenido sube; vuelve igual al mostrarla.

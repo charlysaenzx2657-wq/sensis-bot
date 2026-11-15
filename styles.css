@@ -904,3 +904,16 @@ body #myInputArea,body.glass #myInputArea{background:none!important;border:none!
 .rv-login b{color:#FFC24D;}
 .rv-login em{display:block;font-style:normal;color:rgba(228,242,255,0.8);margin-top:4px;}
 
+/* ── Recorrido a 180° y sección de prueba de calibración ── */
+.stbl-cell.wide{grid-column:1/-1;}
+.stbl-sub{font-size:11px;line-height:1.4;margin:6px 6px 0;color:rgba(228,242,255,0.7);}
+.cal-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;font-weight:800;margin-bottom:8px;}
+.cal-row small{display:block;font-size:10px;font-weight:600;color:rgba(160,215,255,0.55);margin-top:2px;}
+.cal-sw{border:1px solid rgba(var(--ac-rgb),0.4);background:rgba(var(--ac-rgb),0.08);color:rgba(228,242,255,0.8);border-radius:99px;padding:7px 14px;font-weight:900;font-size:11px;cursor:pointer;white-space:nowrap;}
+.cal-sw.on{background:rgba(61,255,143,0.16);border-color:#3DFF8F;color:#3DFF8F;}
+.cal-note{font-size:11px;line-height:1.5;color:rgba(160,215,255,0.55);margin:8px 0;}
+.cal-sec{font-size:12px;font-weight:900;color:var(--ac);margin:12px 0 6px;}
+.cal-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.cal-grid label{font-size:10.5px;color:rgba(160,215,255,0.6);display:flex;flex-direction:column;gap:4px;}
+.cal-out{font-size:12.5px;font-weight:800;color:#FFC24D;margin:10px 0 4px;min-height:18px;word-break:break-word;}
+

@@ -933,10 +933,12 @@ function genSensiMejorado(marca,modelo,nivel,dpi,dpiUser){
   // ── Ventana de la General según el nivel (banda del nivel ∩ límites del grupo) ──
   const BANDA={baja:[145,158],media:[159,174],alta:[176,200]},BANDA_I={baja:[89,120],media:[121,169],alta:[172,200]};
   const bd=(iP?BANDA_I:BANDA)[nivel]||(iP?BANDA_I:BANDA).media;
-  let gLo=iP?bd[0]:clamp(Math.max(p.genMin,bd[0]),bd[0],bd[1]),gHi=iP?bd[1]:clamp(Math.min(bd[1],p.genMax),bd[0],bd[1]);
-  if(gLo>gHi){gLo=p.genMin;gHi=p.genMax;}
-  gHi=Math.min(gHi,197); // deja sitio para que Punto Rojo siempre quede por encima
-  if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.round(c-3);gHi=Math.min(197,Math.round(c+3));} // ventana mínima: nunca un valor único
+  // Rango permitido = banda del nivel ∩ límite del grupo. Si no se cruzan (p. ej. grupo V con mínimo 162 y nivel baja 145-158), manda el límite del grupo.
+  let aLo=iP?bd[0]:Math.max(p.genMin,bd[0]),aHi=iP?bd[1]:Math.min(p.genMax,bd[1]);
+  if(!iP&&aLo>aHi){ if(bd[1]<p.genMin){aLo=p.genMin;aHi=Math.min(p.genMax,p.genMin+6);}else{aHi=p.genMax;aLo=Math.max(p.genMin,p.genMax-6);} }
+  aHi=Math.min(aHi,197); // deja sitio para que Punto Rojo siempre quede por encima
+  let gLo=aLo,gHi=aHi;
+  if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.max(aLo,Math.round(c-3));gHi=Math.min(aHi,Math.round(c+3));} // ventana mínima: nunca un valor único (sin salirse del rango permitido)
   const FLOOR=iP?60:100; // piso de los valores (iPhone baja por debajo de 100)
   const hsR=Math.random(),hs=hsR<0.60?"full":hsR<0.90?"mid":"normal";
   // ── DPI (se calcula primero porque entra en la física: sensi ∝ DPI^-½) ──
@@ -973,7 +975,7 @@ function genSensiMejorado(marca,modelo,nivel,dpi,dpiUser){
   {
     const g0=gLo,gs=gHi-gLo,pc=clamp(_l3(0.70,0.52,0.45)+0.06*_gauss()+dSh,0.16,0.86); // el azar mueve la ventana para que no salga siempre en lo mismo
     gLo=Math.max(g0,Math.round(g0+gs*(pc-0.25)));gHi=Math.min(gHi,Math.round(g0+gs*(pc+0.25)));
-    if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.round(c-3);gHi=Math.min(197,Math.round(c+3));}
+    if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.max(aLo,Math.round(c-3));gHi=Math.min(aHi,Math.round(c+3));}
   }
   // ── GENERAL ──
   let general=_spread("gen_"+(iP?"i":"a")+nivel,()=>gLo+(gHi-gLo)*_sigm(z0+zs*_gauss()),gLo,gHi,clamp(Math.round((gHi-gLo)/5),3,8),2); // solo se aleja de los 2 últimos: separa sin borrar el sesgo del celular
@@ -1090,11 +1092,13 @@ function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
   // ── Ventana de la General según el nivel (banda del nivel ∩ límites del grupo) ──
   const BANDA={baja:[145,158],media:[159,174],alta:[176,200]},BANDA_I={baja:[89,120],media:[121,169],alta:[172,200]};
   const bd=(iP?BANDA_I:BANDA)[nivel]||(iP?BANDA_I:BANDA).media;
-  let gLo=iP?bd[0]:clamp(Math.max(p.genMin,bd[0]),bd[0],bd[1]),gHi=iP?bd[1]:clamp(Math.min(bd[1],p.genMax),bd[0],bd[1]);
-  if(gLo>gHi){gLo=p.genMin;gHi=p.genMax;}
-  gHi=Math.min(gHi,197); // deja sitio para que Punto Rojo siempre quede por encima
-  if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.round(c-3);gHi=Math.min(197,Math.round(c+3));} // ventana mínima: nunca un valor único
-  if(!iP&&nivel==="alta"){gLo=185;gHi=197;} // alta: de 185 en adelante (197 es el tope para que el Punto Rojo quede siempre por encima)
+  // Rango permitido = banda del nivel ∩ límite del grupo. Si no se cruzan (p. ej. grupo V con mínimo 162 y nivel baja 145-158), manda el límite del grupo.
+  let aLo=iP?bd[0]:Math.max(p.genMin,bd[0]),aHi=iP?bd[1]:Math.min(p.genMax,bd[1]);
+  if(!iP&&aLo>aHi){ if(bd[1]<p.genMin){aLo=p.genMin;aHi=Math.min(p.genMax,p.genMin+6);}else{aHi=p.genMax;aLo=Math.max(p.genMin,p.genMax-6);} }
+  aHi=Math.min(aHi,197); // deja sitio para que Punto Rojo siempre quede por encima
+  let gLo=aLo,gHi=aHi;
+  if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.max(aLo,Math.round(c-3));gHi=Math.min(aHi,Math.round(c+3));} // ventana mínima: nunca un valor único (sin salirse del rango permitido)
+  if(!iP&&nivel==="alta"){gHi=aHi;gLo=aHi>=188?185:aLo;} // alta: de 185 en adelante, sin pasar el tope del grupo (197 como máximo para que el Punto Rojo quede por encima)
   const FLOOR=iP?60:100; // piso de los valores (iPhone baja por debajo de 100)
   const hsR=Math.random(),hs=hsR<0.60?"full":hsR<0.90?"mid":"normal";
   // ── DPI: se calcula DESPUÉS de la General (450 a 650) y los dos se adaptan entre sí (ver más abajo) ──
@@ -1127,7 +1131,7 @@ function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
   {
     const g0=gLo,gs=gHi-gLo,pc=clamp(_l3(0.70,0.52,0.45)+0.06*_gauss()+dSh,0.16,0.86); // el azar mueve la ventana para que no salga siempre en lo mismo
     gLo=Math.max(g0,Math.round(g0+gs*(pc-0.25)));gHi=Math.min(gHi,Math.round(g0+gs*(pc+0.25)));
-    if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.round(c-3);gHi=Math.min(197,Math.round(c+3));}
+    if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.max(aLo,Math.round(c-3));gHi=Math.min(aHi,Math.round(c+3));}
   }
   // ── GENERAL ──
   // ── GENERAL (lógica nueva): se despeja del recorrido objetivo del dedo para girar 180° en ESTE celular y nivel ──

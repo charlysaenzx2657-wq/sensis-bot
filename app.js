@@ -1043,59 +1043,71 @@ function genSensiMejorado(marca,modelo,nivel,dpi,dpiUser){
   return{general:I(general),rojo:I(rojo),x2:I(x2),x4:I(x4),franco:I(franco),camara:I(camara),boton:I(boton),dpi:uD?I(uD):(dpiV==null?null:I(dpiV)),nivel,hs,motor:"mejorado"};
 }
 
-// ── CALIBRACIÓN DE PRUEBA: recorrido del dedo en un giro de 180° ──────────────────
-// Mediciones (3.1–3.3): D = d/H·100 (arrastre como % de la altura de pantalla), R = Δy/H·100 (elevación de la mira,
-// positivo = hacia arriba) y V = D/T. H es la altura con el juego en HORIZONTAL (el lado corto de la pantalla, en px).
+// ── CALIBRACIÓN DE PRUEBA: cuánto debe avanzar el dedo para llevar la mira del PECHO a la CABEZA del enemigo ──────────────────
+// Mediciones: D = d/H·100 (arrastre como % de la altura de pantalla; H = lado corto en px con el juego en horizontal),
+// R = Δy/H·100 (elevación de la mira, positivo = hacia arriba) y V = D/T.
 const _calD=(d,H)=>d/H*100, _calR=(dy,H)=>dy/H*100, _calV=(D,T)=>D/T;
-// Modelo (se ajusta con mediciones reales): los grados por cm que da el juego crecen con la General (potencia P_EXP) y con la
-// densidad de píxeles (potencia GAMMA_RES, la misma del motor). Se ancla al celular de referencia: con General = G_REF ese
-// celular necesita barrer SWEEP (42 %) de su altura para girar 180°. Todo sale de la General de ESA generación y de la pantalla.
-const _CAL2={P_EXP:1,G_REF_A:166.5,G_REF_I:145,RUIDO:0.022,K_BOTON:0.10}; // RUIDO: variación (ln) del azar de la General alrededor de su centro calibrado
-function _recorrido180(sp,general,iP){
-  const gR=_fisGeom(_SCREEN_REF),R=_SCREEN_REF;
+// PERSONAJE (en las unidades del propio motor: _H0 alto de pie, _HC alto agachado, _D0 distancia de combate, todo en "alturas de personaje"):
+// el centro de la pantalla cae en el pecho (PECHO = fracción del alto) y la cabeza está en CABEZA. Son proporciones humanas estándar, ESTIMADAS
+// (no vienen del juego): cuando se midan en partida se cambian aquí y toda la calibración se recalcula sola.
+// K_V = °/mm que sube la mira por cada mm que sube el dedo en el celular de referencia con General = G_REF (ancla de la escala).
+// D_T = cuánto debe avanzar el dedo (% de la altura de pantalla) del pecho a la cabeza en cada nivel (celular de referencia con la General media de la banda).
+// TOL: margen del veredicto de la simulación (±15 % sobre D_T).
+const _CAL2={P_EXP:1,G_REF_A:166.5,G_REF_I:145,PECHO:0.72,CABEZA:0.935,K_V:3.474,
+  D_T_A:{baja:0.4369,media:0.3976,alta:0.3466},D_T_I:{baja:0.5517,media:0.3976,alta:0.3099},TOL:0.15,RUIDO:0.022,K_BOTON:0.10}; // RUIDO: variación (ln) del azar de la General alrededor de su centro calibrado
+// Ángulo (°) que debe subir la mira del pecho a la cabeza en cada uno de los 12 movimientos del personaje: θ = atan(Δ·h / distancia).
+// Δ·h baja al agacharse (h = _HC) y la distancia cambia al avanzar/retroceder (distDelta). Se promedia con el peso real de cada movimiento.
+function _cabezaMov(){
+  const dd=_CAL2.CABEZA-_CAL2.PECHO; let sw=0,sa=0,mn=1e9,mx=0;
+  for(const m of _MOV_PROFILES){ const th=Math.atan(dd*m.h/(_D0*(1+m.distDelta)))*180/Math.PI; sw+=m.peso; sa+=m.peso*th; mn=Math.min(mn,th); mx=Math.max(mx,th); }
+  return{deg:sa/sw,min:mn,max:mx};
+}
+// Modelo directo: con esta General, ¿cuánto avanza el dedo (mm, px, % de la altura) para subir la mira del pecho a la cabeza en ESTE celular?
+// Ganancia (°/mm) = K_V · (General/G_REF)^P · (ppi/ppi_ref)^GAMMA_RES. La cabeza se ve a headPx píxeles del centro (FOV horizontal de referencia sobre el lado largo).
+function _viajeCabeza(sp,general,iP){
+  const R=_SCREEN_REF,C=_CAL2;
   const ppi=Math.sqrt(sp.resShort*sp.resShort+sp.resLong*sp.resLong)/sp.diagIn, ppiR=Math.sqrt(R.resShort*R.resShort+R.resLong*R.resLong)/R.diagIn;
-  if(!(ppi>0&&sp.resShort>0&&general>0)) return null;
-  const degCm=(180/(_FIS.SWEEP*gR.W))*Math.pow(general/(iP?_CAL2.G_REF_I:_CAL2.G_REF_A),_CAL2.P_EXP)*Math.pow(ppi/ppiR,_FIS.GAMMA_RES);
-  const cm=180/degCm, px=cm*ppi/2.54, H=sp.resShort, D=_calD(px,H), V=_calV(D,_FIS.T_FLICK), r1=x=>Math.round(x*10)/10;
-  return{px:Math.round(px),cm:r1(cm),D:r1(D),V:r1(V),Vpx:Math.round(V/100*H),T:_FIS.T_FLICK,H:H};
+  if(!(ppi>0&&sp.resShort>0&&sp.resLong>0&&general>0)) return null;
+  const ch=_cabezaMov(), gain=C.K_V*Math.pow(general/(iP?C.G_REF_I:C.G_REF_A),C.P_EXP)*Math.pow(ppi/ppiR,_FIS.GAMMA_RES);
+  const dragMm=ch.deg/gain, dragPx=dragMm*ppi/25.4, D=_calD(dragPx,sp.resShort);
+  const headPx=(sp.resLong/2)*Math.tan(ch.deg*Math.PI/180)/Math.tan(_FIS.FOV/2);
+  const r1=x=>Math.round(x*10)/10, r2=x=>Math.round(x*100)/100;
+  return{deg:r2(ch.deg),gain:r2(gain),dragMm:r2(dragMm),dragMmMin:r2(ch.min/gain),dragMmMax:r2(ch.max/gain),dragPx:r1(dragPx),D:r2(D),V:r2(_calV(D,_FIS.T_FLICK)),
+    headPx:Math.round(headPx),R:r1(_calR(headPx,sp.resShort)),ratio:r1(headPx/dragPx),H:sp.resShort};
 }
 // Efecto del botón en la sensibilidad EFECTIVA (supuesto: botón más grande = menos sensibilidad; ~10 % entre el botón 32 y el 52).
 // Sensibilidad efectiva = General × _fBoton(botón). K_BOTON es ajustable cuando se mida en el juego.
 function _fBoton(b){ return 1-_CAL2.K_BOTON*(b-42)/20; }
-// Simulación (solo por dentro): de la mira en el CENTRO de la pantalla (el imán del pecho) a la cabeza, a DIST m de distancia.
-// Mide cuánto debe subir la mira, cuántos píxeles son y cuánto tiene que arrastrar el dedo con la sensibilidad efectiva
-// (General + botón). Supone respuesta lineal y una cabeza 0,40 m sobre el centro del pecho: es una ESTIMACIÓN.
-function _simulaCabeza(sp,general,boton,iP,btyp){
-  const DIST=10, E=general*_fBoton(boton)/_fBoton(iP?boton:btyp), rec=_recorrido180(sp,E,iP); if(!rec) return null;
-  const W=sp.resLong, H=sp.resShort, ppi=Math.sqrt(W*W+H*H)/sp.diagIn;
-  const theta=Math.atan(0.40/DIST), tanV=Math.tan(_FIS.FOV/2)*H/W;                    // FOV horizontal de referencia -> vertical
-  const headPx=(H/2)*Math.tan(theta)/tanV;                                              // píxeles que sube la mira hasta la cabeza
-  const degMm=(180/rec.cm)*((60/_FIS.SWEEP_V)/(180/_FIS.SWEEP))/10;                     // °/mm vertical (barrido vertical de tu motor)
-  const dragMm=theta*180/Math.PI/degMm, dragPx=dragMm*ppi/25.4, r1=x=>Math.round(x*10)/10, r2=x=>Math.round(x*100)/100;
-  return{distM:DIST,cx:W/2,cy:H/2,headPx:Math.round(headPx),R:r1(_calR(headPx,H)),dragMm:r2(dragMm),dragPx:Math.round(dragPx),D:r1(_calD(dragPx,H)),eff:Math.round(E)};
+// Simulación (solo por dentro): con la General y el botón YA calibrados, ¿la mira llega a la cabeza? Compara lo que avanza el dedo
+// con el objetivo del nivel (D_T): menos del objetivo = la mira se pasa de la cabeza; más = se queda en el pecho/cuello.
+// btyp = botón típico de esa General (el botón sube/baja la General para compensar; aquí se deshace para ver la sensibilidad efectiva).
+function _simulaCabeza(sp,general,boton,iP,btyp,nivel){
+  const E=general*_fBoton(boton)/_fBoton(btyp), v=_viajeCabeza(sp,E,iP); if(!v) return null;
+  const Dt=(iP?_CAL2.D_T_I:_CAL2.D_T_A)[nivel]||_CAL2.D_T_A.media, q=v.D/Dt, T=_CAL2.TOL;
+  const ver=q<1-T?"pasa":q>1+T?"pecho":"cabeza";
+  return{...v,eff:Math.round(E),Dt:Math.round(Dt*100)/100,q:Math.round(q*100)/100,ver};
 }
-// Modelo inverso: ¿qué General hace que el dedo recorra el objetivo (en % de la altura) para girar 180° en ESTE celular?
-// El objetivo de cada nivel sale de las bandas del motor: el celular de referencia con la General media de la banda recorre D_t.
-// Después la misma D_t se aplica a la altura física y la densidad de píxeles del celular real (sus datos reales o estimados).
-function _generalPorRecorrido(sp,nivel,iP){
-  const R=_SCREEN_REF,C=_CAL2,gR=_fisGeom(R);
+// Modelo inverso: ¿qué General hace que el dedo avance D_T (del nivel) para ir del pecho a la cabeza en ESTE celular?
+// Gain necesaria = θ / (D_T · altura física); se despeja la General de la ganancia: más pantalla (alto en mm) = menos General; más ppi = menos General (amortiguado).
+function _generalPorViaje(sp,nivel,iP){
+  const R=_SCREEN_REF,C=_CAL2,ch=_cabezaMov();
   const ppi=Math.sqrt(sp.resShort*sp.resShort+sp.resLong*sp.resLong)/sp.diagIn, ppiR=Math.sqrt(R.resShort*R.resShort+R.resLong*R.resLong)/R.diagIn;
-  const mid=({baja:iP?104.5:151.5,media:iP?145:166.5,alta:iP?186:191})[nivel]||(iP?145:166.5), gRef=iP?C.G_REF_I:C.G_REF_A;
-  const HcmR=R.resShort/ppiR*2.54, Dt=100*_FIS.SWEEP*gR.W*Math.pow(gRef/mid,C.P_EXP)/HcmR;   // D objetivo del nivel (% de la altura)
-  const Hcm=sp.resShort/ppi*2.54, dcm=Dt/100*Hcm;                                             // recorrido objetivo en cm en este celular
-  const g=gRef*Math.pow((_FIS.SWEEP*gR.W/dcm)*Math.pow(ppiR/ppi,_FIS.GAMMA_RES),1/C.P_EXP);
-  return{g,Dt,dcm};
+  const Dt=(iP?C.D_T_I:C.D_T_A)[nivel]||C.D_T_A.media, gRef=iP?C.G_REF_I:C.G_REF_A;
+  const Hmm=sp.resShort/ppi*25.4, dMm=Dt/100*Hmm, gainNeed=ch.deg/dMm;                       // °/mm necesarios en este celular
+  const g=gRef*Math.pow(gainNeed/(C.K_V*Math.pow(ppi/ppiR,_FIS.GAMMA_RES)),1/C.P_EXP);
+  return{g,Dt,dMm};
 }
-// Copia de genSensiMejorado (igual) pero con la General calculada desde el recorrido del dedo a 180°. Solo se usa con la prueba activada (☰ Menú → Prueba de calibración).
+// Copia de genSensiMejorado (igual) pero con la General calculada desde cuánto debe avanzar el dedo para llevar la mira del pecho a la cabeza. Solo se usa con la prueba activada (☰ Menú → Prueba de calibración).
 function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
   const grp=_grp(marca),iP=(grp==="E"),p=P[grp];
   // ── Ventana de la General según el nivel (banda del nivel ∩ límites del grupo) ──
   const BANDA={baja:[145,158],media:[159,174],alta:[176,200]},BANDA_I={baja:[89,120],media:[121,169],alta:[172,200]};
   const bd=(iP?BANDA_I:BANDA)[nivel]||(iP?BANDA_I:BANDA).media;
   // Rango permitido = banda del nivel ∩ límite del grupo. Si no se cruzan (p. ej. grupo V con mínimo 162 y nivel baja 145-158), manda el límite del grupo.
-  let aLo=iP?bd[0]:Math.max(p.genMin,bd[0]),aHi=iP?bd[1]:Math.min(p.genMax,bd[1]);
-  if(!iP&&aLo>aHi){ if(bd[1]<p.genMin){aLo=p.genMin;aHi=Math.min(p.genMax,p.genMin+6);}else{aHi=p.genMax;aLo=Math.max(p.genMin,p.genMax-6);} }
-  aHi=Math.min(aHi,197); // deja sitio para que Punto Rojo siempre quede por encima
+  // En esta lógica el tope por grupo (p.genMax) ya no limita: en alta la General puede llegar a 185–199 en todas las marcas (200 no, porque el Punto Rojo siempre debe quedar por encima).
+  let aLo=iP?bd[0]:Math.max(p.genMin,bd[0]),aHi=iP?bd[1]:Math.min(200,bd[1]);
+  if(!iP&&aLo>aHi){ if(bd[1]<p.genMin){aLo=p.genMin;aHi=Math.min(200,p.genMin+6);}else{aHi=200;aLo=Math.max(p.genMin,194);} }
+  aHi=Math.min(aHi,199); // deja sitio para que Punto Rojo siempre quede por encima
   let gLo=aLo,gHi=aHi;
   if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.max(aLo,Math.round(c-3));gHi=Math.min(aHi,Math.round(c+3));} // ventana mínima: nunca un valor único (sin salirse del rango permitido)
   if(!iP&&nivel==="alta"){gHi=aHi;gLo=aHi>=188?185:aLo;} // alta: de 185 en adelante, sin pasar el tope del grupo (197 como máximo para que el Punto Rojo quede por encima)
@@ -1134,9 +1146,9 @@ function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
     if(gHi-gLo<6){const c=(gLo+gHi)/2;gLo=Math.max(aLo,Math.round(c-3));gHi=Math.min(aHi,Math.round(c+3));}
   }
   // ── GENERAL ──
-  // ── GENERAL (lógica nueva): se despeja del recorrido objetivo del dedo para girar 180° en ESTE celular y nivel ──
+  // ── GENERAL (lógica nueva): se despeja de cuánto debe avanzar el dedo para llevar la mira del pecho a la cabeza en ESTE celular y nivel ──
   // La General la manejan el tamaño de pantalla, la resolución y esta lógica. Los Hz ya NO la mueven: los Hz manejan el botón.
-  const _tr=_generalPorRecorrido(sp,nivel,iP), _cen=clamp(_tr.g,_gB[0],_gB[1]);
+  const _tr=_generalPorViaje(sp,nivel,iP), _cen=clamp(_tr.g,_gB[0],_gB[1]);
   const _refl=v=>{for(let k=0;k<4&&(v<_gB[0]||v>_gB[1]);k++)v=v<_gB[0]?2*_gB[0]-v:2*_gB[1]-v;return clamp(v,_gB[0],_gB[1]);}; // el azar rebota en los bordes (no se amontona)
   let general=_spread("gen_"+(iP?"i":"a")+nivel,()=>_refl(_cen*Math.exp(_CAL2.RUIDO*_gauss())),_gB[0],_gB[1],3,2);
   // ── BOTÓN (lógica de Hz) acoplado con la General ──
@@ -1145,9 +1157,10 @@ function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
   // 3 abajo a 2 arriba del centro y los botones SE PUEDEN REPETIR (sin anti-repetición). Con General 173 sale de ~41 a 46.
   // iPhone / iPad: como antes (rango por Hz del nivel y posición según la General).
   const _lh=(x,y,z)=>th0<0.5?x+(y-x)*(th0/0.5):y+(z-y)*((th0-0.5)/0.5);
-  let boton;
+  let boton,_btyp=null;
   if(!iP){
     const _sl=general<166.5?0.33:0.23, _cB=42+_sl*(general-166.5)+_lh(-4,0,3);                       // centro del botón para esta General y estos Hz
+    _btyp=_cB;
     boton=clamp(Math.round(_cB+clamp(0.9*_gauss(),-2.2,2.2)),Math.round(_cB)-3,Math.min(50,Math.round(_cB)+2));
     general=clamp(Math.round(general*_fBoton(_cB)/_fBoton(boton)),_gB[0],_gB[1]);                    // botón más grande que lo típico = menos sensibilidad efectiva: la General sube para compensar (y al revés)
   }else{
@@ -1155,6 +1168,7 @@ function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
     const _BT=_BTI[nivel]||_BTI.media;
     const _bL=Math.round(_lh(_BT[0][0],_BT[1][0],_BT[2][0])), _bH=Math.round(_lh(_BT[0][1],_BT[1][1],_BT[2][1])), _bn=_bH-_bL+1;
     const _wd=Math.max(6,gHi-gLo), _sg=clamp(0.5+(general-(gLo+gHi)/2)/_wd,0,1), _KB=0.6, _u=0.5+_KB*(_sg-0.5);
+    _btyp=_bL-0.5+_bn*_u;
     boton=clamp(Math.round(_bL-0.5+_bn*_u+0.3*_gauss()),_bL,_bH);
     general=clamp(Math.round(general*_fBoton(_bL-0.5+_bn*_u)/_fBoton(boton)),_gB[0],_gB[1]);        // misma regla: la General compensa el tamaño del botón
   }
@@ -1211,8 +1225,8 @@ function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
   // Garantía final: TODOS los valores salen como enteros (nada de decimales).
   const I=Math.round;
   const _out={general:I(general),rojo:I(rojo),x2:I(x2),x4:I(x4),franco:I(franco),camara:I(camara),boton:I(boton),dpi:uD?I(uD):(dpiV==null?null:I(dpiV)),nivel,hs,motor:"mejorado2"};
-  _out.rec=_recorrido180(sp,_out.general,iP); // lógica nueva: recorrido del dedo para girar 180°
-  if(_out.rec) _out.rec.sim=_simulaCabeza(sp,_out.general,_out.boton,iP,iP?_out.boton:42+(_out.general<166.5?0.33:0.23)*(_out.general-166.5)+_lh(-4,0,3));
+  _out.rec=_viajeCabeza(sp,_out.general,iP); // lógica nueva: cuánto avanza el dedo del pecho a la cabeza (sin botón)
+  if(_out.rec) _out.rec.sim=_simulaCabeza(sp,_out.general,_out.boton,iP,_btyp,nivel); // con el botón: sensibilidad efectiva y veredicto
   if(_out.rec) _out.rec.spec={diagIn:sp.diagIn,resShort:sp.resShort,resLong:sp.resLong,refreshHz:sp.refreshHz,real:_fisFuentes(marca,modelo)};
   return _out;
 }
@@ -3863,7 +3877,7 @@ function _calRender(){
   const on=_cal2On(); const t=_calEl("calToggle"); t.textContent=on?"ACTIVADA ✅":"APAGADA"; t.classList.toggle("on",on);
   const L=_calEl("calLast"), rc=_cal2LastRec;
   if(L){ if(rc&&rc.spec){ const sc=rc.spec,f=sc.real||{},mk=o=>o?"✓":"≈";
-      L.textContent="Última sensi de prueba · pantalla "+Number(sc.diagIn).toFixed(1)+"″ "+mk(f.diagIn)+" · "+Math.round(sc.resLong)+"×"+Math.round(sc.resShort)+" "+mk(f.res)+" · "+Math.round(sc.refreshHz)+" Hz "+mk(f.refreshHz)+" · recorrido para girar 180°: "+rc.px+" px ("+rc.D+" % de la altura · "+rc.cm+" cm). ✓ = dato real del Worker · ≈ = estimado por gama."+(rc.sim?"\nSimulación (estimada) a "+rc.sim.distM+" m: centro de pantalla "+Math.round(rc.sim.cx)+"×"+Math.round(rc.sim.cy)+" px · la cabeza queda "+rc.sim.headPx+" px más arriba ("+rc.sim.R+" % de la altura) · el dedo necesita "+rc.sim.dragMm+" mm ("+rc.sim.dragPx+" px, "+rc.sim.D+" % de la altura) con sensibilidad efectiva "+rc.sim.eff+" (General y botón juntos).":""); }
+      L.textContent="Última sensi de prueba · pantalla "+Number(sc.diagIn).toFixed(1)+"″ "+mk(f.diagIn)+" · "+Math.round(sc.resLong)+"×"+Math.round(sc.resShort)+" "+mk(f.res)+" · "+Math.round(sc.refreshHz)+" Hz "+mk(f.refreshHz)+" · del pecho a la cabeza el dedo avanza "+rc.dragMm+" mm ("+rc.dragPx+" px, "+rc.D+" % de la altura; según el movimiento del personaje "+rc.dragMmMin+"–"+rc.dragMmMax+" mm). ✓ = dato real del Worker · ≈ = estimado por gama."+(rc.sim?"\nSimulación (estimada): la cabeza queda "+rc.sim.headPx+" px sobre el centro de la pantalla ("+rc.sim.R+" % de la altura) · con sensibilidad efectiva "+rc.sim.eff+" (General y botón juntos) el dedo avanza "+rc.sim.dragMm+" mm ("+rc.sim.D+" % de la altura) y el objetivo del nivel es "+rc.sim.Dt+" % → "+(rc.sim.ver==="cabeza"?"la mira llega a la cabeza ✅":rc.sim.ver==="pasa"?"la mira tiende a pasarse de la cabeza ⚠️ (muy sensible)":"la mira tiende a quedarse en el pecho/cuello ⚠️ (poco sensible)")+".":""); }
     else L.textContent="Genera una sensi con la prueba activada y aquí verás los datos del celular que usó y el recorrido que salió."; }
 }
 (function(){
@@ -3886,7 +3900,7 @@ function _calRender(){
   _calEl("calUnlock").addEventListener("click",unlock);
   _calEl("calPass").addEventListener("keydown",e=>{ if(e.key==="Enter") unlock(); });
   _calEl("calToggle").addEventListener("click",()=>{ if(!_cal2Ok()) return; _cal2OnFlag=!_cal2On(); _calRender();
-    _calStatus(_cal2On()?"Prueba activada: tus próximas sensis salen calibradas con la lógica del recorrido a 180° (genSensiMejorado2).":"Prueba apagada: vuelve el motor normal.",true); });
+    _calStatus(_cal2On()?"Prueba activada: tus próximas sensis salen calibradas con la lógica de cuánto debe avanzar el dedo hasta la cabeza (genSensiMejorado2).":"Prueba apagada: vuelve el motor normal.",true); });
   _calEl("calLockBtn").addEventListener("click",()=>{ _cal2OnFlag=false; try{ sessionStorage.removeItem("sg_cal2_ok"); }catch(e){} _calStatus("Sección bloqueada.",true); _calRender(); });
 })();
 // ── Ocultar / mostrar la barra superior (logo, créditos, nombre, menú, notificaciones) ──

@@ -2499,14 +2499,16 @@ function _rcStep(){
   const next=()=>{ if(_rcOn) _rcT=setTimeout(_rcStep,5000); };
   const paint=()=>{ applyColor(rc); document.querySelectorAll(".copt").forEach(x=>x.classList.remove("sel")); };
   if(matchMedia("(prefers-reduced-motion:reduce)").matches){ paint(); next(); return; }
-  // Ola liviana: capa pequeña (300 px) que se escala. Antes era una capa gigante (260vmax) y su
-  // creación causaba un tirón notable justo cuando la ola arrancaba.
-  const _W=innerWidth,_H=innerHeight,_x=_W*(0.2+Math.random()*0.6),_y=_H*(0.2+Math.random()*0.6);
-  const _S=300,_k=Math.ceil(Math.hypot(Math.max(_x,_W-_x),Math.max(_y,_H-_y))*1.08/(0.396*_S));
+  // Ola SIN capas gigantes: una sola capa del tamaño de la pantalla cuyo degradado radial crece (variable --rcr, registrada con @property en styles.css).
+  // Antes era una capa de 300 px escalada ~10× con will-change: el navegador la rasterizaba a un tamaño enorme y en celulares de gama baja la GPU se quedaba
+  // sin memoria (franja de píxeles basura sobre la sensi justo cuando pasaba la ola). Ahora la memoria es constante. Si el navegador no soporta @property, el color cambia sin ola.
+  if(getComputedStyle(document.documentElement).getPropertyValue("--rcr").trim()!=="0%"){ paint(); next(); return; }
+  _freezeFx(1700); // pausa el fondo animado y apaga el blur de las ventanas mientras pasa la ola y se recolorea todo (evita el pico de GPU)
+  const _W=innerWidth,_H=innerHeight,_x=Math.round(_W*(0.2+Math.random()*0.6)),_y=Math.round(_H*(0.2+Math.random()*0.6));
   const w=document.createElement("div"); w.className="rc-wave";
-  w.style.cssText="position:fixed;left:"+_x+"px;top:"+_y+"px;width:"+_S+"px;height:"+_S+"px;margin:-"+(_S/2)+"px 0 0 -"+(_S/2)+"px;border-radius:50%;pointer-events:none;z-index:9000;will-change:transform,opacity;background:radial-gradient(circle,rgba("+m+",.16) 0,rgba("+m+",.16) 40%,rgba("+m+",.55) 47%,rgba("+m+",0) 56%)";
+  w.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:9000;background:radial-gradient(circle farthest-corner at "+_x+"px "+_y+"px,rgba("+m+",.16) 0,rgba("+m+",.16) calc(var(--rcr) - 12%),rgba("+m+",.55) calc(var(--rcr) - 4%),rgba("+m+",0) var(--rcr))";
   document.body.appendChild(w);
-  const a=w.animate([{transform:"scale(0)",opacity:1},{transform:"scale("+_k+")",opacity:0}],{duration:1400,easing:"cubic-bezier(.3,.6,.4,1)"});
+  const a=w.animate([{"--rcr":"0%"},{"--rcr":"118%"}],{duration:1400,easing:"cubic-bezier(.3,.6,.4,1)"});
   _rcW=a;
   setTimeout(()=>{ if(_rcOn) requestAnimationFrame(paint); },420); // el color cambia cuando el frente de la ola cruza la pantalla
   a.onfinish=()=>{ w.remove(); _rcW=null; next(); }; // el contador de 5 s arranca al terminar la ola

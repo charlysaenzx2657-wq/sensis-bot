@@ -317,11 +317,15 @@ async function _resolveCurrentNickByUid(uid){
     // Si por algún motivo quedó más de un documento con el mismo UID (p.ej. un
     // borrado anterior que falló), nos quedamos con el más reciente según
     // lastRenameTs/lastSeen en vez de confiar en el orden de Firestore.
-    let best=null, bestTs=-1;
+    // El nombre vigente es el del cambio de nombre MÁS RECIENTE (lastRenameTs). Antes se comparaba lastRenameTs contra lastSeen: un dispositivo con el
+    // nombre viejo recreaba su documento con un lastSeen nuevo y ganaba, así que el nombre volvía al anterior (y en el otro dispositivo nunca se actualizaba).
+    // Un documento recreado así NUNCA trae lastRenameTs; solo si ninguno lo trae se desempata por lastSeen.
+    let best=null, bestR=-1, bestS=-1;
     snap.forEach(d=>{
       const data=d.data();
-      const ts=(data.lastRenameTs&&data.lastRenameTs.toMillis)?data.lastRenameTs.toMillis():(data.lastSeen&&data.lastSeen.toMillis)?data.lastSeen.toMillis():0;
-      if(ts>=bestTs){ bestTs=ts; best=data.nickname||d.id; }
+      const r=(data.lastRenameTs&&data.lastRenameTs.toMillis)?data.lastRenameTs.toMillis():0;
+      const s=(data.lastSeen&&data.lastSeen.toMillis)?data.lastSeen.toMillis():0;
+      if(r>bestR||(r===bestR&&s>=bestS)){ bestR=r; bestS=s; best=data.nickname||d.id; }
     });
     return best;
   }catch(e){ console.error("No se pudo resolver el nombre actual por UID:",e); }
@@ -1052,9 +1056,10 @@ const _calD=(d,H)=>d/H*100, _calR=(dy,H)=>dy/H*100, _calV=(D,T)=>D/T;
 // (no vienen del juego): cuando se midan en partida se cambian aquí y toda la calibración se recalcula sola.
 // K_V = °/mm que sube la mira por cada mm que sube el dedo en el celular de referencia con General = G_REF (ancla de la escala).
 // D_T = cuánto debe avanzar el dedo (% de la altura de pantalla) del pecho a la cabeza en cada nivel (celular de referencia con la General media de la banda).
-// TOL: margen del veredicto de la simulación (±15 % sobre D_T).
+// TOL: margen del veredicto de la simulación (±10 % sobre D_T). GAMMA: cuánto pesa la densidad de píxeles (ppi) en la General de esta lógica (antes 0.35: en celulares de 720p daba Generals demasiado altas y la mira se pasaba de la cabeza).
+// K_BOTON: cuánto cambia la sensibilidad efectiva con el botón (0.20 = 1 % por cada punto de botón; un botón grande pega la mira al pecho, uno chico la pasa de la cabeza).
 const _CAL2={P_EXP:1,G_REF_A:166.5,G_REF_I:145,PECHO:0.72,CABEZA:0.935,K_V:3.474,
-  D_T_A:{baja:0.4369,media:0.3976,alta:0.3466},D_T_I:{baja:0.5517,media:0.3976,alta:0.3099},TOL:0.15,RUIDO:0.022,K_BOTON:0.10}; // RUIDO: variación (ln) del azar de la General alrededor de su centro calibrado
+  D_T_A:{baja:0.4369,media:0.3976,alta:0.3466},D_T_I:{baja:0.5517,media:0.3976,alta:0.3099},TOL:0.10,RUIDO:0.022,K_BOTON:0.20,GAMMA:0.10}; // RUIDO: variación (ln) del azar de la General alrededor de su centro calibrado
 // Ángulo (°) que debe subir la mira del pecho a la cabeza en cada uno de los 12 movimientos del personaje: θ = atan(Δ·h / distancia).
 // Δ·h baja al agacharse (h = _HC) y la distancia cambia al avanzar/retroceder (distDelta). Se promedia con el peso real de cada movimiento.
 function _cabezaMov(){
@@ -1068,14 +1073,14 @@ function _viajeCabeza(sp,general,iP){
   const R=_SCREEN_REF,C=_CAL2;
   const ppi=Math.sqrt(sp.resShort*sp.resShort+sp.resLong*sp.resLong)/sp.diagIn, ppiR=Math.sqrt(R.resShort*R.resShort+R.resLong*R.resLong)/R.diagIn;
   if(!(ppi>0&&sp.resShort>0&&sp.resLong>0&&general>0)) return null;
-  const ch=_cabezaMov(), gain=C.K_V*Math.pow(general/(iP?C.G_REF_I:C.G_REF_A),C.P_EXP)*Math.pow(ppi/ppiR,_FIS.GAMMA_RES);
+  const ch=_cabezaMov(), gain=C.K_V*Math.pow(general/(iP?C.G_REF_I:C.G_REF_A),C.P_EXP)*Math.pow(ppi/ppiR,C.GAMMA);
   const dragMm=ch.deg/gain, dragPx=dragMm*ppi/25.4, D=_calD(dragPx,sp.resShort);
   const headPx=(sp.resLong/2)*Math.tan(ch.deg*Math.PI/180)/Math.tan(_FIS.FOV/2);
   const r1=x=>Math.round(x*10)/10, r2=x=>Math.round(x*100)/100;
   return{deg:r2(ch.deg),gain:r2(gain),dragMm:r2(dragMm),dragMmMin:r2(ch.min/gain),dragMmMax:r2(ch.max/gain),dragPx:r1(dragPx),D:r2(D),V:r2(_calV(D,_FIS.T_FLICK)),
     headPx:Math.round(headPx),R:r1(_calR(headPx,sp.resShort)),ratio:r1(headPx/dragPx),H:sp.resShort};
 }
-// Efecto del botón en la sensibilidad EFECTIVA (supuesto: botón más grande = menos sensibilidad; ~10 % entre el botón 32 y el 52).
+// Efecto del botón en la sensibilidad EFECTIVA (supuesto: botón más grande = menos sensibilidad; ~20 % entre el botón 32 y el 52).
 // Sensibilidad efectiva = General × _fBoton(botón). K_BOTON es ajustable cuando se mida en el juego.
 function _fBoton(b){ return 1-_CAL2.K_BOTON*(b-42)/20; }
 // Simulación (solo por dentro): con la General y el botón YA calibrados, ¿la mira llega a la cabeza? Compara lo que avanza el dedo
@@ -1094,7 +1099,7 @@ function _generalPorViaje(sp,nivel,iP){
   const ppi=Math.sqrt(sp.resShort*sp.resShort+sp.resLong*sp.resLong)/sp.diagIn, ppiR=Math.sqrt(R.resShort*R.resShort+R.resLong*R.resLong)/R.diagIn;
   const Dt=(iP?C.D_T_I:C.D_T_A)[nivel]||C.D_T_A.media, gRef=iP?C.G_REF_I:C.G_REF_A;
   const Hmm=sp.resShort/ppi*25.4, dMm=Dt/100*Hmm, gainNeed=ch.deg/dMm;                       // °/mm necesarios en este celular
-  const g=gRef*Math.pow(gainNeed/(C.K_V*Math.pow(ppi/ppiR,_FIS.GAMMA_RES)),1/C.P_EXP);
+  const g=gRef*Math.pow(gainNeed/(C.K_V*Math.pow(ppi/ppiR,C.GAMMA)),1/C.P_EXP);
   return{g,Dt,dMm};
 }
 // Copia de genSensiMejorado (igual) pero con la General calculada desde cuánto debe avanzar el dedo para llevar la mira del pecho a la cabeza. Solo se usa con la prueba activada (☰ Menú → Prueba de calibración).
@@ -1157,18 +1162,22 @@ function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
   // 3 abajo a 2 arriba del centro y los botones SE PUEDEN REPETIR (sin anti-repetición). Con General 173 sale de ~41 a 46.
   // iPhone / iPad: como antes (rango por Hz del nivel y posición según la General).
   const _lh=(x,y,z)=>th0<0.5?x+(y-x)*(th0/0.5):y+(z-y)*((th0-0.5)/0.5);
-  let boton,_btyp=null;
+  let boton,_btyp=null,_bLo=34,_bHi=48; // _bLo/_bHi: rango permitido del botón (el botón grande pega la mira al pecho: tope 48 en Android)
+  const _g0=general; // General que pide la física (antes de compensar por el botón)
   if(!iP){
-    const _sl=general<166.5?0.33:0.23, _cB=42+_sl*(general-166.5)+_lh(-4,0,3);                       // centro del botón para esta General y estos Hz
-    _btyp=_cB;
-    boton=clamp(Math.round(_cB+clamp(0.9*_gauss(),-2.2,2.2)),Math.round(_cB)-3,Math.min(50,Math.round(_cB)+2));
+    // Centro del botón = función CONTINUA de la General: 43 con la General media y sube/baja con ella (más General = botón más grande; menos General = más chico),
+    // más el desplazamiento por Hz (60 Hz más chico, 120 Hz más grande). Con General 173 el centro ronda 45 (antes ~43).
+    // Por encima de General 175 la curva se aplana (0.12 por punto) para que en alta el botón no se clave en el tope: sigue variando entre ~45 y 48.
+    const _gb=general<=175?43+(general<166.5?0.36:0.31)*(general-166.5):45.64+0.12*(general-175), _cB=Math.min(_gb+_lh(-4,0,3),47.4); // el centro nunca pasa de 47.4: el botón máximo es 48 y el azar (±2) lo reparte entre 45 y 48, sin clavarse en el tope
+    _btyp=_cB; _bLo=Math.min(_bHi,Math.max(34,Math.round(_cB)-4));
+    boton=clamp(Math.round(_cB+clamp(0.8*_gauss(),-2,2)),Math.min(_bHi,Math.max(34,Math.round(_cB)-2)),Math.min(_bHi,Math.round(_cB)+2));
     general=clamp(Math.round(general*_fBoton(_cB)/_fBoton(boton)),_gB[0],_gB[1]);                    // botón más grande que lo típico = menos sensibilidad efectiva: la General sube para compensar (y al revés)
   }else{
     const _BTI={baja:[[36,40],[39,43],[42,46]],media:[[40,44],[43,47],[46,50]],alta:[[44,47],[47,50],[49,52]]};
     const _BT=_BTI[nivel]||_BTI.media;
     const _bL=Math.round(_lh(_BT[0][0],_BT[1][0],_BT[2][0])), _bH=Math.round(_lh(_BT[0][1],_BT[1][1],_BT[2][1])), _bn=_bH-_bL+1;
     const _wd=Math.max(6,gHi-gLo), _sg=clamp(0.5+(general-(gLo+gHi)/2)/_wd,0,1), _KB=0.6, _u=0.5+_KB*(_sg-0.5);
-    _btyp=_bL-0.5+_bn*_u;
+    _btyp=_bL-0.5+_bn*_u; _bLo=_bL; _bHi=_bH;
     boton=clamp(Math.round(_bL-0.5+_bn*_u+0.3*_gauss()),_bL,_bH);
     general=clamp(Math.round(general*_fBoton(_bL-0.5+_bn*_u)/_fBoton(boton)),_gB[0],_gB[1]);        // misma regla: la General compensa el tamaño del botón
   }
@@ -1180,6 +1189,9 @@ function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
     dpiV=clamp(Math.round(_dC+clamp(12*_gauss(),-30,30)),450,650);
     general=clamp(Math.round(general+clamp(0.5*((145+55*(650-dpiV)/200)-general),-2,2)),_gB[0],_gB[1]);
   }
+  // ── CUADRE FINAL General ↔ botón: si la banda recortó la General o el DPI la movió, el BOTÓN se ajusta para que la sensibilidad efectiva siga siendo la que pide la física ──
+  // (General más baja de lo pedido = botón más chico; más alta = botón más grande), siempre dentro del rango permitido (sin botones enormes).
+  { const _Et=_g0*_fBoton(_btyp); boton=clamp(Math.round(42+20*(1-_Et/general)/_CAL2.K_BOTON),_bLo,_bHi); }
   // ── PUNTO ROJO: offset sobre General (más alto con hs "normal", más pegado con "full") ──
   // Separación rojo-General: 10 a 15 puntos. Táctil rápido (th alto) = parte baja (no se pasa de la cabeza); lento = parte alta (no se pega al pecho).
   // Solo cuando el techo de 199 no deja espacio (General muy alto) puede quedar más junto.
@@ -1199,8 +1211,12 @@ function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
   // ── ZOOM 4x: compensación ∝ √(r2/r4) − 1 (la raíz amortigua la respuesta del juego) ──
   const kq=_kDeRatio(2,clamp(x2/rojo,0.3,0.999)*r2ref);
   const fq=Math.sqrt(_mdm(2,kq)/_mdm(4,kq))-1;
-  const topX=199-Math.round(7*_sigm(_gauss())),hi4=Math.max(3,Math.min(40,topX-x2)),lo4=Math.min(16,Math.max(Math.min(8,hi4),hi4-5));
-  const d4=_spread("x4d_"+nivel,()=>x2*(0.32+0.22*_sigm(0.5*z0+zs*_gauss()))*fq,lo4,hi4,4,2);
+  // Rango de la x4 sobre la x2: antes el mínimo era +16 y quedaba siempre arriba (194, 190, 180…). Ahora puede bajar hasta +3 sobre la x2 (nunca por debajo de ella)
+  // y el azar reparte en todo el rango (factor 0.35–1.0 sobre lo que pide la física).
+  const topX=199-Math.round(7*_sigm(_gauss())),hi4=Math.max(4,Math.min(40,topX-x2)),lo4=Math.min(hi4-1,Math.max(3,Math.round(hi4*0.15)));
+  // La física da el centro (algo más bajo que antes, ×0.8) y el azar reparte por TODA la ventana [lo4, hi4]: ya no se amontona arriba, en el tope.
+  const d4=_spread("x4d_"+nivel,()=>{const dF=x2*(0.32+0.22*_sigm(0.5*z0+zs*_gauss()))*fq*0.8, u0=clamp((dF-lo4)/Math.max(1,hi4-lo4),0.2,0.8);
+    return lo4+(hi4-lo4)*_sigm(Math.log(u0/(1-u0))+1.1*_gauss());},lo4,hi4,3,3);
   let x4=x2+d4;
   // ── FRANCOTIRADOR: ventana propia del grupo, posición por física ──
   const fMin=p.franMin,fMax=p.franMax,fD=fMax-fMin;
@@ -1220,7 +1236,7 @@ function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
   rojo=clamp(rojo,FLOOR,200);x2=clamp(Math.round(x2),FLOOR,200);x4=clamp(x4,FLOOR,200);camara=clamp(camara,FLOOR,200);
   if(rojo<=general){rojo=Math.min(200,general+1);if(rojo<=general)general=rojo-1;}
   if(x2>=rojo)x2=rojo-3;
-  if(x4<=x2)x4=Math.min(200,x2+8);
+  if(x4<=x2)x4=Math.min(200,x2+4); // la x4 nunca queda por debajo (ni igual) que la x2
   franco=clamp(franco,fMin,Math.min(fMax,x2-1));
   // Garantía final: TODOS los valores salen como enteros (nada de decimales).
   const I=Math.round;
@@ -3218,7 +3234,7 @@ function onBtn(lbl,bd,silent){
         // Function no está desplegada o tarda de más.
         await _mq; const _ck=_specsChecklistStart(data.marca,data.modelo); // lista "investigando…"
         await _lookupDeviceSpecs(data.marca,data.modelo).catch(()=>{});
-        await _ck.finish();
+        await _ck.finish(); _lastSpecsRes=_specsCount(data.marca,data.modelo); // para el aviso de specs del generador
         const r=_cal2On()?genSensiMejorado2(data.marca,data.modelo,data.nivel,data.dpi):genSensiMejorado(data.marca,data.modelo,data.nivel,data.dpi); _cal2LastRec=r.rec||null;
         myCount=await incServerCount(nickname); updateCounter(); _rvMarkGen();
         const hs=r.hs==="full"?"🎯 HEADSHOT CONFIG":r.hs==="mid"?"⚡ HEADSHOT MID":"";
@@ -3251,7 +3267,7 @@ function onBtn(lbl,bd,silent){
         }
         const rem=_effectiveMax()-myCount;
         setTimeout(()=>{
-          if(rem>0) addMsg("bot","Te quedan "+rem+" sensibilidad"+(rem!==1?"es":"")+" hoy.\n\n¿Quieres otra? Escribe tu marca y modelo.");
+          if(rem>0) addMsg("bot","Te quedan "+rem+" sensibilidad"+(rem!==1?"es":"")+" hoy."+(document.body.classList.contains("ui-gen")?"":"\n\n¿Quieres otra? Escribe tu marca y modelo."));
           else addMsg("bot","⛔ Llegaste al límite.\n\nSe restablece en "+_winLeft()+". ☠️⚡");
         },350);
       }catch(e){
@@ -3377,6 +3393,7 @@ function _stretchIndicator(ind,from,to){
   }catch(e){}
 }
 function switchTab(t){
+  if(document.body.classList.contains("ui-gen")) t="mio"; // en el generador no hay chat en vivo
   const changed=(_tabPrev!==t); _tabPrev=t;
   _freezeFx(640);
   document.getElementById("tFeed").classList.toggle("active",t==="feed");
@@ -3758,16 +3775,29 @@ async function _rvCountMine(){
   for(let k=1;k<=_RV_MAX;k++){ try{ if((await getDoc(doc(db,_RV_COL,u+"_"+k))).exists()) c++; }catch(e){} }
   return c;
 }
-// Franja del inicio de sesión: promedio y las 2 últimas reseñas (se oculta sola si no hay ninguna o no se puede leer)
+// Franja del inicio de sesión: promedio con estrellas y las 2 últimas reseñas, cada una con SUS estrellas (se oculta sola si no hay ninguna o no se puede leer)
+function _rvStarBar(v,sm){ // 5 estrellas grises con las doradas encima, recortadas al porcentaje (permite medias estrellas: 4.6 → 92 %)
+  const s=document.createElement("span"); s.className="rv-starbar"+(sm?" sm":""); s.style.setProperty("--p",(Math.max(0,Math.min(5,v))/5*100).toFixed(0)+"%");
+  s.setAttribute("role","img"); s.setAttribute("aria-label",v.toFixed(1)+" de 5 estrellas"); s.textContent="★★★★★";
+  const g=document.createElement("i"); g.textContent="★★★★★"; s.appendChild(g); return s;
+}
 async function _rvLoadLogin(){
   const box=_rvEl("rvLogin"); if(!box) return;
   try{
     const list=await _rvFetch(); box.textContent="";
     if(!list.length) return;
-    const top=document.createElement("div"); const b=document.createElement("b"); b.textContent="★ "+_rvAvg(list).toFixed(1);
-    top.append(b," · "+_rvCountTxt(list)+(list.length===1?" reseña":" reseñas")+" de la comunidad");
-    const w=document.createElement("div"); w.className="rv-login"; w.appendChild(top);
-    list.slice(0,2).forEach(r=>{ const e=document.createElement("em"); e.textContent="“"+(r.text.length>100?r.text.slice(0,100)+"…":r.text)+"” — "+String(r.nick||"").slice(0,24); w.appendChild(e); });
+    const av=_rvAvg(list), w=document.createElement("div"); w.className="rv-login";
+    const head=document.createElement("div"); head.className="rvl-head";
+    const num=document.createElement("b"); num.textContent=av.toFixed(1);
+    const col=document.createElement("div"); col.className="rvl-col"; const sm=document.createElement("small"); sm.textContent=_rvCountTxt(list)+(list.length===1?" reseña":" reseñas")+" de la comunidad";
+    col.append(_rvStarBar(av,false),sm); head.append(num,col); w.appendChild(head);
+    list.slice(0,2).forEach(r=>{
+      const it=document.createElement("div"); it.className="rvl-item";
+      const tp=document.createElement("div"); tp.className="rvl-top"; const nk=document.createElement("span"); nk.className="rvl-nick"; nk.textContent=String(r.nick||"Jugador").slice(0,24);
+      tp.append(_rvStarBar(r.stars,true),nk);
+      const p=document.createElement("p"); p.textContent="“"+(r.text.length>110?r.text.slice(0,110)+"…":r.text)+"”";
+      it.append(tp,p); w.appendChild(it);
+    });
     box.appendChild(w);
   }catch(e){ /* sin permiso o sin red: la franja simplemente no aparece */ }
 }
@@ -3857,7 +3887,7 @@ async function _rvAfterLogin(){
 // ── Prueba de calibración (protegida con contraseña) ──
 // Solo se guarda una derivada PBKDF2-SHA256 con sal (nunca la contraseña). OJO: es un candado del lado del navegador:
 // sirve para que nadie la use sin querer, pero no es seguridad real (la lógica de prueba vive en esta misma página).
-const _CAL2_SALT="ae0bd13e5f5d18279778bbe2f62c8f54", _CAL2_HASH="12ff51e8aeeba1e420ef9f2ad65aced41260dfb1dd73ab377ba2161b7d4984cb", _CAL2_ITER=150000;
+const _CAL2_SALT="88c3586d5569b35cfdcd9eef82fa8c55", _CAL2_HASH="e2dfa0a1aaf6881a96ceee9e100f80f9dfc02a2d02805c2f1754ef61c2470c3e", _CAL2_ITER=150000;
 const _calEl=id=>document.getElementById(id);
 const _cal2Ok=()=>{ try{ return sessionStorage.getItem("sg_cal2_ok")==="1"; }catch(e){ return false; } };
 let _cal2OnFlag=false; // solo en memoria: al recargar la página la prueba vuelve a estar APAGADA
@@ -4847,13 +4877,26 @@ async function checkFingerprintBan(){
 
 // ── ENTRAR ────────────────────────────────────────────
 async function entrar(googleUID=null){
-  const n=document.getElementById("nickIn").value.trim();
+  let n=document.getElementById("nickIn").value.trim();
   if(!n||n.length<2){ alert("Mínimo 2 letras"); return; }
   await ensureAuth();
   // Verificar ban por fingerprint y leer doc de usuario en paralelo (antes eran 2 viajes seguidos)
-  const uRef=doc(db,_C.u(),n);
-  const [fpBanned,uS]=await Promise.all([checkFingerprintBan(), getDoc(uRef)]);
+  let uRef=doc(db,_C.u(),n);
+  let [fpBanned,uS]=await Promise.all([checkFingerprintBan(), getDoc(uRef)]);
   if(fpBanned) return;
+  // UNA cuenta de Google = UN solo nombre vigente. Si este dispositivo trae guardado un nombre viejo (porque te renombraste en otro dispositivo),
+  // se adopta el nombre actual en vez de recrear el documento viejo (eso era lo que hacía volver el nombre anterior en todos los dispositivos).
+  if(googleUID){
+    try{
+      const cur=await _resolveCurrentNickByUid(googleUID);
+      if(cur&&cur!==n){
+        n=cur; document.getElementById("nickIn").value=cur; localStorage.setItem(_xd("ODEsODQ=",0x36),cur);
+        uRef=doc(db,_C.u(),n); uS=await getDoc(uRef);
+        // limpia los documentos viejos que el nombre anterior haya recreado (mismo UID, otro nombre)
+        try{ const qd=await getDocs(query(collection(db,_C.u()),where("uid","==",googleUID))); await Promise.all(qd.docs.filter(d=>d.id!==n).map(d=>deleteDoc(d.ref).catch(()=>{}))); }catch(e){}
+      }
+    }catch(e){ /* sin red: se sigue con el nombre escrito */ }
+  }
 
   // Identidad = uid de Firebase (anónimo o Google). Ya no se confía en localStorage.
   const authUID=auth.currentUser.uid;
@@ -5018,11 +5061,24 @@ async function entrar(googleUID=null){
   // Se re-suscribe automáticamente si el usuario cambia de nombre (ver changeNickBtn),
   // así el ban/límite en vivo no deja de sincronizarse tras un cambio de nombre.
   let _firstUserSnap=true;
-  let _unsubUserWatch=null;
+  let _unsubUserWatch=null, _adoptingNick=false;
   function _watchUserDoc(nk){
     if(_unsubUserWatch){ _unsubUserWatch(); _unsubUserWatch=null; }
     _unsubUserWatch=onSnapshot(doc(db,_C.u(),nk),snap=>{
-    if(!snap.exists())return;
+    if(!snap.exists()){
+      // El documento de este nombre ya no existe: si la cuenta (Google) se renombró en otro dispositivo, aquí se adopta el nombre nuevo sin esperar a reiniciar.
+      if(googleUser&&!_adoptingNick){
+        _adoptingNick=true;
+        _resolveCurrentNickByUid(googleUser.uid).then(cur=>{
+          if(cur&&cur!==nickname){
+            nickname=cur; localStorage.setItem(_xd("ODEsODQ=",0x36),cur);
+            addMsg("bot","✅ Tu nombre en esta cuenta ahora es: "+cur+" (se cambió desde otro dispositivo).");
+            _firstUserSnap=true; _watchUserDoc(cur);
+          }
+        }).catch(()=>{}).finally(()=>{ _adoptingNick=false; });
+      }
+      return;
+    }
     const ud=snap.data();
     if(ud.banned){
       const until=ud.bannedUntil;
@@ -5133,12 +5189,11 @@ async function entrarConGoogle(){
     // al nombre original de Google si el usuario se renombró antes. Solo si
     // no existe ningún registro previo caemos al nombre de Google.
     let recoveredNick=null;
-    if(!savedN){
-      try{ recoveredNick=await _resolveCurrentNickByUid(googleUser.uid); }catch(e){ /* si falla, seguimos con el fallback de abajo */ }
-    }
+    // Siempre se consulta el nombre vigente de la cuenta: el guardado en el dispositivo puede ser viejo (renombrado en otro dispositivo) o de otra cuenta.
+    try{ recoveredNick=await _resolveCurrentNickByUid(googleUser.uid); }catch(e){ /* si falla, seguimos con el fallback de abajo */ }
     const displayName=googleUser.displayName||googleUser.email.split("@")[0]||"User";
     // Nombre a usar: guardado local > registrado en Firestore por UID > displayName limpio
-    let n=savedN||recoveredNick||(displayName.replace(/[^a-zA-Z0-9_\-]/g,"").slice(0,20))||"Player";
+    let n=recoveredNick||savedN||(displayName.replace(/[^a-zA-Z0-9_\-]/g,"").slice(0,20))||"Player";
     if(!savedN&&!recoveredNick&&document.getElementById("loginScreen").classList.contains("show")){ n=await _lgAskName((displayName.replace(/[^a-zA-Z0-9_\-]/g,"").slice(0,20))||"Player"); }
     // Verificar si el nombre está tomado por otra cuenta Google antes de intentar entrar
     const snap=await getDoc(doc(db,_C.u(),n));
@@ -5365,6 +5420,7 @@ document.getElementById("tMio").addEventListener("click",()=>switchTab("mio"));
     if(dt>600) return; // gesto lento -> probablemente scroll, no swipe
     if(Math.abs(dx)<70 || Math.abs(dx)<Math.abs(dy)*1.4) return; // no fue predominantemente horizontal
     const isFeedActive=document.getElementById("tFeed").classList.contains("active");
+    if(document.body.classList.contains("ui-gen")) return; // sin chat en vivo: el deslizar entre pestañas no aplica
     if(dx<0 && !isFeedActive) switchTab("feed");
     else if(dx>0 && isFeedActive) switchTab("mio");
   },{passive:true});
@@ -5812,4 +5868,85 @@ if(!/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)){
     if(el.style.left){ const r=el.getBoundingClientRect(); apply(r.left,r.top); }
   };
   window.addEventListener("resize",()=>window._streakFit());
+})();
+
+// ── INTERFAZ: Chatbot / Generador ─────────────────────────────────────────────────────────────────────────────
+// Chatbot = el flujo de siempre. Generador = sin chat: marca (lista), modelo (texto), nivel, DPI (botón) y GENERAR. Usa EXACTAMENTE el mismo motor y los mismos límites
+// que el chat (onBtn): solo cambia cómo se piden los datos. La preferencia se guarda en este dispositivo.
+const _UI_KEY="sg_ui_style";
+let _lastSpecsRes=null;                        // {n,total}: cuántas de las 4 specs (pantalla, Hz, resolución, chip) salieron de datos reales
+let _genLv="media", _genDpiOn=false, _genBusy=false;
+const _uiGet=()=>{ try{ return localStorage.getItem(_UI_KEY)==="gen"?"gen":"chat"; }catch(e){ return "chat"; } };
+function _specsCount(marca,modelo){ const f=(typeof _fisFuentes==="function"?_fisFuentes(marca,modelo):null)||{}; return {n:[f.diagIn,f.res,f.refreshHz,f.chip].filter(Boolean).length,total:4}; }
+// Aviso chico abajo a la derecha: "exacto" (las 4), "negativo" (ninguna) o solo el número de las encontradas
+function _genSpec(r){
+  const el=document.getElementById("genSpecRes"); if(!el) return;
+  if(!r){ el.textContent=""; el.className=""; return; }
+  const v=r.n>=r.total?"exacto":r.n===0?"negativo":String(r.n);
+  el.className="show "+(r.n>=r.total?"ok":r.n===0?"neg":"mid"); el.textContent="resultados de las specs: "+v;
+}
+function _genBrandFill(){
+  const s=document.getElementById("genBrand"); if(!s||s.options.length>1) return;
+  [...new Set(MARCAS)].forEach(m=>{ const o=document.createElement("option"); o.value=m; o.textContent=m; s.appendChild(o); });
+}
+function _genSyncDpi(){
+  const b=document.getElementById("genDpi"), br=document.getElementById("genBrand").value, noDpi=!!br&&_grp(br)==="E"; // iPhone/iPad no tienen ajuste de DPI
+  if(noDpi) _genDpiOn=false;
+  b.disabled=noDpi; b.classList.toggle("on",_genDpiOn&&!noDpi); b.textContent=noDpi?"NO APLICA":(_genDpiOn?"ENCENDIDO":"APAGADO");
+}
+function _genBusyUI(on,soft){ // on=true: cargando · on=false: libre · soft=true: ya salió el resultado (se quita el efecto de carga pero el botón sigue bloqueado hasta que el flujo termine)
+  const b=document.getElementById("genBtn");
+  _genBusy=!!on||!!soft; b.disabled=_genBusy; b.classList.toggle("loading",!!on&&!soft);
+  document.getElementById("genBtnT").textContent=(on&&!soft)?"INVESTIGANDO SPECS…":"⚡ GENERAR";
+}
+function _genGo(){
+  if(_genBusy||step!=="idle"){ return; }
+  const marca=document.getElementById("genBrand").value, raw=document.getElementById("genModel").value.trim().replace(/\s+/g," ");
+  if(!marca){ notify("⚠️ Elige la marca de tu celular."); return; }
+  if(raw.length<2){ notify("⚠️ Escribe el modelo de tu celular."); return; }
+  const modelo=exMod(marca+" "+raw,marca)||raw;
+  data={marca,modelo,nivel:_genLv,dpi:_genDpiOn&&_grp(marca)!=="E"};
+  _lastSpecsRes=null; _genSpec(null); document.getElementById("myMsgs").textContent=""; _genBusyUI(true);
+  step="dpi"; onBtn(data.dpi?"✅ Sí, con DPI":"❌ Sin DPI",document.createElement("div"),true);
+  // onBtn no devuelve una promesa: se vigila hasta que salga el resultado y hasta que el flujo vuelva a "idle" (termina, falla o llega al límite)
+  const t0=Date.now(); let shown=false, scrolled=false;
+  const iv=setInterval(()=>{
+    if(_lastSpecsRes&&!shown){ shown=true; _genSpec(_lastSpecsRes); }                       // el aviso sale en cuanto termina la investigación de specs
+    const card=document.getElementById("myMsgs").querySelector(".bub-sensi");
+    if(card&&!scrolled){ scrolled=true; _genBusyUI(true,true); setTimeout(()=>card.scrollIntoView({behavior:"smooth",block:"start"}),250); }
+    if(step==="idle"||Date.now()-t0>60000){ clearInterval(iv); _genBusyUI(false); if(_lastSpecsRes&&!shown) _genSpec(_lastSpecsRes); }
+  },200);
+}
+function _applyUI(mode,fromUser){
+  const gen=mode==="gen";
+  document.body.classList.toggle("ui-gen",gen);
+  try{ localStorage.setItem(_UI_KEY,gen?"gen":"chat"); }catch(e){}
+  document.querySelectorAll("#uiOpts .ui-opt").forEach(o=>o.classList.toggle("sel",o.dataset.ui===(gen?"gen":"chat")));
+  if(gen){ _genBrandFill(); _genSyncDpi(); }
+  _genSpec(null);
+  if(gen||fromUser) switchTab("mio");
+}
+(function(){
+  const g=id=>document.getElementById(id); if(!g("genForm")) return;
+  g("uiOpts").addEventListener("click",e=>{ const b=e.target.closest(".ui-opt"); if(!b) return; _applyUI(b.dataset.ui,true); notify("✅ Interfaz: "+(b.dataset.ui==="gen"?"Generador":"Chatbot")); });
+  g("genLevel").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; _genLv=b.dataset.lv; g("genLevel").querySelectorAll("button").forEach(x=>x.classList.toggle("sel",x===b)); });
+  g("genDpi").addEventListener("click",()=>{ _genDpiOn=!_genDpiOn; _genSyncDpi(); });
+  g("genBrand").addEventListener("change",_genSyncDpi);
+  g("genBtn").addEventListener("click",_genGo);
+  g("genModel").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); _genGo(); } });
+  _applyUI(_uiGet(),false);
+})();
+
+// ── SENSIS DE FAMOSOS (bloqueada temporalmente) ───────────────────────────────────────────────────────────────
+// Por ahora solo la lista y el candado. Más adelante: debajo de cada nombre irá la sensibilidad MÁS REPETIDA entre los resultados encontrados.
+// No se inventa ningún valor: hasta entonces cada nombre muestra "Próximamente". Para agregar famosos basta sumar nombres a esta lista.
+const _FAMOSOS=["Donato","Krek Gamer","Elis","Nobru","Cerol","Bak","Ruok FF","Total Gaming","Gyan Gaming","Desi Gamers","Two Side Gamers"];
+(function(){
+  const m=document.getElementById("famousModal"), b=document.getElementById("famousBtn"); if(!m||!b) return;
+  const list=document.getElementById("famList");
+  _FAMOSOS.forEach(n=>{ const r=document.createElement("div"); r.className="fam-row"; const t=document.createElement("b"); t.textContent=n; const s=document.createElement("span"); s.textContent="🔒 Próximamente"; r.append(t,s); list.appendChild(r); });
+  const close=()=>m.classList.remove("show");
+  b.addEventListener("click",()=>{ const mm=document.getElementById("menuModal"); if(mm) mm.classList.remove("show"); m.classList.add("show"); });
+  document.getElementById("famousCloseX").addEventListener("click",close);
+  m.addEventListener("click",e=>{ if(e.target===m) close(); });
 })();

@@ -266,7 +266,8 @@ button:focus-visible,.cbtn:focus-visible,.obtn:focus-visible{outline:none;}
 #loginScreen.show{display:flex;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
 @keyframes panelFadeIn{0%{opacity:0;transform:translate(var(--slide-x,0px),var(--slide-y,28px)) scale(0.95);}55%{opacity:1;}100%{opacity:1;transform:translate(0,0) scale(1);}}
-.panel-fade{animation:panelFadeIn 0.55s cubic-bezier(0.16,1,0.3,1);will-change:transform,opacity;}
+/* Sin will-change: con la clase puesta para siempre dejaba el panel entero (todo el chat) como capa de GPU permanente y en celulares de gama baja la memoria de texturas se saturaba (franja de cuadros con basura). */
+.panel-fade{animation:panelFadeIn 0.55s cubic-bezier(0.16,1,0.3,1);}
 #feedPanel{animation:panelFadeIn 0.55s cubic-bezier(0.16,1,0.3,1);--slide-x:-48px;--slide-y:0px;}#myPanel{animation:panelFadeIn 0.55s cubic-bezier(0.16,1,0.3,1);--slide-x:48px;--slide-y:0px;}
 
 /* ── SPLASH (auto-login en curso) ── */
@@ -344,9 +345,9 @@ button:focus-visible,.cbtn:focus-visible,.obtn:focus-visible{outline:none;}
    frame (no se compone en GPU) -> eso era el "trabado". Ahora el brillo es
    un pseudo-elemento con opacity+transform (sí se compone en GPU) y la
    burbuja en sí solo anima transform/opacity -> mucho más fluido. */
-.bub.bub-sensi{animation:sensiReveal 0.9s cubic-bezier(0.16,1,0.3,1);position:relative;overflow:hidden;will-change:transform,opacity;}
+.bub.bub-sensi{animation:sensiReveal 0.6s cubic-bezier(0.16,1,0.3,1);position:relative;overflow:hidden;}
 .bub.bub-sensi::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,0.22) 45%,transparent 60%);transform:translateX(-120%);animation:sensiShine 1.3s ease-out 0.25s;pointer-events:none;}
-@keyframes sensiReveal{0%{transform:scale(0.8);opacity:0;}45%{transform:scale(1.045);opacity:1;}75%{transform:scale(0.99);}100%{transform:scale(1);}}
+@keyframes sensiReveal{0%{transform:translateY(14px);opacity:0;}100%{transform:none;opacity:1;}}
 @keyframes sensiShine{0%{transform:translateX(-120%);}100%{transform:translateX(120%);}}
 /* Chispas de la sensi: propia (no comparte animación con las bolitas de los
    interruptores) para poder hacerla más lenta sin afectar la del switch. */
@@ -591,7 +592,7 @@ body{--metal:radial-gradient(130% 150% at 12% 0%,color-mix(in srgb,var(--ac) 44%
 @keyframes ptGlitch{0%{transform:translateY(0);opacity:0;}20%{transform:translateY(8px);opacity:.8;}25%{opacity:0;}60%{transform:translateY(34px);opacity:.7;}65%{opacity:0;}100%{opacity:0;}}
 @keyframes ptFlame{from{transform:scaleY(.65);opacity:.45;}to{transform:scaleY(1.05);opacity:.85;}}
 @keyframes ptWave{0%,100%{transform:translateX(-6%) scaleY(.8);}50%{transform:translateX(6%) scaleY(1.15);}}
-#cfgModal .msec{--slide-x:0px;--slide-y:12px;animation:panelFadeIn .4s cubic-bezier(.16,1,.3,1);will-change:transform,opacity;}
+#cfgModal .msec{--slide-x:0px;--slide-y:12px;animation:panelFadeIn .4s cubic-bezier(.16,1,.3,1);}
 #rankingList{transition:opacity .2s;}
 /* ── CARGA INICIAL (igual que la verificación del login) ── */
 #splashScreen .lg-ring{opacity:1;animation:lgSpin .8s linear infinite;}
@@ -669,7 +670,7 @@ body:not(.in-app) .hsub{display:none;} /* contador de conectados y sensis: solo 
 /* Chat <-> feed: el panel se despega de la pestaña tocada (origen calculado por JS) */
 .panel-pre{opacity:0!important;}
 #feedPanel,#myPanel{animation:none!important;}
-#feedPanel.panel-in,#myPanel.panel-in{--sx:.5;--sy:.08;transform-origin:var(--ox,50%) var(--oy,0px);animation:detach .8s var(--ease-soft) both!important;will-change:transform,opacity;}
+#feedPanel.panel-in,#myPanel.panel-in{--sx:.5;--sy:.08;transform-origin:var(--ox,50%) var(--oy,0px);animation:detach .8s var(--ease-soft) both!important;}
 /* Chat: cada burbuja nueva se despega de la barra de escribir */
 #myMsgs>*:not(.bub-sensi){--sx:.4;--sy:.12;animation:detach .75s var(--ease-spring) both;}
 #myMsgs>.bub.bot,#myMsgs>.bub.adm{transform-origin:18% calc(100% + 64px);}
@@ -900,9 +901,24 @@ body #myInputArea,body.glass #myInputArea{background:none!important;border:none!
 .rv-empty{text-align:center;font-size:12px;color:rgba(160,215,255,0.5);padding:14px 6px;}
 #reviewsModal.rv-ask .rv-list,#reviewsModal.rv-ask .rv-sum{display:none;}
 #rvLogin:empty{display:none;}
-.rv-login{text-align:center;font-size:11px;line-height:1.5;color:rgba(160,215,255,0.65);padding:8px 10px;border:1px solid rgba(var(--ac-rgb),0.16);border-radius:12px;background:rgba(var(--ac-rgb),0.05);}
-.rv-login b{color:#FFC24D;}
-.rv-login em{display:block;font-style:normal;color:rgba(228,242,255,0.8);margin-top:4px;}
+/* Franja de reseñas del inicio de sesión: promedio grande + estrellas (medias estrellas incluidas) y 2 tarjetas con sus estrellas */
+.rv-starbar{position:relative;display:inline-block;white-space:nowrap;font-size:22px;line-height:1;letter-spacing:3px;color:rgba(160,215,255,0.28);}
+.rv-starbar i{position:absolute;left:0;top:0;width:var(--p,0%);overflow:hidden;white-space:nowrap;font-style:normal;color:#FFC24D;text-shadow:0 0 8px rgba(255,194,77,.45);}
+.rv-starbar.sm{font-size:14px;letter-spacing:2px;}
+.rv-login{width:100%;max-width:340px;box-sizing:border-box;text-align:left;padding:10px 12px;border:1px solid rgba(var(--ac-rgb),0.2);border-radius:16px;background:rgba(var(--ac-rgb),0.06);display:flex;flex-direction:column;gap:8px;}
+.rvl-head{display:flex;align-items:center;gap:12px;justify-content:center;}
+.rvl-head>b{font-size:34px;line-height:1;font-weight:900;color:#FFC24D;}
+.rvl-col{display:flex;flex-direction:column;gap:4px;}
+.rvl-col small{font-size:10.5px;color:rgba(160,215,255,0.65);letter-spacing:.2px;}
+.rvl-item{padding:8px 10px;border-radius:12px;background:rgba(0,0,0,0.22);border:1px solid rgba(var(--ac-rgb),0.12);}
+.rvl-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.rvl-nick{font-size:11px;font-weight:900;color:var(--ac);max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rvl-item p{margin:5px 0 0;font-size:11.5px;line-height:1.4;color:rgba(228,242,255,0.85);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;}
+/* En pantallas bajas el login se puede desplazar en vez de cortar la franja de reseñas */
+#loginScreen{overflow-y:auto!important;-webkit-overflow-scrolling:touch;}
+@supports (justify-content:safe center){#loginScreen{justify-content:safe center!important;}}
+/* Lista de reseñas del modal: estrellas doradas más grandes y legibles */
+.rv-item .rv-s{font-size:15px;letter-spacing:2px;text-shadow:0 0 6px rgba(255,194,77,.35);}
 
 /* ── Recorrido a 180° y sección de prueba de calibración ── */
 .stbl-cell.wide{grid-column:1/-1;}
@@ -917,3 +933,43 @@ body #myInputArea,body.glass #myInputArea{background:none!important;border:none!
 .cal-grid label{font-size:10.5px;color:rgba(160,215,255,0.6);display:flex;flex-direction:column;gap:4px;}
 .cal-out{font-size:12.5px;font-weight:800;color:#FFC24D;margin:10px 0 4px;min-height:18px;word-break:break-word;}
 
+/* ── INTERFAZ (Ajustes) ── */
+.ui-opts{display:grid;gap:10px;}
+.ui-opt{text-align:left;background:rgba(var(--ac-rgb),0.06);border:1px solid rgba(var(--ac-rgb),0.18);border-radius:16px;padding:12px 14px;color:rgba(228,242,255,0.9);cursor:pointer;display:flex;flex-direction:column;gap:4px;font-family:inherit;}
+.ui-opt b{font-size:13px;font-weight:900;letter-spacing:.3px;}
+.ui-opt small{font-size:11px;color:rgba(160,215,255,0.6);line-height:1.4;}
+.ui-opt.sel{border-color:var(--ac);background:rgba(var(--ac-rgb),0.16);box-shadow:0 0 12px rgba(var(--ac-rgb),0.25);}
+.ui-opt.sel b{color:var(--ac);}
+.ui-note{margin-top:10px;font-size:10.5px;color:rgba(160,215,255,0.5);line-height:1.5;}
+.cfgnav-btn:nth-child(-n+3){grid-column:span 3;}  /* 8 botones = 2 filas de 4 */
+/* ── GENERADOR: oculta todo el chat (pestañas, feed, caja de escribir) y muestra el formulario ── */
+#genForm{display:none;}
+body.ui-gen .tabs,body.ui-gen #feedToolbar,body.ui-gen #feedPanel,body.ui-gen #feedInputArea,body.ui-gen #myInputArea{display:none!important;}
+body.ui-gen #myPanel{overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;}
+body.ui-gen #myMsgs{flex:none;overflow:visible;padding:6px 12px 70px;}
+/* del chat solo se ve lo útil: el resultado y la lista de "investigando specs"; saludos y preguntas del bot se ocultan */
+body.ui-gen #myMsgs>*:not(.bub-sensi):not(.spk):not(:has(.bub-sensi)):not(:has(.spk)){display:none;}
+body.ui-gen #genForm{display:flex;flex-direction:column;gap:10px;padding:16px 14px 8px;flex-shrink:0;}
+.gf-title{text-align:center;font-size:12px;font-weight:900;letter-spacing:2px;color:var(--ac);margin-bottom:2px;}
+.gf-lv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.gf-lv button{border:1px solid rgba(var(--ac-rgb),0.25);background:rgba(var(--ac-rgb),0.06);color:rgba(228,242,255,0.85);border-radius:14px;padding:10px 4px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit;}
+.gf-lv button.sel{border-color:var(--ac);background:rgba(var(--ac-rgb),0.2);color:var(--ac);}
+.gf-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 4px;font-size:12px;font-weight:800;color:rgba(228,242,255,0.8);}
+.gf-row .cal-sw:disabled{opacity:.5;}
+#genBtn{display:flex;align-items:center;justify-content:center;gap:10px;}
+.gf-spin{display:none;width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,0.35);border-top-color:#fff;animation:gfSpin .8s linear infinite;}
+#genBtn.loading .gf-spin{display:inline-block;}
+#genBtn.loading{pointer-events:none;filter:saturate(.8);}
+@keyframes gfSpin{to{transform:rotate(360deg);}}
+/* aviso chico abajo a la derecha: resultados de las specs */
+#genSpecRes{position:fixed;right:10px;bottom:calc(8px + env(safe-area-inset-bottom,0px));font-size:9px;letter-spacing:.4px;color:rgba(160,215,255,0.7);background:rgba(2,6,16,0.78);padding:3px 9px;border-radius:99px;pointer-events:none;opacity:0;transition:opacity .3s;z-index:5;}
+#genSpecRes.show{opacity:1;}
+#genSpecRes.ok{color:#3DFF8F;}#genSpecRes.neg{color:#FF7A8A;}#genSpecRes.mid{color:#FFC24D;}
+body:not(.ui-gen) #genSpecRes{display:none;}
+/* ── Sensis de famosos (bloqueada) ── */
+.lock-tag{margin-left:4px;opacity:.85;}
+.fam-lock{text-align:center;font-size:11.5px;line-height:1.5;color:rgba(255,194,77,0.9);background:rgba(255,194,77,0.08);border:1px solid rgba(255,194,77,0.25);border-radius:14px;padding:10px 12px;margin-bottom:12px;}
+.fam-list{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow-y:auto;}
+.fam-row{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:14px;background:rgba(var(--ac-rgb),0.06);border:1px solid rgba(var(--ac-rgb),0.12);filter:saturate(.6);}
+.fam-row b{font-size:13px;color:rgba(228,242,255,0.9);}
+.fam-row span{font-size:11px;color:rgba(160,215,255,0.5);}

@@ -116,7 +116,18 @@
       <button id="feedSendBtn">⚡</button>
     </div>
     <div id="myPanel">
+      <div id="genForm">
+        <div class="gf-title">⚡ GENERADOR DE SENSIBILIDAD</div>
+        <select id="genBrand" class="inp" aria-label="Marca"><option value="">Elige la marca…</option></select>
+        <input id="genModel" class="inp" type="text" maxlength="40" autocomplete="off" placeholder="Modelo de tu celular (ej: X5C Plus)"/>
+        <div class="gf-lv" id="genLevel">
+          <button type="button" data-lv="baja">🟢 Baja</button><button type="button" data-lv="media" class="sel">🔵 Media</button><button type="button" data-lv="alta">🔴 Alta</button>
+        </div>
+        <div class="gf-row"><span>DPI calibrado</span><button type="button" class="cal-sw" id="genDpi">APAGADO</button></div>
+        <button type="button" class="btn-main" id="genBtn"><span class="gf-spin"></span><span id="genBtnT">⚡ GENERAR</span></button>
+      </div>
       <div id="myMsgs"></div>
+      <div id="genSpecRes" aria-live="polite"></div>
       <div class="input-area" id="myInputArea">
         <input id="msgInput" placeholder="Ej: Honor X5C Plus..." autocomplete="off"/>
         <button id="sendBtn">⚡</button>
@@ -162,6 +173,7 @@
       <div class="cfgnav-btn" data-sec="cfgSecPersona">🎭<span>Temas</span></div>
       <div class="cfgnav-btn" data-sec="cfgSecColor">🎯<span>Color</span></div>
       <div class="cfgnav-btn" data-sec="cfgSecEffects">✨<span>Efectos</span></div>
+      <div class="cfgnav-btn" data-sec="cfgSecInterfaz">🧩<span>Interfaz</span></div>
     </div>
 
     <div class="msec" id="cfgSecAccount">
@@ -279,6 +291,14 @@
       </div>
     </div>
 
+    <div class="msec" id="cfgSecInterfaz" style="display:none;">
+      <div class="mlabel">🧩 Estilo de interfaz</div>
+      <div class="ui-opts" id="uiOpts">
+        <button type="button" class="ui-opt sel" data-ui="chat"><b>💬 Chatbot</b><small>El de siempre: escribes tu marca y modelo y el bot te va preguntando.</small></button>
+        <button type="button" class="ui-opt" data-ui="gen"><b>⚡ Generador</b><small>Sin chat: eliges la marca, escribes el modelo y pulsas generar.</small></button>
+      </div>
+      <div class="ui-note">Puedes volver al chatbot cuando quieras desde aquí mismo (☰ Menú → Configuración → Interfaz).</div>
+    </div>
     <div class="msec" id="cfgSecCreators" style="display:none;">
       <div class="mlabel">🎬 Programa Creadores</div>
       <button class="cbtn cbtn-p" id="openCreatorFromCfg" style="background:rgba(255,200,0,0.08);border-color:rgba(255,200,0,0.3);color:#FFC800;">🎬 SOLICITAR VERIFICACIÓN</button>
@@ -367,6 +387,7 @@
       <button class="menu-item" id="rankBtn" title="Ranking">🏆 Ranking</button>
       <button class="menu-item" id="creatorBtn" title="Programa Creadores">🎬 Programa Creadores</button>
       <button class="menu-item" id="reviewsBtn" title="Reseñas">⭐ Reseñas</button>
+      <button class="menu-item" id="famousBtn" title="Sensibilidades de famosos (bloqueada temporalmente)">🌟 Sensis de famosos <span class="lock-tag">🔒</span></button>
       <div style="font-size:9px;font-weight:900;letter-spacing:2px;color:rgba(160,215,255,0.45);margin:8px 4px 0;">AJUSTES</div>
       <button class="menu-item" id="cfgBtn">⚙️ Configuración</button>
       <button class="menu-item" id="infoBtn" title="Información">ℹ️ Información</button>
@@ -460,6 +481,15 @@
 </div>
 
 <!-- PANEL: RESEÑAS (reales, de usuarios con cuenta; máximo 2 por persona) -->
+<div class="overlay" id="famousModal">
+  <div class="mbox" style="position:relative;">
+    <span id="famousCloseX" title="Cerrar" style="position:absolute;top:10px;right:14px;font-size:18px;color:rgba(160,215,255,0.5);cursor:pointer;line-height:1;">✕</span>
+    <div style="text-align:center;font-size:36px;margin:6px 0 4px;">🌟</div>
+    <div style="text-align:center;font-size:16px;font-weight:900;color:var(--ac);margin-bottom:6px;">SENSIS DE FAMOSOS</div>
+    <div class="fam-lock">🔒 Bloqueada temporalmente — próximamente. Aquí verás, bajo cada nombre, la sensibilidad que más se repite entre los resultados encontrados.</div>
+    <div class="fam-list" id="famList"></div>
+  </div>
+</div>
 <div class="overlay" id="reviewsModal">
   <div class="mbox" style="position:relative;">
     <span id="reviewsCloseX" title="Cerrar" style="position:absolute;top:10px;right:14px;font-size:18px;color:rgba(160,215,255,0.5);cursor:pointer;line-height:1;">✕</span>

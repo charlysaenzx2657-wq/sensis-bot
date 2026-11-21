@@ -2482,21 +2482,30 @@ function hslToHex(h,s,l){
 let _lastRandomHue=Math.random()*360;
 // Color aleatorio con OLA: una onda del color nuevo se expande, el color cambia al pasar la ola
 // y el contador de 5 s empieza recién cuando la ola termina.
-let _rcT=null,_rcW=null,_rcOn=false;
+let _rcT=null,_rcW=null,_rcOn=false,_rcRAF=0,_rcFin=null;
 function _rcStop(){
-  _rcOn=false; clearTimeout(_rcT); _rcT=null;
+  _rcOn=false; clearTimeout(_rcT); _rcT=null; cancelAnimationFrame(_rcRAF);
+  if(_rcFin){ const f=_rcFin; _rcFin=null; f(); } // si la ola iba a medias, se termina de recolorear (no queda a medias)
   if(_rcW){ try{_rcW.cancel();}catch(e){} _rcW=null; }
   document.querySelectorAll(".rc-wave").forEach(e=>e.remove());
-  _rcBusy(false);
 }
-// Modo "recoloreando": mientras pasa la ola se apagan (en el CSS, body.rc-busy) las transiciones, los brillos (sombras de texto/caja, filter) y el blur de las ventanas.
-// Recolorear toda la pantalla de golpe con todos esos efectos encendidos es lo que hacía que la GPU de gama baja mostrara píxeles basura sobre la tarjeta de la sensi.
-// Así el cambio se reparte en 3 pasos chicos: (1) se apagan los efectos, (2) cambia el color (sin brillos que repintar), (3) vuelven los brillos cuando la ola ya terminó.
-let _rcBusyT=null;
-function _rcBusy(on){
-  clearTimeout(_rcBusyT);
-  document.body.classList.toggle("rc-busy",!!on);
-  if(on) _rcBusyT=setTimeout(()=>document.body.classList.remove("rc-busy"),3000); // seguro: nunca se queda pegado
+// Trozos de pantalla que la ola recolorea AL TOCARLOS: se recorre lo visible (pantalla → paneles → mensajes → partes de la tarjeta de sensi → cada cuadro) y cada trozo
+// recibe el color nuevo (variables --ac y --ac-rgb puestas solo en él) cuando el frente de la ola llega a su borde más cercano. Así el repintado se reparte en muchos cuadros
+// chicos en vez de un solo golpe, y nada se pausa (el fondo animado, los números y los medidores siguen corriendo).
+function _rcCollect(){
+  const W=innerWidth,H=innerHeight,out=[];
+  const visit=(el,d)=>{
+    if(!(el instanceof HTMLElement)||el.id==="fx"||el.classList.contains("rc-wave")) return;
+    const r=el.getBoundingClientRect();
+    if(!(r.width>1&&r.height>1&&r.bottom>0&&r.top<H&&r.right>0&&r.left<W)) return;
+    const kids=[...el.children].filter(c=>c instanceof HTMLElement);
+    const split=r.height>150&&kids.length>0&&d<7&&!el.classList.contains("stbl-cell");
+    out.push({el,r});
+    if(split) kids.forEach(c=>visit(c,d+1));
+  };
+  const root=document.getElementById("chatScreen"); const ls=document.getElementById("loginScreen");
+  [(ls&&ls.classList.contains("show"))?ls:root,document.getElementById("streakFloat"),document.getElementById("genSpecRes")].forEach(e=>{ if(e) visit(e,0); });
+  return out.slice(0,260);
 }
 function _rcStep(){
   if(!_rcOn) return;
@@ -2509,20 +2518,38 @@ function _rcStep(){
   const next=()=>{ if(_rcOn) _rcT=setTimeout(_rcStep,5000); };
   const paint=()=>{ applyColor(rc); document.querySelectorAll(".copt").forEach(x=>x.classList.remove("sel")); };
   if(matchMedia("(prefers-reduced-motion:reduce)").matches){ paint(); next(); return; }
-  // Ola SIN capas gigantes: una sola capa del tamaño de la pantalla cuyo degradado radial crece (variable --rcr, registrada con @property en styles.css).
-  // Antes era una capa de 300 px escalada ~10× con will-change: el navegador la rasterizaba a un tamaño enorme y en celulares de gama baja la GPU se quedaba
-  // sin memoria (franja de píxeles basura sobre la sensi justo cuando pasaba la ola). Ahora la memoria es constante. Si el navegador no soporta @property, el color cambia sin ola.
+  // Sin @property no hay ola (el color cambia directo). Con @property la ola es UNA capa de pantalla cuyo degradado crece (--rcr), sin capas gigantes escaladas.
   if(getComputedStyle(document.documentElement).getPropertyValue("--rcr").trim()!=="0%"){ paint(); next(); return; }
-  _rcBusy(true); _freezeFx(1700); // pausa el fondo animado y apaga el blur de las ventanas mientras pasa la ola y se recolorea todo (evita el pico de GPU)
-  const _W=innerWidth,_H=innerHeight,_x=Math.round(_W*(0.2+Math.random()*0.6)),_y=Math.round(_H*(0.2+Math.random()*0.6));
+  const oldC=String(currentColor), oldM=(()=>{ const h=oldC.replace("#",""); return [0,2,4].map(k=>parseInt(h.substr(k,2),16)).join(","); })();
+  const W=innerWidth,H=innerHeight,x=Math.round(W*(0.2+Math.random()*0.6)),y=Math.round(H*(0.2+Math.random()*0.6)),dFar=Math.hypot(Math.max(x,W-x),Math.max(y,H-y));
+  const chunks=_rcCollect().map(c=>{ const r=c.r,dx=Math.max(r.left-x,0,x-r.right),dy=Math.max(r.top-y,0,y-r.bottom); return {el:c.el,d:Math.hypot(dx,dy),done:false}; }).sort((p,q)=>p.d-q.d);
+  // 1) Cada trozo fija su color ACTUAL (mismo valor que ya tenía: no se repinta nada) y 2) la paleta de la tabla de sensi pasa al color nuevo, lista para pintar cuadro por cuadro.
+  chunks.forEach(c=>{ c.el.classList.add("rc-chunk"); c.el.style.setProperty("--ac",oldC); c.el.style.setProperty("--ac-rgb",oldM); });
+  currentColor=rc;
+  const touch=c=>{
+    c.done=true; c.el.style.setProperty("--ac",rc); c.el.style.setProperty("--ac-rgb",m);
+    if(c.el.classList.contains("stbl-cell")) _paintSensiCell(c.el,+c.el.dataset.i||0);
+  };
   const w=document.createElement("div"); w.className="rc-wave";
-  w.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:9000;background:radial-gradient(circle farthest-corner at "+_x+"px "+_y+"px,rgba("+m+",.16) 0,rgba("+m+",.16) calc(var(--rcr) - 12%),rgba("+m+",.55) calc(var(--rcr) - 4%),rgba("+m+",0) var(--rcr))";
+  w.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:9000;background:radial-gradient(circle farthest-corner at "+x+"px "+y+"px,rgba("+m+",.16) 0,rgba("+m+",.16) calc(var(--rcr) - 12%),rgba("+m+",.55) calc(var(--rcr) - 4%),rgba("+m+",0) var(--rcr))";
   document.body.appendChild(w);
   const a=w.animate([{"--rcr":"0%"},{"--rcr":"118%"}],{duration:1400,easing:"cubic-bezier(.3,.6,.4,1)"});
   _rcW=a;
-  setTimeout(()=>{ if(_rcOn) requestAnimationFrame(paint); },420); // el color cambia cuando el frente de la ola cruza la pantalla
-  a.onfinish=()=>{ w.remove(); _rcW=null; setTimeout(()=>_rcBusy(false),200); next(); }; // los brillos vuelven cuando la ola ya terminó; el contador de 5 s arranca al terminar la ola
+  let k=0;
+  const loop=()=>{
+    const fr=(parseFloat(getComputedStyle(w).getPropertyValue("--rcr"))||0)/100*dFar;
+    while(k<chunks.length&&chunks[k].d<=fr) touch(chunks[k++]);
+    if(k<chunks.length&&_rcFin) _rcRAF=requestAnimationFrame(loop);
+  };
+  _rcFin=()=>{ // fin: lo que no se alcanzó a tocar se pinta, el color pasa a la raíz y se sueltan los colores puestos trozo por trozo (mismo valor: sin repintado extra)
+    cancelAnimationFrame(_rcRAF); while(k<chunks.length) touch(chunks[k++]);
+    paint();
+    chunks.forEach(c=>{ c.el.style.removeProperty("--ac"); c.el.style.removeProperty("--ac-rgb"); c.el.classList.remove("rc-chunk"); });
+  };
+  _rcRAF=requestAnimationFrame(loop);
+  a.onfinish=()=>{ w.remove(); _rcW=null; if(_rcFin){ const f=_rcFin; _rcFin=null; f(); } next(); }; // el contador de 5 s arranca al terminar la ola
 }
+
 function setRandomColors(on,imm){
   _rcStop(); _randomColorInterval=on?1:null;
   if(on){ _rcOn=true; if(imm) _rcStep(); else _rcT=setTimeout(_rcStep,5000); }
@@ -3405,7 +3432,6 @@ function _stretchIndicator(ind,from,to){
   }catch(e){}
 }
 function switchTab(t){
-  if(document.body.classList.contains("ui-gen")) t="mio"; // en el generador no hay chat en vivo
   const changed=(_tabPrev!==t); _tabPrev=t;
   _freezeFx(640);
   document.getElementById("tFeed").classList.toggle("active",t==="feed");
@@ -5432,7 +5458,6 @@ document.getElementById("tMio").addEventListener("click",()=>switchTab("mio"));
     if(dt>600) return; // gesto lento -> probablemente scroll, no swipe
     if(Math.abs(dx)<70 || Math.abs(dx)<Math.abs(dy)*1.4) return; // no fue predominantemente horizontal
     const isFeedActive=document.getElementById("tFeed").classList.contains("active");
-    if(document.body.classList.contains("ui-gen")) return; // sin chat en vivo: el deslizar entre pestañas no aplica
     if(dx<0 && !isFeedActive) switchTab("feed");
     else if(dx>0 && isFeedActive) switchTab("mio");
   },{passive:true});
@@ -5936,6 +5961,7 @@ function _applyUI(mode,fromUser){
   document.querySelectorAll("#uiOpts .ui-opt").forEach(o=>o.classList.toggle("sel",o.dataset.ui===(gen?"gen":"chat")));
   if(gen){ _genBrandFill(); _genSyncDpi(); }
   _genSpec(null);
+  const tm=document.getElementById("tMio"); if(tm) tm.textContent=gen?"⚡ GENERADOR":"💬 MI CHAT"; // en el generador la pestaña propia es el generador; EN VIVO sigue disponible
   if(gen||fromUser) switchTab("mio");
 }
 (function(){

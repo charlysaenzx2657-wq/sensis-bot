@@ -944,7 +944,7 @@ body #myInputArea,body.glass #myInputArea{background:none!important;border:none!
 .cfgnav-btn:nth-child(-n+3){grid-column:span 3;}  /* 8 botones = 2 filas de 4 */
 /* ── GENERADOR: oculta todo el chat (pestañas, feed, caja de escribir) y muestra el formulario ── */
 #genForm{display:none;}
-body.ui-gen .tabs,body.ui-gen #feedToolbar,body.ui-gen #feedPanel,body.ui-gen #feedInputArea,body.ui-gen #myInputArea{display:none!important;}
+body.ui-gen #myInputArea{display:none!important;} /* del chat solo se quita la caja de escribir; EN VIVO y las pestañas siguen */
 body.ui-gen #myPanel{overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;}
 body.ui-gen #myMsgs{flex:none;overflow:visible;padding:6px 12px 70px;}
 /* del chat solo se ve lo útil: el resultado y la lista de "investigando specs"; saludos y preguntas del bot se ocultan */
@@ -977,7 +977,5 @@ body:not(.ui-gen) #genSpecRes{display:none;}
 /* Radio de la ola de color (se anima desde JS; así la ola es una sola capa de pantalla y no una capa enorme escalada) */
 @property --rcr{syntax:"<percentage>";inherits:false;initial-value:0%;}
 
-/* ── Recoloreando (ola de color): se apagan los efectos más caros para la GPU mientras cambia todo el color; ver _rcBusy() en app.js ── */
-body.rc-busy *,body.rc-busy *::before,body.rc-busy *::after{transition:none!important;}
-body.rc-busy .stbl-cell,body.rc-busy .stbl-val,body.rc-busy .stbl-g1,body.rc-busy .bub,body.rc-busy .feed-item{text-shadow:none!important;box-shadow:none!important;filter:none!important;}
-body.rc-busy .header,body.rc-busy .tabs,body.rc-busy .input-area,body.rc-busy .mbox,body.rc-busy .bub,body.rc-busy .feed-item{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
+/* Trozos que la ola de color recolorea al tocarlos: repiten las variables derivadas de --ac para que, con su --ac propio, se recoloreen también ellas */
+.rc-chunk{--metal:radial-gradient(130% 150% at 12% 0%,color-mix(in srgb,var(--ac) 44%,#05080f),transparent 62%),radial-gradient(130% 150% at 92% 100%,color-mix(in srgb,var(--ac) 34%,#05080f),transparent 64%),color-mix(in srgb,var(--ac) 24%,#05080f);--gl-glow:0 12px 28px -14px rgba(var(--ac-rgb),.5);}

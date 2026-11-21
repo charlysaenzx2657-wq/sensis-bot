@@ -2487,6 +2487,16 @@ function _rcStop(){
   _rcOn=false; clearTimeout(_rcT); _rcT=null;
   if(_rcW){ try{_rcW.cancel();}catch(e){} _rcW=null; }
   document.querySelectorAll(".rc-wave").forEach(e=>e.remove());
+  _rcBusy(false);
+}
+// Modo "recoloreando": mientras pasa la ola se apagan (en el CSS, body.rc-busy) las transiciones, los brillos (sombras de texto/caja, filter) y el blur de las ventanas.
+// Recolorear toda la pantalla de golpe con todos esos efectos encendidos es lo que hacía que la GPU de gama baja mostrara píxeles basura sobre la tarjeta de la sensi.
+// Así el cambio se reparte en 3 pasos chicos: (1) se apagan los efectos, (2) cambia el color (sin brillos que repintar), (3) vuelven los brillos cuando la ola ya terminó.
+let _rcBusyT=null;
+function _rcBusy(on){
+  clearTimeout(_rcBusyT);
+  document.body.classList.toggle("rc-busy",!!on);
+  if(on) _rcBusyT=setTimeout(()=>document.body.classList.remove("rc-busy"),3000); // seguro: nunca se queda pegado
 }
 function _rcStep(){
   if(!_rcOn) return;
@@ -2503,7 +2513,7 @@ function _rcStep(){
   // Antes era una capa de 300 px escalada ~10× con will-change: el navegador la rasterizaba a un tamaño enorme y en celulares de gama baja la GPU se quedaba
   // sin memoria (franja de píxeles basura sobre la sensi justo cuando pasaba la ola). Ahora la memoria es constante. Si el navegador no soporta @property, el color cambia sin ola.
   if(getComputedStyle(document.documentElement).getPropertyValue("--rcr").trim()!=="0%"){ paint(); next(); return; }
-  _freezeFx(1700); // pausa el fondo animado y apaga el blur de las ventanas mientras pasa la ola y se recolorea todo (evita el pico de GPU)
+  _rcBusy(true); _freezeFx(1700); // pausa el fondo animado y apaga el blur de las ventanas mientras pasa la ola y se recolorea todo (evita el pico de GPU)
   const _W=innerWidth,_H=innerHeight,_x=Math.round(_W*(0.2+Math.random()*0.6)),_y=Math.round(_H*(0.2+Math.random()*0.6));
   const w=document.createElement("div"); w.className="rc-wave";
   w.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:9000;background:radial-gradient(circle farthest-corner at "+_x+"px "+_y+"px,rgba("+m+",.16) 0,rgba("+m+",.16) calc(var(--rcr) - 12%),rgba("+m+",.55) calc(var(--rcr) - 4%),rgba("+m+",0) var(--rcr))";
@@ -2511,7 +2521,7 @@ function _rcStep(){
   const a=w.animate([{"--rcr":"0%"},{"--rcr":"118%"}],{duration:1400,easing:"cubic-bezier(.3,.6,.4,1)"});
   _rcW=a;
   setTimeout(()=>{ if(_rcOn) requestAnimationFrame(paint); },420); // el color cambia cuando el frente de la ola cruza la pantalla
-  a.onfinish=()=>{ w.remove(); _rcW=null; next(); }; // el contador de 5 s arranca al terminar la ola
+  a.onfinish=()=>{ w.remove(); _rcW=null; setTimeout(()=>_rcBusy(false),200); next(); }; // los brillos vuelven cuando la ola ya terminó; el contador de 5 s arranca al terminar la ola
 }
 function setRandomColors(on,imm){
   _rcStop(); _randomColorInterval=on?1:null;

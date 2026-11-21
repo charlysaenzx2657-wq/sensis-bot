@@ -976,3 +976,8 @@ body:not(.ui-gen) #genSpecRes{display:none;}
 
 /* Radio de la ola de color (se anima desde JS; así la ola es una sola capa de pantalla y no una capa enorme escalada) */
 @property --rcr{syntax:"<percentage>";inherits:false;initial-value:0%;}
+
+/* ── Recoloreando (ola de color): se apagan los efectos más caros para la GPU mientras cambia todo el color; ver _rcBusy() en app.js ── */
+body.rc-busy *,body.rc-busy *::before,body.rc-busy *::after{transition:none!important;}
+body.rc-busy .stbl-cell,body.rc-busy .stbl-val,body.rc-busy .stbl-g1,body.rc-busy .bub,body.rc-busy .feed-item{text-shadow:none!important;box-shadow:none!important;filter:none!important;}
+body.rc-busy .header,body.rc-busy .tabs,body.rc-busy .input-area,body.rc-busy .mbox,body.rc-busy .bub,body.rc-busy .feed-item{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}

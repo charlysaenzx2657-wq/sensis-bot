@@ -3102,17 +3102,21 @@ function _paintSensiCell(cell,i){
 }
 function _repaintSensiTables(){ document.querySelectorAll(".stbl-cell").forEach(c=>_paintSensiCell(c,+c.dataset.i||0)); }
 // Medidor de media luna (General) y animación de números/barras al revelar la sensi
-const _STBL_GAUGE='<svg viewBox="0 0 200 108" aria-hidden="true"><path class="stbl-g0" d="M12 100A88 88 0 0 1 188 100"/><path class="stbl-g1" pathLength="100" d="M12 100A88 88 0 0 1 188 100"/></svg>';
+const _STBL_GAUGE='<svg viewBox="0 0 200 108" aria-hidden="true"><path class="stbl-g0" d="M12 100A88 88 0 0 1 188 100"/><path class="stbl-g2" pathLength="100" d="M12 100A88 88 0 0 1 188 100"/><path class="stbl-g1" pathLength="100" d="M12 100A88 88 0 0 1 188 100"/></svg>';
 function _stblAnimate(b){
   const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const run=()=>{
-    const g=b.querySelector(".stbl-g1");
+    const g=b.querySelector(".stbl-g1"), g2=b.querySelector(".stbl-g2");
     b.querySelectorAll(".stbl-val").forEach(v=>{
       const to=+v.dataset.to||0;
-      if(g&&v.closest(".stbl-gw")) g.style.strokeDashoffset=String(100*(1-Math.min(200,to)/200));
+      if(g&&v.closest(".stbl-gw")){ const off=String(100*(1-Math.min(200,to)/200)); g.style.strokeDashoffset=off; if(g2) g2.style.strokeDashoffset=off; }
       if(reduce){ v.textContent=String(to)+(v.dataset.suf?" "+v.dataset.suf:""); return; }
-      const t0=performance.now();
-      (function f(t){ const p=Math.min(1,(t-t0)/1000); v.textContent=String(Math.round(to*(1-Math.pow(1-p,3))))+(v.dataset.suf?" "+v.dataset.suf:""); if(p<1)requestAnimationFrame(f); })(t0);
+      // Mientras cuenta se apaga el brillo borroso del número (cada cuadro de la cuenta lo volvía a dibujar con blur ×8 números a la vez); vuelve al terminar
+      const cell=v.closest(".stbl-cell"); if(cell) cell.classList.add("counting");
+      const t0=performance.now(); let last=-1;
+      (function f(t){ const p=Math.min(1,(t-t0)/1000), n=Math.round(to*(1-Math.pow(1-p,3)));
+        if(n!==last){ last=n; v.textContent=String(n)+(v.dataset.suf?" "+v.dataset.suf:""); }
+        if(p<1) requestAnimationFrame(f); else if(cell) cell.classList.remove("counting"); })(t0);
     });
     b.querySelectorAll(".stbl-bar i").forEach(i=>{ i.style.width=i.dataset.w+"%"; });
   };

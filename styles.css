@@ -121,17 +121,8 @@ body.glass .header,body.glass .tabs,body.glass .input-area,body.glass .mbox{
 /* Ventanas: un poco más de blur que las barras; pestañas y barra de escribir sin grano (más livianas) */
 body.glass .mbox{backdrop-filter:blur(var(--gl-blur)) saturate(1.6)!important;-webkit-backdrop-filter:blur(var(--gl-blur)) saturate(1.6)!important;}
 body.glass .tabs,body.glass .input-area{background:var(--gl-spec),var(--gl-hi),linear-gradient(rgba(255,255,255,.05),rgba(255,255,255,.05)),linear-gradient(rgba(6,10,22,.26),rgba(6,10,22,.26)),rgba(var(--ac-rgb),.18)!important;background-size:auto!important;}
-/* Cristal esmerilado real en las barras solo cuando el fondo NO se anima (cuesta casi nada); con fondo animado se apaga y queda el vidrio por capas */
-body.glass:not(.fx-live) .header,body.glass:not(.fx-live) .tabs,body.glass:not(.fx-live) .input-area{backdrop-filter:blur(14px) saturate(1.5)!important;-webkit-backdrop-filter:blur(14px) saturate(1.5)!important;}
-/* Mientras se hace scroll / se cambia de pestaña se apaga SOLO el blur (el fondo animado + blur a la vez es lo que
-   trababa); el vidrio se mantiene con un fondo algo más sólido para que no "salte". */
-body.glass.is-scrolling .header,body.glass.is-scrolling .tabs,
-body.glass.is-scrolling .input-area,body.glass.is-scrolling .mbox{
-  backdrop-filter:none!important;
-  -webkit-backdrop-filter:none!important;
-  background:var(--gl-spec),var(--gl-hi),color-mix(in srgb,var(--ac) 22%,rgba(8,12,24,.84))!important;
-  background-size:auto!important;
-}
+/* UN SOLO ASPECTO: las barras llevan siempre el vidrio por capas (grano · reflejo · luz · tinte), sin blur propio. Antes el blur aparecía y desaparecía según el fondo animado
+   (fx-live), el scroll (is-scrolling) o al abrir un menú, y el vidrio cambiaba de versión (más detallado ↔ más simple) cada vez. El blur real queda solo en las ventanas (.mbox). */
 body.glass .header{border-radius:0 0 30px 30px;}
 body.glass .input-area{border-radius:28px;}
 body.glass .mbox{border-radius:32px 32px 0 0!important;}
@@ -948,7 +939,7 @@ body.ui-gen #myInputArea{display:none!important;} /* del chat solo se quita la c
 body.ui-gen #myPanel{overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;}
 body.ui-gen #myMsgs{flex:none;overflow:visible;padding:6px 12px 70px;}
 /* del chat solo se ve lo útil: el resultado y la lista de "investigando specs"; saludos y preguntas del bot se ocultan */
-body.ui-gen #myMsgs>*:not(.bub-sensi):not(.spk):not(:has(.bub-sensi)):not(:has(.spk)){display:none;}
+body.ui-gen #myMsgs>*:not(.bub-sensi):not(:has(.bub-sensi)){display:none;}
 body.ui-gen #genForm{display:flex;flex-direction:column;gap:10px;padding:16px 14px 8px;flex-shrink:0;}
 .gf-title{text-align:center;font-size:12px;font-weight:900;letter-spacing:2px;color:var(--ac);margin-bottom:2px;}
 .gf-lv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
@@ -979,3 +970,64 @@ body:not(.ui-gen) #genSpecRes{display:none;}
 
 /* Trozos que la ola de color recolorea al tocarlos: repiten las variables derivadas de --ac para que, con su --ac propio, se recoloreen también ellas */
 .rc-chunk{--metal:radial-gradient(130% 150% at 12% 0%,color-mix(in srgb,var(--ac) 44%,#05080f),transparent 62%),radial-gradient(130% 150% at 92% 100%,color-mix(in srgb,var(--ac) 34%,#05080f),transparent 64%),color-mix(in srgb,var(--ac) 24%,#05080f);--gl-glow:0 12px 28px -14px rgba(var(--ac-rgb),.5);}
+
+/* ── GENERADOR · rediseño: animaciones y cuadro de resultados propio (no es el del chat) ── */
+body.ui-gen #genForm>*{animation:gfIn .5s cubic-bezier(.2,.9,.3,1) both;}
+body.ui-gen #genForm>*:nth-child(2){animation-delay:.06s;}body.ui-gen #genForm>*:nth-child(3){animation-delay:.12s;}
+body.ui-gen #genForm>*:nth-child(4){animation-delay:.18s;}body.ui-gen #genForm>*:nth-child(5){animation-delay:.24s;}body.ui-gen #genForm>*:nth-child(6){animation-delay:.30s;}
+@keyframes gfIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
+.gf-bolt{display:inline-block;animation:gfBolt 2.4s ease-in-out infinite;}
+@keyframes gfBolt{0%,100%{transform:scale(1);}50%{transform:scale(1.28) rotate(-8deg);}}
+#genBrand,#genModel{transition:box-shadow .25s,border-color .25s,transform .25s;}
+#genBrand:focus,#genModel:focus{outline:none;box-shadow:0 0 0 2px rgba(var(--ac-rgb),.6),0 8px 22px -10px rgba(var(--ac-rgb),.75)!important;transform:translateY(-1px);}
+.gf-lv button{transition:transform .2s cubic-bezier(.3,1.5,.5,1),background .25s,border-color .25s,box-shadow .25s,color .25s;}
+.gf-lv button:active{transform:scale(.93);}
+.gf-lv button.sel{animation:gfPop .38s cubic-bezier(.3,1.6,.5,1);box-shadow:0 0 14px -2px rgba(var(--ac-rgb),.65);}
+@keyframes gfPop{0%{transform:scale(.9);}60%{transform:scale(1.07);}100%{transform:scale(1);}}
+/* DPI: interruptor con perilla que se desliza */
+#genDpi{position:relative;min-width:132px;padding:8px 14px 8px 54px;text-align:left;transition:background .25s,border-color .25s,color .25s,transform .2s;}
+#genDpi:active{transform:scale(.95);}
+#genDpi::before{content:"";position:absolute;left:8px;top:50%;width:36px;height:20px;margin-top:-10px;border-radius:99px;background:rgba(255,255,255,.16);transition:background .25s;}
+#genDpi::after{content:"";position:absolute;left:11px;top:50%;width:14px;height:14px;margin-top:-7px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.45);transition:transform .3s cubic-bezier(.3,1.5,.5,1);}
+#genDpi.on::before{background:var(--ac);box-shadow:0 0 12px rgba(var(--ac-rgb),.6);}
+#genDpi.on::after{transform:translateX(16px);}
+/* GENERAR: brillo que lo recorre, latido suave, rebote al tocar, barra mientras investiga y celebración al terminar */
+#genBtn{position:relative;overflow:hidden;transition:transform .2s cubic-bezier(.3,1.5,.5,1),filter .3s;}
+#genBtn:not(:disabled){animation:gfPulse 2.6s ease-in-out infinite;}
+#genBtn:active:not(:disabled){transform:scale(.96);}
+#genBtn::after{content:"";position:absolute;top:0;bottom:0;left:0;width:34%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.38),transparent);transform:skewX(-20deg) translateX(-130%);animation:gfShine 3.2s ease-in-out infinite;pointer-events:none;}
+#genBtn.loading::after{animation-duration:1s;}
+@keyframes gfShine{0%,50%{transform:skewX(-20deg) translateX(-130%);}100%{transform:skewX(-20deg) translateX(560%);}}
+@keyframes gfPulse{0%,100%{box-shadow:0 0 0 0 rgba(var(--ac-rgb),0);}50%{box-shadow:0 0 22px 0 rgba(var(--ac-rgb),.45);}}
+#genBtn.done{animation:gfDone .6s ease;}
+@keyframes gfDone{0%{transform:scale(1);}40%{transform:scale(1.05);}100%{transform:scale(1);}}
+/* Del botón sale un cable (con una luz que baja mientras investiga) hasta el cuadro de resultados */
+#genLink{display:none;height:22px;margin:-4px 0 -6px;position:relative;flex-shrink:0;}
+body.ui-gen #genForm.has-out~#genLink{display:block;}
+#genLink::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;border-radius:2px;background:linear-gradient(rgba(var(--ac-rgb),.15),rgba(var(--ac-rgb),.8));}
+#genLink i{position:absolute;left:50%;top:0;width:8px;height:8px;margin-left:-4px;border-radius:50%;background:var(--ac);box-shadow:0 0 10px var(--ac);opacity:0;}
+#genForm.busy~#genLink i{opacity:1;animation:gfDot .9s ease-in infinite;}
+@keyframes gfDot{from{transform:translateY(0);opacity:1;}to{transform:translateY(16px);opacity:.15;}}
+/* Cuadro de specs: panel propio, no es una burbuja de chat */
+#genSpecsBox{display:none;margin:0 14px;padding:12px;border-radius:20px;border:1px solid rgba(var(--ac-rgb),.4);background:linear-gradient(160deg,rgba(var(--ac-rgb),.16),rgba(8,12,24,.6));box-shadow:inset 0 0 0 1px rgba(255,255,255,.04),0 10px 26px -14px rgba(var(--ac-rgb),.6);transform-origin:top center;animation:gpOpen .45s cubic-bezier(.2,.9,.3,1.15) both;flex-shrink:0;}
+body.ui-gen #genForm.has-out~#genSpecsBox{display:block;}
+@keyframes gpOpen{from{opacity:0;transform:translateY(-8px) scaleY(.92);}to{opacity:1;transform:none;}}
+.gsp-t{text-align:center;font-size:11px;font-weight:900;letter-spacing:1.4px;color:var(--ac);margin-bottom:10px;}
+.gsp-g{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.gsp-c{position:relative;display:flex;flex-direction:column;gap:3px;min-height:54px;padding:9px 28px 9px 10px;border-radius:14px;background:rgba(0,0,0,.3);border:1px solid rgba(var(--ac-rgb),.2);animation:gcPop .45s cubic-bezier(.3,1.5,.5,1) both;}
+.gsp-l{font-size:10px;letter-spacing:.4px;color:rgba(228,242,255,.62);}
+.gsp-v{font-size:13px;font-weight:900;line-height:1.2;color:#fff;word-break:break-word;}
+.gsp-s{position:absolute;top:8px;right:10px;font-size:14px;font-weight:900;}
+.gsp-c.ok{border-color:rgba(91,240,176,.45);}.gsp-c.ok .gsp-s{color:#5BF0B0;}
+.gsp-c.est{border-color:rgba(255,194,77,.4);}.gsp-c.est .gsp-s{color:#FFC24D;}
+@keyframes gcPop{from{opacity:0;transform:scale(.85);}to{opacity:1;transform:none;}}
+.gsp-c.sk{animation:none;}
+.gsp-c.sk .gsp-v{width:68%;height:14px;margin-top:3px;border-radius:7px;background:linear-gradient(90deg,rgba(255,255,255,.07) 25%,rgba(255,255,255,.2) 50%,rgba(255,255,255,.07) 75%);background-size:200% 100%;animation:gsSh 1.1s linear infinite;}
+@keyframes gsSh{to{background-position:-200% 0;}}
+/* El resultado de la sensi, sin aspecto de chat: sin 🤖 ni burbuja, directo como panel debajo del cuadro de specs */
+body.ui-gen .mw.bot::before,body.ui-gen .mw.user::before{display:none;}
+body.ui-gen #myMsgs .bub.bub-sensi{background:none!important;border:0!important;box-shadow:none!important;padding:0!important;border-radius:0!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
+body.ui-gen #myMsgs .bub.bub-sensi::before{display:none!important;}
+body.ui-gen #myMsgs{padding:12px 14px 80px;}
+body.ui-gen #myMsgs .mw{animation:gpOpen .5s cubic-bezier(.2,.9,.3,1.1) both;}
+@media (prefers-reduced-motion:reduce){body.ui-gen #genForm>*,.gf-bolt,#genBtn,#genBtn::after,.gsp-c,#genSpecsBox,#genLink i,body.ui-gen #myMsgs .mw{animation:none!important;}}

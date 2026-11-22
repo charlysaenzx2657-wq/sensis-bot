@@ -1983,9 +1983,10 @@ function startVideoOrFallback(name, fallbackFn){
   if(p&&p.catch) p.catch(toFallback);
 }
 
-function applyColor(c){
+function applyColor(c,noCells){
   currentColor=c;
-  _repaintSensiTables(); // cada cuadro de la tabla de sensi toma su propio tono a partir del color elegido
+  if(!noCells) _repaintSensiTables(); // (noCells: la ola de color ya los pinta uno por uno)
+  // cada cuadro de la tabla de sensi toma su propio tono a partir del color elegido
   document.body.classList.toggle("nocolor",String(c).toUpperCase()==="#E6E6E6"); // "Quitar color": acento neutro + glassmorphism blanco
   // CSS var (--ac para colores sólidos/gradientes; --ac-rgb para los rgba()
   // usados en bordes/fondos translúcidos en toda la app)
@@ -2526,6 +2527,7 @@ function _rcStep(){
   // 1) Cada trozo fija su color ACTUAL (mismo valor que ya tenía: no se repinta nada) y 2) la paleta de la tabla de sensi pasa al color nuevo, lista para pintar cuadro por cuadro.
   chunks.forEach(c=>{ c.el.classList.add("rc-chunk"); c.el.style.setProperty("--ac",oldC); c.el.style.setProperty("--ac-rgb",oldM); });
   currentColor=rc;
+  let rootDone=false;
   const touch=c=>{
     c.done=true; c.el.style.setProperty("--ac",rc); c.el.style.setProperty("--ac-rgb",m);
     if(c.el.classList.contains("stbl-cell")) _paintSensiCell(c.el,+c.el.dataset.i||0);
@@ -2539,12 +2541,16 @@ function _rcStep(){
   const loop=()=>{
     const fr=(parseFloat(getComputedStyle(w).getPropertyValue("--rcr"))||0)/100*dFar;
     while(k<chunks.length&&chunks[k].d<=fr) touch(chunks[k++]);
-    if(k<chunks.length&&_rcFin) _rcRAF=requestAnimationFrame(loop);
+    // A ~30 % de la ola el color pasa a la raíz: ya solo cambian las partes sin trozo propio (fondo, lo que está fuera de pantalla). Antes esto pasaba al FINAL y se sentía como una pausa.
+    if(!rootDone&&fr>=0.3*dFar){ rootDone=true; applyColor(rc,true); document.querySelectorAll(".copt").forEach(x=>x.classList.remove("sel")); }
+    if(_rcFin) _rcRAF=requestAnimationFrame(loop);
   };
-  _rcFin=()=>{ // fin: lo que no se alcanzó a tocar se pinta, el color pasa a la raíz y se sueltan los colores puestos trozo por trozo (mismo valor: sin repintado extra)
+  _rcFin=()=>{ // fin: sin repintados grandes. Lo que no se alcanzó a tocar se pinta, y los colores puestos trozo por trozo se sueltan POCO A POCO (mismo valor que la raíz: no se ve nada, pero así no se junta todo en un cuadro)
     cancelAnimationFrame(_rcRAF); while(k<chunks.length) touch(chunks[k++]);
-    paint();
-    chunks.forEach(c=>{ c.el.style.removeProperty("--ac"); c.el.style.removeProperty("--ac-rgb"); c.el.classList.remove("rc-chunk"); });
+    if(!rootDone){ rootDone=true; applyColor(rc,true); document.querySelectorAll(".copt").forEach(x=>x.classList.remove("sel")); }
+    _repaintSensiTables(); // solo cambia lo que está fuera de pantalla: lo visible ya se pintó al tocarlo
+    let n=0; const rel=()=>{ for(let q=0;q<24&&n<chunks.length;q++,n++){ const e=chunks[n].el; e.style.removeProperty("--ac"); e.style.removeProperty("--ac-rgb"); e.classList.remove("rc-chunk"); } if(n<chunks.length) requestAnimationFrame(rel); };
+    requestAnimationFrame(rel);
   };
   _rcRAF=requestAnimationFrame(loop);
   a.onfinish=()=>{ w.remove(); _rcW=null; if(_rcFin){ const f=_rcFin; _rcFin=null; f(); } next(); }; // el contador de 5 s arranca al terminar la ola
@@ -3167,6 +3173,7 @@ function _typingFor(ms){
 // ── Lista de lo que investiga el bot (pantalla, Hz, resolución, chip) ──
 // Muestra los datos REALES si se encontraron (✓) y marca como estimado (≈) lo que no.
 function _specsChecklistStart(marca,modelo){
+  if(document.body.classList.contains("ui-gen")) return _genSpecsStart(marca,modelo); // en el generador no hay mensaje de chat: los resultados van en su propio cuadro
   const c=document.getElementById("myMsgs");
   const w=document.createElement("div"); w.className="mw bot";
   const b=document.createElement("div"); b.className="bub bot spk";
@@ -5934,24 +5941,70 @@ function _genSyncDpi(){
 function _genBusyUI(on,soft){ // on=true: cargando · on=false: libre · soft=true: ya salió el resultado (se quita el efecto de carga pero el botón sigue bloqueado hasta que el flujo termine)
   const b=document.getElementById("genBtn");
   _genBusy=!!on||!!soft; b.disabled=_genBusy; b.classList.toggle("loading",!!on&&!soft);
+  document.getElementById("genForm").classList.toggle("busy",!!on&&!soft);
   document.getElementById("genBtnT").textContent=(on&&!soft)?"INVESTIGANDO SPECS…":"⚡ GENERAR";
+}
+// ── Cuadro de specs del generador (distinto al chat): mientras investiga, 4 casillas "esqueleto" brillando; al terminar, cada casilla se llena con su dato real (✓) o estimado (≈) ──
+function _specVals(marca,modelo){
+  const sp=_deviceSpecsCache.get(_deviceKey(marca,modelo))||{}, pf=_screenProfile(marca,modelo), nn=(x,f)=>(x!=null&&isFinite(x))?f(+x):"—";
+  return {found:!!sp.found,vals:[
+    sp.diagIn!=null?[nn(sp.diagIn,x=>x.toFixed(1)+"″"),1]:[nn(pf.diagIn,x=>x.toFixed(1)+"″"),0],
+    sp.refreshHz!=null?[nn(sp.refreshHz,x=>Math.round(x)+" Hz"),1]:[nn(pf.refreshHz,x=>Math.round(x)+" Hz"),0],
+    (sp.resLong!=null&&sp.resShort!=null)?[Math.round(sp.resLong)+"×"+Math.round(sp.resShort),1]:[nn(pf.resLong,x=>Math.round(x))+"×"+nn(pf.resShort,x=>Math.round(x)),0],
+    sp.chip?[String(sp.chip),1]:["Estimado por gama",0]
+  ]};
+}
+const _GSP_NAMES=["Pantalla","Frecuencia","Resolución","Chip"], _GSP_ICO=["📱","⚡","🔲","🧠"];
+function _genSkeleton(){
+  const b=document.getElementById("genSpecsBox"); b.textContent=""; b.className="sk";
+  const t=document.createElement("div"); t.className="gsp-t"; t.textContent="📡 INVESTIGANDO SPECS";
+  const g=document.createElement("div"); g.className="gsp-g";
+  _GSP_NAMES.forEach((n,i)=>{ const x=document.createElement("div"); x.className="gsp-c sk"; const l=document.createElement("span"); l.className="gsp-l"; l.textContent=_GSP_ICO[i]+" "+n; const v=document.createElement("span"); v.className="gsp-v"; x.append(l,v); g.appendChild(x); });
+  b.append(t,g); document.getElementById("genForm").classList.add("has-out");
+}
+function _genSpecsStart(marca,modelo){
+  return {async finish(){
+    try{
+      const b=document.getElementById("genSpecsBox"), {vals,found}=_specVals(marca,modelo);
+      b.textContent=""; b.className="";
+      const t=document.createElement("div"); t.className="gsp-t"; t.textContent=found?"✅ ESPECIFICACIONES ENCONTRADAS":"📊 ESTIMADAS POR GAMA";
+      const g=document.createElement("div"); g.className="gsp-g";
+      vals.forEach((v,i)=>{
+        const x=document.createElement("div"); x.className="gsp-c "+(v[1]?"ok":"est"); x.style.animationDelay=(i*85)+"ms";
+        const l=document.createElement("span"); l.className="gsp-l"; l.textContent=_GSP_ICO[i]+" "+_GSP_NAMES[i];
+        const val=document.createElement("span"); val.className="gsp-v"; val.textContent=v[0];
+        const s=document.createElement("span"); s.className="gsp-s"; s.textContent=v[1]?"✓":"≈";
+        x.append(l,val,s); g.appendChild(x);
+      });
+      b.append(t,g);
+      await new Promise(r=>setTimeout(r,4*85+180));
+    }catch(e){ console.error("specs generador:",e); }
+  }};
 }
 function _genGo(){
   if(_genBusy||step!=="idle"){ return; }
   const marca=document.getElementById("genBrand").value, raw=document.getElementById("genModel").value.trim().replace(/\s+/g," ");
   if(!marca){ notify("⚠️ Elige la marca de tu celular."); return; }
   if(raw.length<2){ notify("⚠️ Escribe el modelo de tu celular."); return; }
-  const modelo=exMod(marca+" "+raw,marca)||raw;
+  const modelo=exMod(marca+" "+raw,marca)||raw, form=document.getElementById("genForm"), box=document.getElementById("genSpecsBox");
   data={marca,modelo,nivel:_genLv,dpi:_genDpiOn&&_grp(marca)!=="E"};
-  _lastSpecsRes=null; _genSpec(null); document.getElementById("myMsgs").textContent=""; _genBusyUI(true);
+  _lastSpecsRes=null; _genSpec(null); document.getElementById("myMsgs").textContent=""; form.classList.remove("has-out"); box.textContent=""; box.className="";
+  const bt=document.getElementById("genBtn"); bt.classList.remove("done");
+  _genBusyUI(true); _genSkeleton();                       // el cuadro sale pegado al botón desde el primer momento y se va llenando
   step="dpi"; onBtn(data.dpi?"✅ Sí, con DPI":"❌ Sin DPI",document.createElement("div"),true);
   // onBtn no devuelve una promesa: se vigila hasta que salga el resultado y hasta que el flujo vuelva a "idle" (termina, falla o llega al límite)
   const t0=Date.now(); let shown=false, scrolled=false;
   const iv=setInterval(()=>{
     if(_lastSpecsRes&&!shown){ shown=true; _genSpec(_lastSpecsRes); }                       // el aviso sale en cuanto termina la investigación de specs
     const card=document.getElementById("myMsgs").querySelector(".bub-sensi");
-    if(card&&!scrolled){ scrolled=true; _genBusyUI(true,true); setTimeout(()=>card.scrollIntoView({behavior:"smooth",block:"start"}),250); }
-    if(step==="idle"||Date.now()-t0>60000){ clearInterval(iv); _genBusyUI(false); if(_lastSpecsRes&&!shown) _genSpec(_lastSpecsRes); }
+    if(card&&!scrolled){ scrolled=true; _genBusyUI(true,true); setTimeout(()=>box.scrollIntoView({behavior:"smooth",block:"start"}),250); }
+    if(step==="idle"||Date.now()-t0>60000){
+      clearInterval(iv); _genBusyUI(false); if(_lastSpecsRes&&!shown) _genSpec(_lastSpecsRes);
+      if(document.getElementById("myMsgs").querySelector(".bub-sensi")){                     // listo: el botón lo celebra un momento
+        bt.classList.add("done"); document.getElementById("genBtnT").textContent="✅ LISTO";
+        setTimeout(()=>{ bt.classList.remove("done"); if(!_genBusy) document.getElementById("genBtnT").textContent="⚡ GENERAR"; },1600);
+      }else{ form.classList.remove("has-out"); box.textContent=""; box.className=""; }       // falló o llegó al límite: no queda un cuadro vacío
+    }
   },200);
 }
 function _applyUI(mode,fromUser){

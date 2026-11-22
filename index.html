@@ -31,7 +31,16 @@
 <link rel="stylesheet" href="styles.css">
 
 </head>
-<body>
+<body class="glass">
+<script>
+/* Preferencias visuales ANTES del primer pintado. El módulo de la app tarda en arrancar (espera la sesión y el id del dispositivo, hasta ~10 s) y hasta entonces
+   la pantalla se veía sin vidrio y con el color/fondo por defecto; al cargar cambiaba de versión de golpe. Aquí se aplican al instante desde lo guardado. */
+(function(){try{var p=JSON.parse(localStorage.getItem("sg_prefs")),b=document.body,r=document.documentElement;
+if(p&&p.glass===false)b.classList.remove("glass");
+if(p&&/^#[0-9a-f]{6}$/i.test(p.color||"")){var x=p.color.slice(1);r.style.setProperty("--ac",p.color);r.style.setProperty("--ac-rgb",parseInt(x.substr(0,2),16)+","+parseInt(x.substr(2,2),16)+","+parseInt(x.substr(4,2),16));}
+if(p&&/^[a-z]+$/.test(p.theme||"")&&p.theme!=="custom"&&p.theme!=="default")b.classList.add("t-"+p.theme);
+}catch(e){}})();
+</script>
 <noscript>
   <h1>SENSIS BOT — Sensibilidad de Free Fire calibrada para tu celular</h1>
   <p>Generador de sensibilidad para Free Fire en Android y iPhone. Calcula tu sensibilidad general, punto rojo, mira 2X, mira 4X, francotirador, cámara 360° y el tamaño del botón de disparo según la pantalla, la resolución, los Hz y el chip de tu celular, en nivel bajo, medio o alto, con o sin DPI.</p>
@@ -117,7 +126,7 @@
     </div>
     <div id="myPanel">
       <div id="genForm">
-        <div class="gf-title">⚡ GENERADOR DE SENSIBILIDAD</div>
+        <div class="gf-title"><span class="gf-bolt">⚡</span> GENERADOR DE SENSIBILIDAD</div>
         <select id="genBrand" class="inp" aria-label="Marca"><option value="">Elige la marca…</option></select>
         <input id="genModel" class="inp" type="text" maxlength="40" autocomplete="off" placeholder="Modelo de tu celular (ej: X5C Plus)"/>
         <div class="gf-lv" id="genLevel">
@@ -126,6 +135,8 @@
         <div class="gf-row"><span>DPI calibrado</span><button type="button" class="cal-sw" id="genDpi">APAGADO</button></div>
         <button type="button" class="btn-main" id="genBtn"><span class="gf-spin"></span><span id="genBtnT">⚡ GENERAR</span></button>
       </div>
+      <div id="genLink" aria-hidden="true"><i></i></div>
+      <div id="genSpecsBox"></div>
       <div id="myMsgs"></div>
       <div id="genSpecRes" aria-live="polite"></div>
       <div class="input-area" id="myInputArea">

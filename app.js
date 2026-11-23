@@ -932,6 +932,10 @@ function _dpiFabrica(sp){
   return L.reduce((b,x)=>Math.abs(x-ppi)<Math.abs(b-ppi)?x:b,L[0]);
 }
 // dpiUser: DPI actual que escribió el usuario (Android). Se compara contra el DPI de fábrica de SU celular, no contra un valor fijo.
+// ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+// ║ RESPALDO · CÓDIGO MUERTO: este es el motor anterior. YA NO SE USA EN NADA (el motor oficial es genSensiMejorado2). ║
+// ║ Se conserva únicamente como respaldo por si algún día hay que volver atrás; no lo llama ninguna parte de la app.  ║
+// ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
 function genSensiMejorado(marca,modelo,nivel,dpi,dpiUser){
   const grp=_grp(marca),iP=(grp==="E"),p=P[grp];
   // ── Ventana de la General según el nivel (banda del nivel ∩ límites del grupo) ──
@@ -1248,7 +1252,9 @@ function genSensiMejorado2(marca,modelo,nivel,dpi,dpiUser){
 }
 
 // ── CANVAS FX ─────────────────────────────────────────
-const cv=document.getElementById("fx"),ctx=cv.getContext("2d",{desynchronized:true})||cv.getContext("2d");
+const cv=document.getElementById("fx"),ctx=cv.getContext("2d");
+// OJO: antes era getContext("2d",{desynchronized:true}) (modo de baja latencia que dibuja fuera de la sincronía del compositor). En algunas GPUs de Android corrompe la pantalla
+// (cuadros con basura) justo cuando cambia la composición: aparece una tarjeta, cambia el color, etc. Con el contexto normal el fondo se compone como el resto de la página.
 let fxMode="none",fxRAF=null,drops=[],_fxHoldUntil=0,_fxLast=0; // _fxHoldUntil: el fondo se pausa SOLO hasta ese instante (cambios de pestaña, ventanas), nunca por scroll
 // Bucle de fondo con ahorro: no dibuja mientras la interfaz hace una transición grande (cambio de pestaña,
 // ventanas abiertas) ni con la pestaña oculta. El scroll NO lo pausa (solo lo limita a ~30 fps). El último cuadro queda en pantalla y se reanuda solo.
@@ -2481,33 +2487,9 @@ function hslToHex(h,s,l){
   return "#"+toHex(f(0))+toHex(f(8))+toHex(f(4));
 }
 let _lastRandomHue=Math.random()*360;
-// Color aleatorio con OLA: una onda del color nuevo se expande, el color cambia al pasar la ola
-// y el contador de 5 s empieza recién cuando la ola termina.
-let _rcT=null,_rcW=null,_rcOn=false,_rcRAF=0,_rcFin=null;
-function _rcStop(){
-  _rcOn=false; clearTimeout(_rcT); _rcT=null; cancelAnimationFrame(_rcRAF);
-  if(_rcFin){ const f=_rcFin; _rcFin=null; f(); } // si la ola iba a medias, se termina de recolorear (no queda a medias)
-  if(_rcW){ try{_rcW.cancel();}catch(e){} _rcW=null; }
-  document.querySelectorAll(".rc-wave").forEach(e=>e.remove());
-}
-// Trozos de pantalla que la ola recolorea AL TOCARLOS: se recorre lo visible (pantalla → paneles → mensajes → partes de la tarjeta de sensi → cada cuadro) y cada trozo
-// recibe el color nuevo (variables --ac y --ac-rgb puestas solo en él) cuando el frente de la ola llega a su borde más cercano. Así el repintado se reparte en muchos cuadros
-// chicos en vez de un solo golpe, y nada se pausa (el fondo animado, los números y los medidores siguen corriendo).
-function _rcCollect(){
-  const W=innerWidth,H=innerHeight,out=[];
-  const visit=(el,d)=>{
-    if(!(el instanceof HTMLElement)||el.id==="fx"||el.classList.contains("rc-wave")) return;
-    const r=el.getBoundingClientRect();
-    if(!(r.width>1&&r.height>1&&r.bottom>0&&r.top<H&&r.right>0&&r.left<W)) return;
-    const kids=[...el.children].filter(c=>c instanceof HTMLElement);
-    const split=r.height>150&&kids.length>0&&d<7&&!el.classList.contains("stbl-cell");
-    out.push({el,r});
-    if(split) kids.forEach(c=>visit(c,d+1));
-  };
-  const root=document.getElementById("chatScreen"); const ls=document.getElementById("loginScreen");
-  [(ls&&ls.classList.contains("show"))?ls:root,document.getElementById("streakFloat"),document.getElementById("genSpecRes")].forEach(e=>{ if(e) visit(e,0); });
-  return out.slice(0,260);
-}
+let _rcT=null,_rcOn=false;
+function _rcStop(){ _rcOn=false; clearTimeout(_rcT); _rcT=null; }
+// Colores aleatorios: cada 5 s el color cambia DIRECTO (sin ola). La ola recoloreaba trozo por trozo y metía capas extra justo cuando la GPU ya tenía trabajo.
 function _rcStep(){
   if(!_rcOn) return;
   // saturación 78-100%, luminosidad 52-62% (siempre vívido) y salto de ≥25° de hue
@@ -2515,45 +2497,8 @@ function _rcStep(){
   let rc;
   if(Math.random()<0.5){ const pool=[...document.querySelectorAll(".copt")].map(o=>o.dataset.c).filter(c=>c.toLowerCase()!==String(currentColor).toLowerCase()&&c.toUpperCase()!=="#E6E6E6"); rc=pool[Math.floor(Math.random()*pool.length)]; }
   else{ _lastRandomHue=(_lastRandomHue+25+Math.random()*310)%360; rc=hslToHex(_lastRandomHue, 65+Math.random()*35, 45+Math.random()*21); }
-  const m=rc.slice(1).match(/../g).map(h=>parseInt(h,16)).join(",");
-  const next=()=>{ if(_rcOn) _rcT=setTimeout(_rcStep,5000); };
-  const paint=()=>{ applyColor(rc); document.querySelectorAll(".copt").forEach(x=>x.classList.remove("sel")); };
-  if(matchMedia("(prefers-reduced-motion:reduce)").matches){ paint(); next(); return; }
-  // Sin @property no hay ola (el color cambia directo). Con @property la ola es UNA capa de pantalla cuyo degradado crece (--rcr), sin capas gigantes escaladas.
-  if(getComputedStyle(document.documentElement).getPropertyValue("--rcr").trim()!=="0%"){ paint(); next(); return; }
-  const oldC=String(currentColor), oldM=(()=>{ const h=oldC.replace("#",""); return [0,2,4].map(k=>parseInt(h.substr(k,2),16)).join(","); })();
-  const W=innerWidth,H=innerHeight,x=Math.round(W*(0.2+Math.random()*0.6)),y=Math.round(H*(0.2+Math.random()*0.6)),dFar=Math.hypot(Math.max(x,W-x),Math.max(y,H-y));
-  const chunks=_rcCollect().map(c=>{ const r=c.r,dx=Math.max(r.left-x,0,x-r.right),dy=Math.max(r.top-y,0,y-r.bottom); return {el:c.el,d:Math.hypot(dx,dy),done:false}; }).sort((p,q)=>p.d-q.d);
-  // 1) Cada trozo fija su color ACTUAL (mismo valor que ya tenía: no se repinta nada) y 2) la paleta de la tabla de sensi pasa al color nuevo, lista para pintar cuadro por cuadro.
-  chunks.forEach(c=>{ c.el.classList.add("rc-chunk"); c.el.style.setProperty("--ac",oldC); c.el.style.setProperty("--ac-rgb",oldM); });
-  currentColor=rc;
-  let rootDone=false;
-  const touch=c=>{
-    c.done=true; c.el.style.setProperty("--ac",rc); c.el.style.setProperty("--ac-rgb",m);
-    if(c.el.classList.contains("stbl-cell")) _paintSensiCell(c.el,+c.el.dataset.i||0);
-  };
-  const w=document.createElement("div"); w.className="rc-wave";
-  w.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:9000;background:radial-gradient(circle farthest-corner at "+x+"px "+y+"px,rgba("+m+",.16) 0,rgba("+m+",.16) calc(var(--rcr) - 12%),rgba("+m+",.55) calc(var(--rcr) - 4%),rgba("+m+",0) var(--rcr))";
-  document.body.appendChild(w);
-  const a=w.animate([{"--rcr":"0%"},{"--rcr":"118%"}],{duration:1400,easing:"cubic-bezier(.3,.6,.4,1)"});
-  _rcW=a;
-  let k=0;
-  const loop=()=>{
-    const fr=(parseFloat(getComputedStyle(w).getPropertyValue("--rcr"))||0)/100*dFar;
-    while(k<chunks.length&&chunks[k].d<=fr) touch(chunks[k++]);
-    // A ~30 % de la ola el color pasa a la raíz: ya solo cambian las partes sin trozo propio (fondo, lo que está fuera de pantalla). Antes esto pasaba al FINAL y se sentía como una pausa.
-    if(!rootDone&&fr>=0.3*dFar){ rootDone=true; applyColor(rc,true); document.querySelectorAll(".copt").forEach(x=>x.classList.remove("sel")); }
-    if(_rcFin) _rcRAF=requestAnimationFrame(loop);
-  };
-  _rcFin=()=>{ // fin: sin repintados grandes. Lo que no se alcanzó a tocar se pinta, y los colores puestos trozo por trozo se sueltan POCO A POCO (mismo valor que la raíz: no se ve nada, pero así no se junta todo en un cuadro)
-    cancelAnimationFrame(_rcRAF); while(k<chunks.length) touch(chunks[k++]);
-    if(!rootDone){ rootDone=true; applyColor(rc,true); document.querySelectorAll(".copt").forEach(x=>x.classList.remove("sel")); }
-    _repaintSensiTables(); // solo cambia lo que está fuera de pantalla: lo visible ya se pintó al tocarlo
-    let n=0; const rel=()=>{ for(let q=0;q<24&&n<chunks.length;q++,n++){ const e=chunks[n].el; e.style.removeProperty("--ac"); e.style.removeProperty("--ac-rgb"); e.classList.remove("rc-chunk"); } if(n<chunks.length) requestAnimationFrame(rel); };
-    requestAnimationFrame(rel);
-  };
-  _rcRAF=requestAnimationFrame(loop);
-  a.onfinish=()=>{ w.remove(); _rcW=null; if(_rcFin){ const f=_rcFin; _rcFin=null; f(); } next(); }; // el contador de 5 s arranca al terminar la ola
+  applyColor(rc); document.querySelectorAll(".copt").forEach(x=>x.classList.remove("sel"));
+  _rcT=setTimeout(_rcStep,5000);
 }
 
 function setRandomColors(on,imm){
@@ -3104,7 +3049,7 @@ function _repaintSensiTables(){ document.querySelectorAll(".stbl-cell").forEach(
 // Medidor de media luna (General) y animación de números/barras al revelar la sensi
 const _STBL_GAUGE='<svg viewBox="0 0 200 108" aria-hidden="true"><path class="stbl-g0" d="M12 100A88 88 0 0 1 188 100"/><path class="stbl-g2" pathLength="100" d="M12 100A88 88 0 0 1 188 100"/><path class="stbl-g1" pathLength="100" d="M12 100A88 88 0 0 1 188 100"/></svg>';
 function _stblAnimate(b){
-  const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduce=(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const run=()=>{
     const g=b.querySelector(".stbl-g1"), g2=b.querySelector(".stbl-g2");
     b.querySelectorAll(".stbl-val").forEach(v=>{
@@ -3285,14 +3230,14 @@ function onBtn(lbl,bd,silent){
         await _mq; const _ck=_specsChecklistStart(data.marca,data.modelo); // lista "investigando…"
         await _lookupDeviceSpecs(data.marca,data.modelo).catch(()=>{});
         await _ck.finish(); _lastSpecsRes=_specsCount(data.marca,data.modelo); // para el aviso de specs del generador
-        const r=_cal2On()?genSensiMejorado2(data.marca,data.modelo,data.nivel,data.dpi):genSensiMejorado(data.marca,data.modelo,data.nivel,data.dpi); _cal2LastRec=r.rec||null;
+        const r=genSensiMejorado2(data.marca,data.modelo,data.nivel,data.dpi); _cal2LastRec=r.rec||null; // motor oficial (genSensiMejorado ya no se usa)
         myCount=await incServerCount(nickname); updateCounter(); _rvMarkGen();
         const hs=r.hs==="full"?"🎯 HEADSHOT CONFIG":r.hs==="mid"?"⚡ HEADSHOT MID":"";
         const dL=r.dpi?"\n🔵 DPI: "+r.dpi:"";
         const premL=isPremiumGen?"\n✨ PREMIUM (privada, no va al feed)":"";
         const txt="✅ SENSIBILIDAD GENERADA\n📱 "+data.marca+" "+data.modelo+"\n"+NL[r.nivel]+" "+hs+premL+"\n\n🎮 General: "+r.general+"\n🔴 Mira Rojo: "+r.rojo+"\n🔭 Mira 2X: "+r.x2+"\n🔬 Mira 4X: "+r.x4+"\n🏹 Francotirador: "+r.franco+"\n📷 Cámara 360°: "+r.camara+"\n🕹️ Botón Disparo: "+r.boton+dL+"\n\n— SENSIS GOOD FF ☠️⚡";
         addMsg("bot",txt,{copy:txt,table:{
-          device:data.marca+" "+data.modelo, nivel:NL[r.nivel], hs:hs, prem:isPremiumGen, dpi:r.dpi, test:r.motor==="mejorado2",
+          device:data.marca+" "+data.modelo, nivel:NL[r.nivel], hs:hs, prem:isPremiumGen, dpi:r.dpi, test:false, // ya no es una prueba: es el motor oficial (no sale la etiqueta 🧪 PRUEBA)
           rows:[["general","General",r.general],["rojo","Mira Rojo",r.rojo],["x2","Mira 2X",r.x2],["x4","Mira 4X",r.x4],["franco","Francotirador",r.franco],["camara","Cámara 360°",r.camara],["boton","Botón Disparo",r.boton]].concat(r.dpi?[["dpi","DPI",r.dpi,null,(r.dpi-450)/2]]:[])
         },regen:()=>{
           // Repite la generación con la misma marca/modelo/nivel/dpi ya elegidos (fix #7)
@@ -3940,7 +3885,7 @@ const _CAL2_SALT="88c3586d5569b35cfdcd9eef82fa8c55", _CAL2_HASH="e2dfa0a1aaf6881
 const _calEl=id=>document.getElementById(id);
 const _cal2Ok=()=>{ try{ return sessionStorage.getItem("sg_cal2_ok")==="1"; }catch(e){ return false; } };
 let _cal2OnFlag=false; // solo en memoria: al recargar la página la prueba vuelve a estar APAGADA
-function _cal2On(){ return _cal2Ok()&&_cal2OnFlag===true; }
+function _cal2On(){ return true; } // genSensiMejorado2 es el motor oficial: siempre activo (la contraseña solo protege el panel de datos)
 let _cal2Fails=0,_cal2Until=0,_cal2LastRec=null;
 async function _cal2Check(pw){
   const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
@@ -3953,11 +3898,11 @@ async function _cal2Check(pw){
 function _calStatus(t,ok){ const s=_calEl("calStatus"); s.textContent=t; s.style.color=ok?"#3DFF8F":"#FF5566"; }
 function _calRender(){
   const ok=_cal2Ok(); _calEl("calLock").style.display=ok?"none":""; _calEl("calPanel").style.display=ok?"":"none";
-  const on=_cal2On(); const t=_calEl("calToggle"); t.textContent=on?"ACTIVADA ✅":"APAGADA"; t.classList.toggle("on",on);
+  const t=_calEl("calToggle"); t.textContent="ACTIVA ✅"; t.classList.add("on"); t.disabled=true;
   const L=_calEl("calLast"), rc=_cal2LastRec;
   if(L){ if(rc&&rc.spec){ const sc=rc.spec,f=sc.real||{},mk=o=>o?"✓":"≈";
-      L.textContent="Última sensi de prueba · pantalla "+Number(sc.diagIn).toFixed(1)+"″ "+mk(f.diagIn)+" · "+Math.round(sc.resLong)+"×"+Math.round(sc.resShort)+" "+mk(f.res)+" · "+Math.round(sc.refreshHz)+" Hz "+mk(f.refreshHz)+" · del pecho a la cabeza el dedo avanza "+rc.dragMm+" mm ("+rc.dragPx+" px, "+rc.D+" % de la altura; según el movimiento del personaje "+rc.dragMmMin+"–"+rc.dragMmMax+" mm). ✓ = dato real del Worker · ≈ = estimado por gama."+(rc.sim?"\nSimulación (estimada): la cabeza queda "+rc.sim.headPx+" px sobre el centro de la pantalla ("+rc.sim.R+" % de la altura) · con sensibilidad efectiva "+rc.sim.eff+" (General y botón juntos) el dedo avanza "+rc.sim.dragMm+" mm ("+rc.sim.D+" % de la altura) y el objetivo del nivel es "+rc.sim.Dt+" % → "+(rc.sim.ver==="cabeza"?"la mira llega a la cabeza ✅":rc.sim.ver==="pasa"?"la mira tiende a pasarse de la cabeza ⚠️ (muy sensible)":"la mira tiende a quedarse en el pecho/cuello ⚠️ (poco sensible)")+".":""); }
-    else L.textContent="Genera una sensi con la prueba activada y aquí verás los datos del celular que usó y el recorrido que salió."; }
+      L.textContent="Última sensi · pantalla "+Number(sc.diagIn).toFixed(1)+"″ "+mk(f.diagIn)+" · "+Math.round(sc.resLong)+"×"+Math.round(sc.resShort)+" "+mk(f.res)+" · "+Math.round(sc.refreshHz)+" Hz "+mk(f.refreshHz)+" · del pecho a la cabeza el dedo avanza "+rc.dragMm+" mm ("+rc.dragPx+" px, "+rc.D+" % de la altura; según el movimiento del personaje "+rc.dragMmMin+"–"+rc.dragMmMax+" mm). ✓ = dato real del Worker · ≈ = estimado por gama."+(rc.sim?"\nSimulación (estimada): la cabeza queda "+rc.sim.headPx+" px sobre el centro de la pantalla ("+rc.sim.R+" % de la altura) · con sensibilidad efectiva "+rc.sim.eff+" (General y botón juntos) el dedo avanza "+rc.sim.dragMm+" mm ("+rc.sim.D+" % de la altura) y el objetivo del nivel es "+rc.sim.Dt+" % → "+(rc.sim.ver==="cabeza"?"la mira llega a la cabeza ✅":rc.sim.ver==="pasa"?"la mira tiende a pasarse de la cabeza ⚠️ (muy sensible)":"la mira tiende a quedarse en el pecho/cuello ⚠️ (poco sensible)")+".":""); }
+    else L.textContent="Genera una sensi y aquí verás los datos del celular que usó y cuánto avanza el dedo del pecho a la cabeza."; }
 }
 (function(){
   const m=_calEl("calModal"), btn=_calEl("calBtn"); if(!m||!btn) return;
@@ -3978,8 +3923,6 @@ function _calRender(){
   }
   _calEl("calUnlock").addEventListener("click",unlock);
   _calEl("calPass").addEventListener("keydown",e=>{ if(e.key==="Enter") unlock(); });
-  _calEl("calToggle").addEventListener("click",()=>{ if(!_cal2Ok()) return; _cal2OnFlag=!_cal2On(); _calRender();
-    _calStatus(_cal2On()?"Prueba activada: tus próximas sensis salen calibradas con la lógica de cuánto debe avanzar el dedo hasta la cabeza (genSensiMejorado2).":"Prueba apagada: vuelve el motor normal.",true); });
   _calEl("calLockBtn").addEventListener("click",()=>{ _cal2OnFlag=false; try{ sessionStorage.removeItem("sg_cal2_ok"); }catch(e){} _calStatus("Sección bloqueada.",true); _calRender(); });
 })();
 // ── Ocultar / mostrar la barra superior (logo, créditos, nombre, menú, notificaciones) ──
@@ -4083,7 +4026,7 @@ document.getElementById("applyColorBtn").addEventListener("click",()=>{
   const _go=()=>{ if(_randomColorInterval){ setRandomColors(false); document.getElementById("randomColorToggle").checked=false; } applyColor(pendingColor); document.getElementById("cfgModal").classList.remove("show"); addMsg("bot",String(pendingColor).toUpperCase()==="#E6E6E6"?"✅ Color quitado.":"✅ Color aplicado."); };
   if(_randomColorInterval) _rcWarn(_go); else _go();
 });
-// ── MOTOR DE SENSI: solo existe genSensiMejorado (para siempre) ─────
+// ── MOTOR DE SENSI: el oficial es genSensiMejorado2 (genSensiMejorado quedó como respaldo sin uso) ─────
 window.sensiEngine="mejorado";
 try{ localStorage.removeItem("sensiEngine"); }catch(e){}
 

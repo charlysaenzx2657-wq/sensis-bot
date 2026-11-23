@@ -606,7 +606,6 @@ body.nocolor{--metal:radial-gradient(130% 150% at 12% 0%,rgba(255,255,255,.2),tr
 #rcWarnCard h3{margin:0;color:#fff;font-size:16px;font-weight:900;letter-spacing:1px;}
 #rcWarnCard p{margin:0 0 4px;color:rgba(230,240,255,.8);font-size:13px;line-height:1.45;}
 #rwNo{height:42px;border-radius:16px;border:1.5px solid rgba(255,255,255,.18);background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.02) 45%),#171c26;color:#fff;font-weight:800;font-size:12px;letter-spacing:1.5px;cursor:pointer;}
-body.tut-on .rc-wave{display:none!important;}
 body.tut-on .btn-main::after,body.tut-on .btn-google::after{animation:none!important;}
 /* ── NOTIFICACIONES ── */
 #toastBox{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:50%;transform:translateX(-50%);width:min(92vw,420px);display:flex;flex-direction:column;gap:8px;z-index:9300;pointer-events:none;}
@@ -970,11 +969,7 @@ body:not(.ui-gen) #genSpecRes{display:none;}
 .fam-row b{font-size:13px;color:rgba(228,242,255,0.9);}
 .fam-row span{font-size:11px;color:rgba(160,215,255,0.5);}
 
-/* Radio de la ola de color (se anima desde JS; así la ola es una sola capa de pantalla y no una capa enorme escalada) */
-@property --rcr{syntax:"<percentage>";inherits:false;initial-value:0%;}
 
-/* Trozos que la ola de color recolorea al tocarlos: repiten las variables derivadas de --ac para que, con su --ac propio, se recoloreen también ellas */
-.rc-chunk{--metal:radial-gradient(130% 150% at 12% 0%,color-mix(in srgb,var(--ac) 44%,#05080f),transparent 62%),radial-gradient(130% 150% at 92% 100%,color-mix(in srgb,var(--ac) 34%,#05080f),transparent 64%),color-mix(in srgb,var(--ac) 24%,#05080f);--gl-glow:0 12px 28px -14px rgba(var(--ac-rgb),.5);}
 
 /* ── GENERADOR · rediseño: animaciones y cuadro de resultados propio (no es el del chat) ── */
 body.ui-gen #genForm>*{animation:gfIn .5s cubic-bezier(.2,.9,.3,1) both;}

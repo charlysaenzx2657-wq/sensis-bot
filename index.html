@@ -520,20 +520,20 @@ if(p&&/^[a-z]+$/.test(p.theme||"")&&p.theme!=="custom"&&p.theme!=="default")b.cl
   </div>
 </div>
 
-<!-- PANEL: PRUEBA DE CALIBRACIÓN (con contraseña) -->
+<!-- PANEL: CALIBRACIÓN (datos de la última sensi, con contraseña) -->
 <div class="overlay" id="calModal">
   <div class="mbox" style="position:relative;">
     <span id="calCloseX" title="Cerrar" style="position:absolute;top:10px;right:14px;font-size:18px;color:rgba(160,215,255,0.5);cursor:pointer;line-height:1;">✕</span>
     <div style="text-align:center;font-size:36px;margin:6px 0 4px;">🧪</div>
-    <div style="text-align:center;font-size:16px;font-weight:900;color:var(--ac);margin-bottom:6px;">PRUEBA DE CALIBRACIÓN</div>
+    <div style="text-align:center;font-size:16px;font-weight:900;color:var(--ac);margin-bottom:6px;">CALIBRACIÓN</div>
     <div id="calLock">
-      <div style="text-align:center;font-size:12px;color:rgba(160,215,255,0.55);line-height:1.5;margin-bottom:12px;">Sección en pruebas. Escribe la contraseña para usarla.</div>
+      <div style="text-align:center;font-size:12px;color:rgba(160,215,255,0.55);line-height:1.5;margin-bottom:12px;">Sección protegida. Escribe la contraseña para ver los datos de la calibración.</div>
       <input class="inp" id="calPass" type="password" inputmode="numeric" autocomplete="off" placeholder="Contraseña">
       <button class="cbtn cbtn-p" id="calUnlock">🔓 DESBLOQUEAR</button>
     </div>
     <div id="calPanel" style="display:none;">
-      <div class="cal-row"><span>Calibración de prueba<small>genSensiMejorado2 + dedo hasta la cabeza</small></span><button type="button" class="cal-sw" id="calToggle">APAGADA</button></div>
-      <div class="cal-note">Con la prueba activada, tus sensibilidades salen calibradas con la lógica nueva: la General se despeja de cuánto debe avanzar el dedo para llevar la mira del pecho a la cabeza del enemigo en tu celular (medidas del personaje y medidas de tu pantalla), con los datos que ya consiguió el Worker (o los estimados). El botón sale de los Hz y se adapta a la General; un botón más grande baja un poco la sensibilidad efectiva (supuesto de ~10 %), así que la General sube para compensarlo. La tabla muestra los mismos valores de siempre. Es un modelo de prueba, no un dato oficial del juego.</div>
+      <div class="cal-row"><span>Calibración<small>genSensiMejorado2 · dedo hasta la cabeza</small></span><button type="button" class="cal-sw on" id="calToggle" disabled>ACTIVA ✅</button></div>
+      <div class="cal-note">Esta es la calibración oficial: la General se despeja de cuánto debe avanzar el dedo para llevar la mira del pecho a la cabeza del enemigo en tu celular (medidas del personaje y de tu pantalla), con los datos que ya consiguió el Worker (o los estimados). El botón sigue a la General y a los Hz, y la General y el botón se cuadran entre sí (un botón más grande baja la sensibilidad efectiva ~1 % por punto). Es un modelo, no un dato oficial del juego.</div>
       <div class="cal-out" id="calLast" style="font-size:11.5px;font-weight:700;white-space:pre-line;"></div>
       <button class="cbtn cbtn-g" id="calLockBtn">🔒 BLOQUEAR</button>
     </div>

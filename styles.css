@@ -7,9 +7,12 @@ body{background:#03070D;}
 body.t-matrix{background:#000!important;}
 .menu-item{display:flex;align-items:center;width:100%;padding:13px 14px;border-radius:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#E4F2FF;font-size:13px;font-weight:700;cursor:pointer;text-align:left;position:relative;transition:transform 0.12s cubic-bezier(0.22,1,0.36,1),background 0.12s;}
 .menu-item:active{background:rgba(var(--ac-rgb),0.12);transform:scale(0.97);}
-#menuModal{align-items:center;}
-#menuModal .mbox,#imgScanModal .mbox{border-radius:20px;transform:scale(0.86);transform-origin:center;max-width:360px;}
-#menuModal.show .mbox,#imgScanModal.show .mbox{transform:scale(1);transition:transform 0.5s cubic-bezier(0.34,1.56,0.64,1),opacity 0.36s cubic-bezier(0.16,1,0.3,1);}
+#menuModal,#updModal{align-items:center;}
+#menuModal .mbox,#imgScanModal .mbox,#updModal .mbox{border-radius:20px;transform:scale(0.86);transform-origin:center;max-width:360px;}
+#menuModal.show .mbox,#imgScanModal.show .mbox,#updModal.show .mbox{transform:scale(1);transition:transform 0.5s cubic-bezier(0.34,1.56,0.64,1),opacity 0.36s cubic-bezier(0.16,1,0.3,1);}
+/* Ventana de la novedad: flotante en el centro (no hoja inferior) */
+#updModal{padding:20px;}
+#updModal .mbox,body.glass #updModal .mbox{border-radius:26px!important;max-width:340px;margin:0 auto;}
 @keyframes imgScanSpin{to{transform:rotate(360deg);}}
 .verified-badge{animation:verifiedPop 0.5s cubic-bezier(0.34,1.56,0.64,1);}
 @keyframes verifiedPop{0%{transform:scale(0);opacity:0;}60%{transform:scale(1.3);opacity:1;}100%{transform:scale(1);}}
@@ -1032,3 +1035,8 @@ body.ui-gen #myMsgs{padding:12px 14px 80px;}
 body.ui-gen #myMsgs .mw{animation:gpFade .4s ease both;}
 @keyframes gpFade{from{opacity:0;}to{opacity:1;}}
 @media (prefers-reduced-motion:reduce){body.ui-gen #genForm>*,.gf-bolt,#genBtn,#genBtn::after,.gsp-c,#genSpecsBox,#genLink i,body.ui-gen #myMsgs .mw{animation:none!important;}}
+
+/* Tutorial: puntos del avance (se crean una vez y solo cambian de clase) y recorte suave del oscurecido */
+.tut-dot{display:block;width:6px;height:6px;border-radius:4px;background:rgba(160,215,255,0.25);transition:width .2s,background .2s;}
+.tut-dot.on{width:16px;background:var(--ac);}
+#tutDim{transition:clip-path .26s cubic-bezier(0.65,0,0.35,1);}

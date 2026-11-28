@@ -41,6 +41,7 @@ if(p&&/^#[0-9a-f]{6}$/i.test(p.color||"")){var x=p.color.slice(1);r.style.setPro
 if(p&&/^[a-z]+$/.test(p.theme||"")&&p.theme!=="custom"&&p.theme!=="default")b.classList.add("t-"+p.theme);
 }catch(e){}})();
 </script>
+<script src="i18n.js"></script>
 <noscript>
   <h1>SENSIS BOT — Sensibilidad de Free Fire calibrada para tu celular</h1>
   <p>Generador de sensibilidad para Free Fire en Android y iPhone. Calcula tu sensibilidad general, punto rojo, mira 2X, mira 4X, francotirador, cámara 360° y el tamaño del botón de disparo según la pantalla, la resolución, los Hz y el chip de tu celular, en nivel bajo, medio o alto, con o sin DPI.</p>
@@ -308,7 +309,8 @@ if(p&&/^[a-z]+$/.test(p.theme||"")&&p.theme!=="custom"&&p.theme!=="default")b.cl
         <button type="button" class="ui-opt sel" data-ui="chat"><b>💬 Chatbot</b><small>El de siempre: escribes tu marca y modelo y el bot te va preguntando.</small></button>
         <button type="button" class="ui-opt" data-ui="gen"><b>⚡ Generador</b><small>Sin chat: eliges la marca, escribes el modelo y pulsas generar.</small></button>
       </div>
-      <div class="ui-note">Puedes volver al chatbot cuando quieras desde aquí mismo (☰ Menú → Configuración → Interfaz).</div>
+      <div class="mlabel" style="margin-top:16px;">🌐 Idioma</div>
+      <select id="langSel" class="inp" aria-label="Idioma"></select>
     </div>
     <div class="msec" id="cfgSecCreators" style="display:none;">
       <div class="mlabel">🎬 Programa Creadores</div>
@@ -330,6 +332,18 @@ if(p&&/^[a-z]+$/.test(p.theme||"")&&p.theme!=="custom"&&p.theme!=="default")b.cl
 </div>
 
 <!-- PANEL: ÚNETE AL CANAL DE WHATSAPP -->
+<div class="overlay" id="updModal">
+  <div class="mbox" style="position:relative;text-align:center;">
+    <span id="updCloseX" title="Cerrar" style="position:absolute;top:10px;right:14px;font-size:18px;color:rgba(160,215,255,0.5);cursor:pointer;line-height:1;">✕</span>
+    <div style="font-size:44px;margin:6px 0 4px;">🎯</div>
+    <div style="font-size:16px;font-weight:900;color:var(--ac);margin-bottom:6px;letter-spacing:1px;">¡NUEVA CALIBRACIÓN!</div>
+    <div style="font-size:13.5px;font-weight:800;color:#fff;line-height:1.5;margin-bottom:8px;">La nueva calibración ya la puedes usar.</div>
+    <div style="font-size:12.5px;color:rgba(200,225,255,0.85);line-height:1.6;margin-bottom:8px;">Ahora tus sensibilidades se calculan según cuánto debe avanzar tu dedo para llegar a la cabeza del enemigo, con la General y el botón ajustados entre sí.</div>
+    <div style="font-size:12.5px;color:rgba(200,225,255,0.85);line-height:1.6;margin-bottom:18px;">¡Ya se está calibrando mejor! Genera una nueva y compárala.</div>
+    <button class="cbtn cbtn-p" id="updOk">¡ENTENDIDO!</button>
+  </div>
+</div>
+
 <div class="overlay" id="waModal">
   <div class="mbox" style="position:relative;text-align:center;">
     <span id="waCloseX" title="Cerrar" style="position:absolute;top:10px;right:14px;font-size:18px;color:rgba(160,215,255,0.5);cursor:pointer;line-height:1;">✕</span>
@@ -403,7 +417,6 @@ if(p&&/^[a-z]+$/.test(p.theme||"")&&p.theme!=="custom"&&p.theme!=="default")b.cl
       <button class="menu-item" id="cfgBtn">⚙️ Configuración</button>
       <button class="menu-item" id="infoBtn" title="Información">ℹ️ Información</button>
       <button class="menu-item" id="supportBtn" title="Soporte">🛟 Soporte</button>
-      <button class="menu-item" id="calBtn" title="Prueba de calibración">🧪 Prueba de calibración</button>
     </div>
   </div>
 </div>
@@ -521,25 +534,6 @@ if(p&&/^[a-z]+$/.test(p.theme||"")&&p.theme!=="custom"&&p.theme!=="default")b.cl
 </div>
 
 <!-- PANEL: CALIBRACIÓN (datos de la última sensi, con contraseña) -->
-<div class="overlay" id="calModal">
-  <div class="mbox" style="position:relative;">
-    <span id="calCloseX" title="Cerrar" style="position:absolute;top:10px;right:14px;font-size:18px;color:rgba(160,215,255,0.5);cursor:pointer;line-height:1;">✕</span>
-    <div style="text-align:center;font-size:36px;margin:6px 0 4px;">🧪</div>
-    <div style="text-align:center;font-size:16px;font-weight:900;color:var(--ac);margin-bottom:6px;">CALIBRACIÓN</div>
-    <div id="calLock">
-      <div style="text-align:center;font-size:12px;color:rgba(160,215,255,0.55);line-height:1.5;margin-bottom:12px;">Sección protegida. Escribe la contraseña para ver los datos de la calibración.</div>
-      <input class="inp" id="calPass" type="password" inputmode="numeric" autocomplete="off" placeholder="Contraseña">
-      <button class="cbtn cbtn-p" id="calUnlock">🔓 DESBLOQUEAR</button>
-    </div>
-    <div id="calPanel" style="display:none;">
-      <div class="cal-row"><span>Calibración<small>genSensiMejorado2 · dedo hasta la cabeza</small></span><button type="button" class="cal-sw on" id="calToggle" disabled>ACTIVA ✅</button></div>
-      <div class="cal-note">Esta es la calibración oficial: la General se despeja de cuánto debe avanzar el dedo para llevar la mira del pecho a la cabeza del enemigo en tu celular (medidas del personaje y de tu pantalla), con los datos que ya consiguió el Worker (o los estimados). El botón sigue a la General y a los Hz, y la General y el botón se cuadran entre sí (un botón más grande baja la sensibilidad efectiva ~1 % por punto). Es un modelo, no un dato oficial del juego.</div>
-      <div class="cal-out" id="calLast" style="font-size:11.5px;font-weight:700;white-space:pre-line;"></div>
-      <button class="cbtn cbtn-g" id="calLockBtn">🔒 BLOQUEAR</button>
-    </div>
-    <div class="sup-status" id="calStatus"></div>
-  </div>
-</div>
 
 <!-- PANEL: PRODUCTOS GRATIS -->
 <div class="overlay" id="freeProductsModal">
@@ -586,7 +580,8 @@ if(p&&/^[a-z]+$/.test(p.theme||"")&&p.theme!=="custom"&&p.theme!=="default")b.cl
 </div>
 
 <!-- TUTORIAL GUIADO (spotlight sobre la interfaz real) -->
-<div id="tutSpotlight" style="position:fixed;inset:0;z-index:399;pointer-events:none;display:none;border-radius:19px;will-change:transform;box-shadow:0 0 0 9999px rgba(0,0,10,0.78);"></div>
+<div id="tutDim" style="position:fixed;inset:0;z-index:398;pointer-events:none;display:none;background:rgba(0,0,10,0.78);"></div>
+<div id="tutSpotlight" style="position:fixed;z-index:399;pointer-events:none;display:none;border-radius:19px;"></div>
 <div id="tutTooltip" style="position:fixed;z-index:401;display:none;max-width:300px;width:88vw;background:linear-gradient(135deg,#040e28,#02081c);border:1px solid rgba(var(--ac-rgb),0.3);border-radius:22px;padding:16px;box-shadow:0 8px 30px rgba(0,0,0,0.6);transition:top .2s cubic-bezier(0.65,0,0.35,1),left .2s cubic-bezier(0.65,0,0.35,1);">
   <span id="tutSkipX" title="Saltar tutorial" style="position:absolute;top:8px;right:12px;font-size:10px;color:rgba(160,215,255,0.5);cursor:pointer;letter-spacing:0.5px;">SALTAR ✕</span>
   <div id="tutSlideIcon" style="font-size:26px;margin-bottom:4px;"></div>
@@ -596,6 +591,17 @@ if(p&&/^[a-z]+$/.test(p.theme||"")&&p.theme!=="custom"&&p.theme!=="default")b.cl
   <div style="display:flex;gap:8px;">
     <button class="cbtn" id="tutBackBtn" style="flex:1;display:none;padding:9px;font-size:11px;">← ATRÁS</button>
     <button class="cbtn cbtn-p" id="tutNextBtn" style="flex:2;padding:9px;font-size:11px;">SIGUIENTE →</button>
+  </div>
+</div>
+<div id="tutSkipModal" style="position:fixed;inset:0;z-index:460;display:none;align-items:center;justify-content:center;background:rgba(0,0,10,0.6);padding:20px;">
+  <div style="max-width:320px;width:100%;text-align:center;background:linear-gradient(135deg,#040e28,#02081c);border:1px solid rgba(var(--ac-rgb),0.4);border-radius:22px;padding:20px 18px;box-shadow:0 12px 40px rgba(0,0,0,0.7);">
+    <div style="font-size:38px;margin-bottom:6px;">⚠️</div>
+    <div style="font-size:15px;font-weight:900;color:var(--ac);margin-bottom:8px;">¿Saltar el tutorial?</div>
+    <div style="font-size:12.5px;color:rgba(200,225,255,0.85);line-height:1.6;margin-bottom:16px;">Si no lo ves, es posible que te pierdas de sus funciones (EN VIVO, HUDs, códigos, colores, efectos y más). Puedes volver a verlo cuando quieras desde Configuración → Sesión.</div>
+    <div style="display:flex;gap:8px;">
+      <button class="cbtn cbtn-p" id="tutSkipGo" style="flex:1;padding:10px;font-size:11px;">SALTAR</button>
+      <button class="cbtn" id="tutSkipStay" style="flex:1.3;padding:10px;font-size:11px;">▶ SEGUIR VIENDO</button>
+    </div>
   </div>
 </div>
 <div class="overlay" id="hudModal">

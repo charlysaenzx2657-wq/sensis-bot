@@ -423,14 +423,16 @@ function updateCounter(){
 // sueltas quedaron reclasificadas por gama real de mercado en vez de cabina
 // caer todas juntas a un grupo que no las representa.
 const _GA=new Set(["Samsung","Google Pixel","OnePlus","Sony","Sony Ericsson","Razer","Sharp","Sharp Aquos","Nubia","RED","Vertu"]);
-const _GB=new Set(["Motorola","Nokia","LG","HTC","Asus","Lenovo","TCL","Meizu","Meitu","Microsoft","Fairphone","ZUK","Nothing"]);
+const _GB=new Set(["Motorola","Nokia","LG","HTC","Asus","Lenovo","TCL","Meizu","Meitu","Microsoft","Fairphone","ZUK","Nothing","Fujitsu","Rakuten","Pantech","Essential","Palm"]);
 const _GB2=new Set(["Xiaomi","Poco"]);
 const _GB3=new Set(["Honor","Huawei","HMD Global"]);
 const _GB4=new Set(["Realme","Oppo","Vivo"]);
 const _GC=new Set(["Infinix","Tecno","Itel","iTel","itel","Alcatel","BLU","Wiko","Blackview","Doogee","Oukitel","Cubot","Ulefone","UMIDIGI","Gionee","Micromax","Lava","Intex","Karbonn","Celkon","Spice","QMobile","Walton","Symphony","MyPhone","Cherry Mobile",
-  "ZTE","Acer","Panasonic","Amazon","BlackBerry","Spectra","Caterpillar","Coolpad","Xolo","Positivo","Multilaser","Philco","Hisense","Kyocera","CloudFone","Vsmart","Archos","Prestigio","BQ","Casper","General Mobile","Allview","Advan","Mito","Polytron","SPC","Maxtron","Evercoss","Torque","Starmobile","Verykool","iVoomi","Freetel","Vestel","Reeder","Konka","Haier","Elephone","Leagoo","Homtom","Vernee","Bluboo","AGM","Sugar","Neffos"]);
-const _GV=new Set(["iQOO"]); // gama "gaming": pantalla grande + touch de alta frecuencia (ver P.V)
-const MARCAS=["iPhone","iPad","Samsung","Motorola","Xiaomi","Honor","Huawei","Realme","Oppo","Vivo","Google Pixel","OnePlus","Sony","Asus","Lenovo","Nokia","LG","HTC","TCL","Poco","Infinix","Tecno","Alcatel","BLU","Blackview","Doogee","Oukitel","Cubot","Ulefone","UMIDIGI","Meizu","Nubia","RED","Razer","Sharp","ZTE","Acer","Panasonic","Microsoft","Amazon","BlackBerry","itel","Spectra","iQOO","Caterpillar","Wiko","Symphony","Walton","Coolpad","Gionee","Karbonn","Micromax","Lava","Xolo","QMobile","Positivo","Multilaser","Philco","Hisense","Kyocera","Cherry Mobile","CloudFone","MyPhone","Vsmart","Fairphone","Archos","Prestigio","BQ","Casper","General Mobile","Allview","Advan","Mito","Polytron","SPC","Maxtron","Evercoss","Torque","Starmobile","Verykool","ZUK","Vertu","iVoomi","Freetel","Vestel","Reeder","Konka","Haier","Elephone","Leagoo","Homtom","Vernee","Bluboo","AGM","Nothing","Sugar","Neffos"];
+  "ZTE","Acer","Panasonic","Amazon","BlackBerry","Spectra","Caterpillar","Coolpad","Xolo","Positivo","Multilaser","Philco","Hisense","Kyocera","CloudFone","Vsmart","Archos","Prestigio","BQ","Casper","General Mobile","Allview","Advan","Mito","Polytron","SPC","Maxtron","Evercoss","Torque","Starmobile","Verykool","iVoomi","Freetel","Vestel","Reeder","Konka","Haier","Elephone","Leagoo","Homtom","Vernee","Bluboo","AGM","Sugar","Neffos","Oscal","Hotwav","Nomu","Energizer","Sonim","Crosscall","Mobicel","Smartfren","Axioo","DEXP","Highscreen","Lanix","Ghia","Hyundai","Orbic","Jio","Lyf","Doro","Gigaset","Wileyfox","Emporia","Medion"]);
+const _GV=new Set(["iQOO","Black Shark"]); // gama "gaming": pantalla grande + touch de alta frecuencia (ver P.V)
+const MARCAS=["iPhone","iPad","Samsung","Motorola","Xiaomi","Honor","Huawei","Realme","Oppo","Vivo","Google Pixel","OnePlus","Sony","Asus","Lenovo","Nokia","LG","HTC","TCL","Poco","Infinix","Tecno","Alcatel","BLU","Blackview","Doogee","Oukitel","Cubot","Ulefone","UMIDIGI","Meizu","Nubia","RED","Razer","Sharp","ZTE","Acer","Panasonic","Microsoft","Amazon","BlackBerry","itel","Spectra","iQOO","Caterpillar","Wiko","Symphony","Walton","Coolpad","Gionee","Karbonn","Micromax","Lava","Xolo","QMobile","Positivo","Multilaser","Philco","Hisense","Kyocera","Cherry Mobile","CloudFone","MyPhone","Vsmart","Fairphone","Archos","Prestigio","BQ","Casper","General Mobile","Allview","Advan","Mito","Polytron","SPC","Maxtron","Evercoss","Torque","Starmobile","Verykool","ZUK","Vertu","iVoomi","Freetel","Vestel","Reeder","Konka","Haier","Elephone","Leagoo","Homtom","Vernee","Bluboo","AGM","Nothing","Sugar","Neffos","Black Shark","Oscal","Hotwav","Sonim","Energizer","Crosscall","Nomu","Fujitsu","Rakuten","Pantech","Lanix","Ghia","Hyundai","Mobicel","Smartfren","Axioo","DEXP","Highscreen","Gigaset","Doro","Wileyfox","Emporia","Medion","Orbic","Jio","Lyf","Essential","Palm","HMD Global","Meitu"];
+// Marcas cuyo nombre es corto o puede aparecer dentro de otra palabra: solo se reconocen como palabra completa (no dentro de "palma", "dorado"...)
+const _MARCAS_ESTRICTAS=new Set(["Jio","Palm","Doro","Ghia","Lyf","Nomu","Orbic","DEXP","Essential","Medion","Hyundai","Fujitsu"]);
 const P={A:{genMin:144,genMax:200,rojoD:[0,3],x2D:[-12,-6],franMin:62,franMax:76,camaraD:[16,28],dpiMin:530,dpiMax:610},B:{genMin:145,genMax:196,rojoD:[0,3],x2D:[-12,-6],franMin:55,franMax:72,camaraD:[14,26],dpiMin:530,dpiMax:600},B2:{genMin:143,genMax:188,rojoD:[0,2],x2D:[-14,-7],franMin:53,franMax:70,camaraD:[13,24],dpiMin:530,dpiMax:595},B3:{genMin:146,genMax:193,rojoD:[0,2],x2D:[-13,-7],franMin:55,franMax:73,camaraD:[14,26],dpiMin:530,dpiMax:598},B4:{genMin:143,genMax:196,rojoD:[0,3],x2D:[-13,-7],franMin:57,franMax:75,camaraD:[15,27],dpiMin:530,dpiMax:602},C:{genMin:148,genMax:182,rojoD:[0,2],x2D:[-10,-5],franMin:50,franMax:68,camaraD:[18,32],dpiMin:530,dpiMax:580},D:{genMin:145,genMax:192,rojoD:[0,3],x2D:[-12,-6],franMin:54,franMax:71,camaraD:[14,26],dpiMin:530,dpiMax:596},E:{genMin:85,genMax:200,rojoD:[0,4],x2D:[-18,-10],franMin:52,franMax:70,camaraD:[20,36],dpiMin:0,dpiMax:0},V:{genMin:162,genMax:200,rojoD:[0,2],x2D:[-6,-2],franMin:66,franMax:80,camaraD:[8,16],dpiMin:600,dpiMax:630}};
 function _grp(m){
   if(!m) return "D";
@@ -460,6 +462,7 @@ const MARCA_ALIAS={
   "blackberry":"BlackBerry",
   "moto":"Motorola", // "Moto G Power" sin escribir "Motorola"
   "amazon fire":"Amazon","kindle fire":"Amazon",
+  "hmd":"HMD Global","cmf":"Nothing","xperia":"Sony","galaxy":"Samsung","zenfone":"Asus","rog phone":"Asus","narzo":"Realme","razr":"Motorola","thinkphone":"Motorola",
 };
 // Alias de más largo a más corto: si no, "pixel" se borra antes que "google pixel" y el modelo queda "google 10"
 const _ALIAS_ORD=Object.keys(MARCA_ALIAS).sort((x,y)=>y.length-x.length);
@@ -483,7 +486,9 @@ function detectM(txt){
   // Luego buscar en MARCAS normales (más largo gana)
   let f=null;
   for(const m of MARCAS){
-    if(t.includes(m.toLowerCase())){if(!f||m.length>f.length)f=m;}
+    const ml=m.toLowerCase();
+    const hit=_MARCAS_ESTRICTAS.has(m)?new RegExp("(?<![\\p{L}\\p{N}])"+ml.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(?![\\p{L}\\p{N}])","u").test(t):t.includes(ml);
+    if(hit){if(!f||m.length>f.length)f=m;}
   }
   return f;
 }
@@ -504,7 +509,7 @@ function _sinPosesivo(t){
   return String(t||"").replace(/(?<![\p{L}\p{N}])mi\s+(?=(?:redmi|redmagic|red magic|poco|iphone|ipad|samsung|honor|motorola|moto|huawei|oppo|vivo|realme|tecno|infinix|oneplus|nokia|sony|google|pixel|xiaomi|celular|celu|cel|telefono|teléfono|movil|móvil|equipo|smartphone)(?![\p{L}\p{N}]))/giu," ");
 }
 // Líneas de producto: sirven para detectar la marca (redmi -> Xiaomi) pero SON parte del modelo y no se borran
-const _ALIAS_KEEP=new Set(["moto","redmi","redmagic","red magic","axon","blade","liquid","amazon fire","kindle fire"]);
+const _ALIAS_KEEP=new Set(["moto","redmi","redmagic","red magic","axon","blade","liquid","amazon fire","kindle fire","xperia","galaxy","zenfone","rog phone","narzo","razr","thinkphone"]);
 function exMod(txt,marca){
   txt=_sinPosesivo(txt);
   // Primero expandir el texto por si viene pegado
@@ -2511,42 +2516,55 @@ document.getElementById("randomColorToggle").addEventListener("change",e=>setRan
 // ── TUTORIAL DE BIENVENIDA (spotlight sobre la interfaz real; se guarda en Firestore, no en localStorage) ──
 const TUTORIAL_STEPS=[
   {icon:"👋",title:"¡Bienvenido a SENSIS BOT!",body:"Este es un tour guiado: te iré señalando cada función directo sobre la pantalla real. Puedes saltarlo cuando quieras con \"SALTAR\".",target:null},
-  {icon:"🌐",title:"EN VIVO",body:"Aquí está el feed: todos comparten HUDs, mensajes y resultados en tiempo real. Aquí SÍ aparece el filtro de búsqueda 🔍.",target:"#tFeed",before:async()=>{ document.getElementById("menuModal").classList.remove("show"); switchTab("feed"); await _tutWait(150); }},
-  {icon:"🔍",title:"Filtro de búsqueda",body:"Este filtro solo existe aquí, en el feed. En \"Mi Chat\" no aparece.",target:"#feedToolbar",before:async()=>{ document.getElementById("menuModal").classList.remove("show"); switchTab("feed"); await _tutWait(150); }},
-  {icon:"➕",title:"Publicar un HUD",body:"Toca este botón para subir un HUD: pegas el código y eliges cuántos dedos tiene (2 a 6, o <b>Personalizado</b> para elegir entre 1 y 10).",target:"#huAddBtn",before:async()=>{ document.getElementById("menuModal").classList.remove("show"); switchTab("feed"); await _tutWait(150); }},
-  {icon:"💬",title:"MI CHAT",body:"Tu conversación privada con el bot. Aquí NO aparece el filtro de búsqueda.",target:"#tMio",before:async()=>{ document.getElementById("menuModal").classList.remove("show"); switchTab("mio"); await _tutWait(150); }},
-  {icon:"📬",title:"Bandeja",body:"Aquí recibes mensajes, retos y recompensas que te envíe el admin.",target:"#inboxBtn",before:async()=>{ document.getElementById("menuModal").classList.add("show"); await _tutWait(560); }},
-  {icon:"🎁",title:"Productos Gratis",body:"Descargas gratuitas (comandos, modificaciones, sensibilidades) alojadas en MediaFire. Se actualiza de vez en cuando.",target:"#freeProductsBtn",before:async()=>{ document.getElementById("menuModal").classList.add("show"); await _tutWait(560); }},
-  {icon:"🎟️",title:"Códigos",body:"Acá ves todos los códigos activos del momento. Toca <b>Canjear</b> en el que quieras usar — cada código es de un solo uso por persona.",target:"#codesBtn",before:async()=>{ document.getElementById("menuModal").classList.add("show"); await _tutWait(560); }},
-  {icon:"⚙️",title:"Configuración",body:"Todo lo personalizable del bot vive detrás de este botón. Vamos a abrirlo.",target:"#cfgBtn",before:async()=>{ const m=document.getElementById("menuModal"),was=m.classList.contains("show"); m.classList.add("show"); document.getElementById("cfgModal").classList.remove("show"); await _tutWait(was?60:560); }},
-  {icon:"🆔",title:"Tu ID de Encuentro",body:"Este código de 6 dígitos es único y tuyo. Compártelo con un admin para que te encuentre fácilmente. Tócalo para copiarlo.",target:"#meetIdDisplay",before:async()=>{ document.getElementById("cfgBtn").click(); await _tutWait(560); document.querySelector(".cfgnav-btn[data-sec='cfgSecSession']")?.click(); await _tutWait(150); }},
-  {icon:"🎨",title:"Colores del bot",body:"Elige un color fijo, o activa <b>Colores aleatorios</b> para que cambie solo cada 5 segundos.",target:"[data-sec='cfgSecColor']",before:async()=>{ openCfgSection("cfgSecColor"); await _tutWait(560); }},
-  {icon:"✨",title:"Efectos visuales",body:"Activa/desactiva el <b>Glassmorphism</b> (vidrio esmerilado translúcido) y las <b>Luces RGB</b> (borde animado). El RGB se aplica por separado a la barra de escribir, mensajes y botones.",target:"[data-sec='cfgSecEffects']",before:async()=>{ openCfgSection("cfgSecEffects"); await _tutWait(560); }},
-  {icon:"🎭",title:"Temas de Personalización",body:"6 estilos completos (Hacker, Ciberseguridad, Consola, Cyberpunk, Infernal, Abismo): cambian color, fondo animado y tipografía juntos. Mientras uno esté activo, el fondo y color sueltos quedan bloqueados.",target:"[data-sec='cfgSecPersona']",before:async()=>{ openCfgSection("cfgSecPersona"); await _tutWait(560); }},
-  {icon:"🖼️",title:"Fondos animados",body:"Elige entre varios fondos animados (Matrix, lluvia, fuego, partículas, océano y más) para ambientar el bot.",target:"[data-sec='cfgSecFondo']",before:async()=>{ openCfgSection("cfgSecFondo"); await _tutWait(560); }},
-  {icon:"📷",title:"Fondo con tu propia imagen",body:"En esta misma sección, más abajo, puedes subir <b>tu propia foto</b> como fondo (no solo los animados prediseñados). Se sube la imagen completa, se ajusta sola para verse bien en tu pantalla, y queda guardada en tu dispositivo.",target:"#customBgPickBtn",before:async()=>{ openCfgSection("cfgSecFondo"); await _tutWait(560); }},
-  {icon:"✅",title:"¡Listo!",body:"Ya conoces todas las funciones principales. Puedes volver a este tutorial cuando quieras desde Configuración → Sesión. ¡Disfruta SENSIS BOT Creación de SENSIS GOOD FF!",target:null,before:async()=>{ document.getElementById("cfgModal").classList.remove("show"); await _tutWait(150); }},
+  {icon:"🌐",title:"EN VIVO",body:"Aquí está el feed: todos comparten HUDs, mensajes y resultados en tiempo real. Aquí SÍ aparece el filtro de búsqueda 🔍.",target:"#tFeed",before:async()=>{ document.getElementById("menuModal").classList.remove("show"); switchTab("feed"); }},
+  {icon:"🔍",title:"Filtro de búsqueda",body:"Este filtro solo existe aquí, en el feed. En \"Mi Chat\" no aparece.",target:"#feedToolbar",before:async()=>{ document.getElementById("menuModal").classList.remove("show"); switchTab("feed"); }},
+  {icon:"➕",title:"Publicar un HUD",body:"Toca este botón para subir un HUD: pegas el código y eliges cuántos dedos tiene (2 a 6, o <b>Personalizado</b> para elegir entre 1 y 10).",target:"#huAddBtn",before:async()=>{ document.getElementById("menuModal").classList.remove("show"); switchTab("feed"); }},
+  {icon:"💬",title:"MI CHAT",body:"Tu conversación privada con el bot. Aquí NO aparece el filtro de búsqueda.",target:"#tMio",before:async()=>{ document.getElementById("menuModal").classList.remove("show"); switchTab("mio"); }},
+  {icon:"📬",title:"Bandeja",body:"Aquí recibes mensajes, retos y recompensas que te envíe el admin.",target:"#inboxBtn",before:async()=>{ document.getElementById("menuModal").classList.add("show"); }},
+  {icon:"🎁",title:"Productos Gratis",body:"Descargas gratuitas (comandos, modificaciones, sensibilidades) alojadas en MediaFire. Se actualiza de vez en cuando.",target:"#freeProductsBtn",before:async()=>{ document.getElementById("menuModal").classList.add("show"); }},
+  {icon:"🎟️",title:"Códigos",body:"Acá ves todos los códigos activos del momento. Toca <b>Canjear</b> en el que quieras usar — cada código es de un solo uso por persona.",target:"#codesBtn",before:async()=>{ document.getElementById("menuModal").classList.add("show"); }},
+  {icon:"⚙️",title:"Configuración",body:"Todo lo personalizable del bot vive detrás de este botón. Vamos a abrirlo.",target:"#cfgBtn",before:async()=>{ const m=document.getElementById("menuModal"),was=m.classList.contains("show"); m.classList.add("show"); document.getElementById("cfgModal").classList.remove("show"); }},
+  {icon:"🆔",title:"Tu ID de Encuentro",body:"Este código de 6 dígitos es único y tuyo. Compártelo con un admin para que te encuentre fácilmente. Tócalo para copiarlo.",target:"#meetIdDisplay",before:async()=>{ document.getElementById("cfgBtn").click(); await _tutSettle(".cfgnav-btn[data-sec='cfgSecSession']"); document.querySelector(".cfgnav-btn[data-sec='cfgSecSession']")?.click(); }},
+  {icon:"🎨",title:"Colores del bot",body:"Elige un color fijo, o activa <b>Colores aleatorios</b> para que cambie solo cada 5 segundos.",target:"[data-sec='cfgSecColor']",before:async()=>{ openCfgSection("cfgSecColor"); }},
+  {icon:"✨",title:"Efectos visuales",body:"Activa/desactiva el <b>Glassmorphism</b> (vidrio esmerilado translúcido) y las <b>Luces RGB</b> (borde animado). El RGB se aplica por separado a la barra de escribir, mensajes y botones.",target:"[data-sec='cfgSecEffects']",before:async()=>{ openCfgSection("cfgSecEffects"); }},
+  {icon:"🎭",title:"Temas de Personalización",body:"6 estilos completos (Hacker, Ciberseguridad, Consola, Cyberpunk, Infernal, Abismo): cambian color, fondo animado y tipografía juntos. Mientras uno esté activo, el fondo y color sueltos quedan bloqueados.",target:"[data-sec='cfgSecPersona']",before:async()=>{ openCfgSection("cfgSecPersona"); }},
+  {icon:"🖼️",title:"Fondos animados",body:"Elige entre varios fondos animados (Matrix, lluvia, fuego, partículas, océano y más) para ambientar el bot.",target:"[data-sec='cfgSecFondo']",before:async()=>{ openCfgSection("cfgSecFondo"); }},
+  {icon:"📷",title:"Fondo con tu propia imagen",body:"En esta misma sección, más abajo, puedes subir <b>tu propia foto</b> como fondo (no solo los animados prediseñados). Se sube la imagen completa, se ajusta sola para verse bien en tu pantalla, y queda guardada en tu dispositivo.",target:"#customBgPickBtn",before:async()=>{ openCfgSection("cfgSecFondo"); }},
+  {icon:"✅",title:"¡Listo!",body:"Ya conoces todas las funciones principales. Puedes volver a este tutorial cuando quieras desde Configuración → Sesión. ¡Disfruta SENSIS BOT Creación de SENSIS GOOD FF!",target:null,before:async()=>{ document.getElementById("cfgModal").classList.remove("show"); }},
 ];
 let _tutStep=0,_tutBusy=false,_tutRaf=0;
+const _TE={}, _te=id=>_TE[id]||(_TE[id]=document.getElementById(id)); // referencias guardadas (antes se buscaban en cada paso)
 function _tutWait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+// Espera a que el elemento EXISTA y deje de moverse (3 cuadros iguales) en vez de esperas fijas de 560 ms: el tutorial avanza en cuanto la pantalla está lista.
+function _tutSettle(sel,max=800){
+  return new Promise(res=>{
+    const t0=performance.now(); let last="",same=0, done=false; const fin=()=>{ if(!done){ done=true; res(); } };
+    setTimeout(fin,max+250); // seguro (pestaña oculta: requestAnimationFrame se detiene)
+    const f=()=>{
+      if(done) return;
+      if(!sel){ if(performance.now()-t0>=90) return fin(); }
+      else{ const t=document.querySelector(sel); if(t){ const r=t.getBoundingClientRect(), k=[r.left|0,r.top|0,r.width|0,r.height|0].join(); if(r.width>0&&k===last){ if(++same>=3) return fin(); } else { same=0; last=k; } } }
+      if(performance.now()-t0>max) return fin();
+      requestAnimationFrame(f);
+    };
+    requestAnimationFrame(f);
+  });
+}
+function _tutBuildDots(){ const d=_te("tutDots"); d.textContent=""; TUTORIAL_STEPS.forEach(()=>{ const x=document.createElement("i"); x.className="tut-dot"; d.appendChild(x); }); }
 async function renderTutorialStep(){
   const s=TUTORIAL_STEPS[_tutStep];
   if(s.before){ try{ await s.before(); }catch(e){} }
-  document.getElementById("tutSlideIcon").textContent=s.icon;
-  document.getElementById("tutSlideTitle").textContent=s.title;
-  document.getElementById("tutSlideBody").innerHTML=s.body;
-  document.getElementById("tutBackBtn").style.display=_tutStep>0?"":"none";
-  document.getElementById("tutNextBtn").textContent=_tutStep===TUTORIAL_STEPS.length-1?"✅ FINALIZAR":"SIGUIENTE →";
-  const dots=document.getElementById("tutDots"); dots.innerHTML="";
-  TUTORIAL_STEPS.forEach((_,i)=>{
-    const d=document.createElement("div");
-    d.style.cssText=`width:${i===_tutStep?16:6}px;height:6px;border-radius:4px;background:${i===_tutStep?"var(--ac)":"rgba(160,215,255,0.25)"};transition:all .2s;`;
-    dots.appendChild(d);
-  });
+  await _tutSettle(s.target);
+  _te("tutSlideIcon").textContent=s.icon;
+  _te("tutSlideTitle").textContent=s.title;
+  _te("tutSlideBody").innerHTML=s.body; // texto fijo del propio código (no viene de usuarios)
+  _te("tutBackBtn").style.display=_tutStep>0?"":"none";
+  _te("tutNextBtn").textContent=_tutStep===TUTORIAL_STEPS.length-1?"✅ FINALIZAR":"SIGUIENTE →";
+  const dots=_te("tutDots").children; for(let i=0;i<dots.length;i++) dots[i].classList.toggle("on",i===_tutStep);
   _positionSpotlight(s.target);
   _tutTrack(s.target);
 }
-// Sigue al elemento unos instantes: los menús y secciones se animan al abrirse y el elemento se mueve
+// Sigue al elemento un instante por si todavía se mueve (animación de apertura)
 function _tutTrack(sel){
   cancelAnimationFrame(_tutRaf);
   const t=sel?document.querySelector(sel):null; if(!t) return;
@@ -2554,86 +2572,75 @@ function _tutTrack(sel){
   const loop=()=>{
     const r=t.getBoundingClientRect(), k=[r.left|0,r.top|0,r.width|0,r.height|0].join();
     if(k!==last){ last=k; _positionSpotlight(sel,true); }
-    if(performance.now()-t0<900) _tutRaf=requestAnimationFrame(loop);
+    if(performance.now()-t0<450) _tutRaf=requestAnimationFrame(loop);
   };
   _tutRaf=requestAnimationFrame(loop);
 }
+// Oscurece TODO menos el elemento señalado con una sola capa recortada (clip-path), en vez de la sombra gigante de 9999 px que se redibujaba entera en cada movimiento
+function _rrPath(x,y,w,h,r){ r=Math.max(0,Math.min(r,w/2,h/2)); return "M"+(x+r)+" "+y+"H"+(x+w-r)+"A"+r+" "+r+" 0 0 1 "+(x+w)+" "+(y+r)+"V"+(y+h-r)+"A"+r+" "+r+" 0 0 1 "+(x+w-r)+" "+(y+h)+"H"+(x+r)+"A"+r+" "+r+" 0 0 1 "+x+" "+(y+h-r)+"V"+(y+r)+"A"+r+" "+r+" 0 0 1 "+(x+r)+" "+y+"Z"; }
+function _tutDim(x,y,w,h,r){
+  const d=_te("tutDim"); d.style.display="block";
+  d.style.clipPath=(w==null)?"none":"path(evenodd,'M0 0H"+innerWidth+"V"+innerHeight+"H0Z "+_rrPath(x,y,w,h,r)+"')";
+}
 function _positionSpotlight(sel,instant){
-  const spot=document.getElementById("tutSpotlight");
-  const tip=document.getElementById("tutTooltip");
+  const spot=_te("tutSpotlight"), tip=_te("tutTooltip");
   const target=sel?document.querySelector(sel):null;
   if(target){
-    // BUG encontrado: si el target está dentro de un contenedor con scroll
-    // (ej. la sección "Fondo" del modal de Configuración, que es más larga
-    // que la pantalla) y queda fuera de lo visible, getBoundingClientRect()
-    // devuelve coordenadas gigantes (muy por debajo de la pantalla). El
-    // spotlight y el tooltip se dibujaban en esas coordenadas -> quedaban
-    // FUERA de la pantalla visible (incluido el botón "Siguiente"), dejando
-    // el tutorial trabado sin ninguna forma de avanzar ni cerrar.
-    // Fix: forzar que el elemento quede visible en pantalla ANTES de medir
-    // su posición.
+    // Si el elemento está dentro de un contenedor con scroll y queda fuera de lo visible, se trae a pantalla ANTES de medir (si no, el spotlight y el botón "Siguiente" quedaban fuera de la pantalla)
     if(!instant) target.scrollIntoView({block:"center",inline:"nearest"});
-    const r=target.getBoundingClientRect();
-    const pad=8;
+    const r=target.getBoundingClientRect(), pad=8, rad=Math.max(10,Math.min(r.width,r.height)/2);
     const _p=(spot.style.display==="block"&&!instant)?spot.getBoundingClientRect():null;
     spot.getAnimations().forEach(a=>a.cancel());
     spot.style.display="block";
-    spot.style.left=(r.left-pad)+"px";
-    spot.style.top=(r.top-pad)+"px";
-    spot.style.width=(r.width+pad*2)+"px";
-    spot.style.height=(r.height+pad*2)+"px";
-    spot.style.borderRadius=Math.max(10,Math.min(r.width,r.height)/2)+"px";
-    spot.style.outline="2px solid var(--ac)";
-    if(_p&&_p.width&&!matchMedia("(prefers-reduced-motion:reduce)").matches){ // movimiento por transform (GPU), no por layout
+    spot.style.left=(r.left-pad)+"px"; spot.style.top=(r.top-pad)+"px";
+    spot.style.width=(r.width+pad*2)+"px"; spot.style.height=(r.height+pad*2)+"px";
+    spot.style.borderRadius=Math.min(rad+pad/2,(r.height+pad*2)/2)+"px"; spot.style.outline="2px solid var(--ac)";
+    _tutDim(r.left-pad,r.top-pad,r.width+pad*2,r.height+pad*2,Math.min(rad+pad/2,(r.height+pad*2)/2));
+    if(_p&&_p.width&&!matchMedia("(prefers-reduced-motion:reduce)").matches){ // el aro se mueve por transform (GPU), no por layout
       const n=spot.getBoundingClientRect();
-      spot.animate([{transformOrigin:"0 0",transform:"translate("+(_p.left-n.left)+"px,"+(_p.top-n.top)+"px) scale("+(_p.width/n.width)+","+(_p.height/n.height)+")"},{transformOrigin:"0 0",transform:"none"}],{duration:220,easing:"cubic-bezier(.65,0,.35,1)"});
+      spot.animate([{transformOrigin:"0 0",transform:"translate("+(_p.left-n.left)+"px,"+(_p.top-n.top)+"px) scale("+(_p.width/n.width)+","+(_p.height/n.height)+")"},{transformOrigin:"0 0",transform:"none"}],{duration:260,easing:"cubic-bezier(0.65,0,0.35,1)"});
     }
-    // Colocar el tooltip arriba o abajo del elemento, según el espacio disponible
-    const tipH=tip.offsetHeight||220, tipW=Math.min(300,window.innerWidth*0.88);
+    // El texto va arriba o abajo del elemento según el espacio; NUNCA fuera de la pantalla
+    const tipH=tip.offsetHeight||220, tipW=Math.min(300,innerWidth*0.88);
     let top=r.bottom+16;
-    if(top+tipH>window.innerHeight-10) top=Math.max(10,r.top-tipH-16);
-    // Salvaguarda extra: pase lo que pase con el cálculo de arriba, el
-    // tooltip NUNCA debe quedar fuera de la pantalla (ni arriba ni abajo).
-    top=Math.max(10,Math.min(top,window.innerHeight-tipH-10));
-    let left=Math.min(Math.max(10,r.left),window.innerWidth-tipW-10);
-    tip.style.top=top+"px"; tip.style.left=left+"px";
+    if(top+tipH>innerHeight-10) top=Math.max(10,r.top-tipH-16);
+    top=Math.max(10,Math.min(top,innerHeight-tipH-10));
+    tip.style.top=top+"px"; tip.style.left=Math.min(Math.max(10,r.left),innerWidth-tipW-10)+"px";
   } else {
-    spot.style.display="none";
-    const tipH=tip.offsetHeight||220, tipW=Math.min(300,window.innerWidth*0.88);
-    tip.style.top=((window.innerHeight-tipH)/2)+"px";
-    tip.style.left=((window.innerWidth-tipW)/2)+"px";
+    spot.style.display="none"; _tutDim(null);
+    const tipH=tip.offsetHeight||220, tipW=Math.min(300,innerWidth*0.88);
+    tip.style.top=((innerHeight-tipH)/2)+"px"; tip.style.left=((innerWidth-tipW)/2)+"px";
   }
   tip.style.display="block";
 }
 function showTutorial(){
   _tutStep=0; document.body.classList.add("tut-on");
-  document.getElementById("tutTooltip").style.display="block";
+  _te("tutTooltip").style.display="block"; _tutBuildDots();
   renderTutorialStep();
   window.addEventListener("resize",_tutOnResize);
 }
-function _tutOnResize(){
-  const s=TUTORIAL_STEPS[_tutStep];
-  if(s) _positionSpotlight(s.target);
-}
+function _tutOnResize(){ const s=TUTORIAL_STEPS[_tutStep]; if(s) _positionSpotlight(s.target,true); }
 async function closeTutorial(){
   document.body.classList.remove("tut-on"); cancelAnimationFrame(_tutRaf);
-  document.getElementById("tutSpotlight").style.display="none";
-  document.getElementById("tutTooltip").style.display="none";
-  document.getElementById("cfgModal").classList.remove("show");
+  _te("tutSpotlight").style.display="none"; _te("tutDim").style.display="none"; _te("tutSkipModal").style.display="none";
+  _te("tutTooltip").style.display="none";
+  document.getElementById("cfgModal").classList.remove("show"); document.getElementById("menuModal").classList.remove("show");
   window.removeEventListener("resize",_tutOnResize);
-  try{
-    if(nickname) await setDoc(doc(db,_C.u(),nickname),{tutorialSeen:true},{merge:true});
-  }catch(e){}
+  try{ if(nickname) await setDoc(doc(db,_C.u(),nickname),{tutorialSeen:true},{merge:true}); }catch(e){}
+  if(_tutFirstRun) _popupsStart(); // primera vez: ahora sí salen las ventanas (WhatsApp, etc.)
 }
-document.getElementById("tutNextBtn").addEventListener("click",async()=>{
+_te("tutNextBtn").addEventListener("click",async()=>{
   if(_tutBusy) return; _tutBusy=true;
   try{ if(_tutStep<TUTORIAL_STEPS.length-1){ _tutStep++; await renderTutorialStep(); } else closeTutorial(); } finally{ _tutBusy=false; }
 });
-document.getElementById("tutBackBtn").addEventListener("click",async()=>{
+_te("tutBackBtn").addEventListener("click",async()=>{
   if(_tutBusy) return; _tutBusy=true;
   try{ if(_tutStep>0){ _tutStep--; await renderTutorialStep(); } } finally{ _tutBusy=false; }
 });
-document.getElementById("tutSkipX").addEventListener("click",closeTutorial);
+// Saltar: avisa antes (en el último paso ya no hace falta)
+_te("tutSkipX").addEventListener("click",()=>{ if(_tutStep>=TUTORIAL_STEPS.length-1){ closeTutorial(); return; } _te("tutSkipModal").style.display="flex"; });
+_te("tutSkipStay").addEventListener("click",()=>{ _te("tutSkipModal").style.display="none"; });
+_te("tutSkipGo").addEventListener("click",closeTutorial);
 document.getElementById("reopenTutBtn")?.addEventListener("click",()=>{
   document.getElementById("cfgModal").classList.remove("show");
   showTutorial();
@@ -3230,7 +3237,7 @@ function onBtn(lbl,bd,silent){
         await _mq; const _ck=_specsChecklistStart(data.marca,data.modelo); // lista "investigando…"
         await _lookupDeviceSpecs(data.marca,data.modelo).catch(()=>{});
         await _ck.finish(); _lastSpecsRes=_specsCount(data.marca,data.modelo); // para el aviso de specs del generador
-        const r=genSensiMejorado2(data.marca,data.modelo,data.nivel,data.dpi); _cal2LastRec=r.rec||null; // motor oficial (genSensiMejorado ya no se usa)
+        const r=genSensiMejorado2(data.marca,data.modelo,data.nivel,data.dpi); // motor oficial (genSensiMejorado ya no se usa)
         myCount=await incServerCount(nickname); updateCounter(); _rvMarkGen();
         const hs=r.hs==="full"?"🎯 HEADSHOT CONFIG":r.hs==="mid"?"⚡ HEADSHOT MID":"";
         const dL=r.dpi?"\n🔵 DPI: "+r.dpi:"";
@@ -3542,12 +3549,44 @@ function _miniFire(ctx,w,h,key){
 // ── PANEL: ÚNETE AL CANAL DE WHATSAPP ──
 const WA_LINK="https://chat.whatsapp.com/IW4rvkw02nGE6ZGKaDedaa?s=cl&p=a&mlu=4&ilr=4&iam=2";
 let _waTimerId=null;
-function maybeShowWhatsAppPromo(){
-  if(localStorage.getItem("sg_wa_followed")==="1") return;
-  setTimeout(()=>{
-    document.getElementById("waModal").classList.add("show");
-  }, 900);
+// (la ventana de WhatsApp ya no sale sola al entrar: la lanza la cola de ventanas, _popupsStart, cuando termina el tutorial)
+// ── COLA DE VENTANAS ───────────────────────────────────────────────────────────────────────────────────────────
+// Una ventana a la vez, nunca encimadas: 1) WhatsApp (hasta que se una) → 2) novedad de la calibración (UNA vez por usuario) → 3) reseña (UNA vez por usuario, solo a quien nunca la ha puesto).
+// Quien entra por primera vez las ve DESPUÉS del tutorial (la novedad no se le muestra: ya nace con la calibración nueva; la reseña se le pide en una visita posterior).
+// Las banderas se guardan en el documento del usuario (Firestore) para que valgan en cualquier dispositivo, y también en este dispositivo por si falla la escritura.
+let _pqStarted=false, _tutFirstRun=false, _uFlags={};
+const _lsG=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } }, _lsS=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
+function _modalWait(id){
+  return new Promise(res=>{
+    const m=document.getElementById(id); if(!m){ res(); return; }
+    m.classList.add("show");
+    const ob=new MutationObserver(()=>{ if(!m.classList.contains("show")){ ob.disconnect(); res(); } });
+    ob.observe(m,{attributes:true,attributeFilter:["class"]}); setTimeout(()=>{ ob.disconnect(); res(); },600000);
+  });
 }
+async function _markUserFlag(k){ try{ if(nickname) await setDoc(doc(db,_C.u(),nickname),{[k]:true},{merge:true}); }catch(e){} }
+async function _popupsStart(){
+  if(_pqStarted) return; _pqStarted=true;
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+  await wait(900);
+  if(!document.body.classList.contains("in-app")){ _pqStarted=false; return; }
+  const first=_tutFirstRun; _tutFirstRun=false;
+  if(_lsG("sg_wa_followed")!=="1"){ await _modalWait("waModal"); await wait(650); }
+  if(_uFlags.updCalib2!==true&&_lsG("sg_upd_calib2")!=="1"){
+    _lsS("sg_upd_calib2","1"); _uFlags.updCalib2=true; _markUserFlag("updCalib2");
+    if(!first){ await _modalWait("updModal"); await wait(650); }
+  }
+  if(!first&&_uFlags.rvAsked!==true&&_lsG("sg_rv_asked")!=="1"){
+    let mine=0; try{ mine=await _rvCountMine(); }catch(e){}
+    _lsS("sg_rv_asked","1"); _uFlags.rvAsked=true; _markUserFlag("rvAsked");
+    if(mine===0) _rvOpen(true);
+  }
+}
+(function(){
+  const m=document.getElementById("updModal"); if(!m) return; const close=()=>m.classList.remove("show");
+  document.getElementById("updOk").addEventListener("click",close); document.getElementById("updCloseX").addEventListener("click",close);
+  m.addEventListener("click",e=>{ if(e.target===m) close(); });
+})();
 document.getElementById("waCloseX").addEventListener("click",()=>{
   document.getElementById("waModal").classList.remove("show");
   if(_waTimerId){ clearInterval(_waTimerId); _waTimerId=null; }
@@ -3857,16 +3896,7 @@ async function _rvSubmit(){
   }catch(e){ console.error("reseña:",e); _rvStatus(e&&e.code==="permission-denied"?"Para opinar necesitas haber generado al menos 1 sensibilidad con tu cuenta y probarla dentro del juego, para que tu opinión sea justa.":"No se pudo publicar. Inténtalo de nuevo en un momento.",false); }
   finally{ _rvBusy=false; btn.disabled=false; }
 }
-// Ventana "danos tu opinión": solo si ya generó una sensi, en una visita POSTERIOR (otra sesión del navegador), y UNA sola vez.
 function _rvMarkGen(){ try{ localStorage.setItem("sg_rv_gen","1"); sessionStorage.setItem("sg_rv_s","1"); }catch(e){} }
-async function _rvAfterLogin(){
-  try{
-    if(localStorage.getItem("sg_rv_gen")!=="1"||localStorage.getItem("sg_rv_asked")==="1"||sessionStorage.getItem("sg_rv_s")==="1") return;
-    localStorage.setItem("sg_rv_asked","1");
-  }catch(e){ return; }
-  try{ if(await _rvCountMine()>0) return; }catch(e){}
-  setTimeout(()=>{ if(document.body.classList.contains("in-app")) _rvOpen(true); },2500);
-}
 (function(){
   const m=_rvEl("reviewsModal"), btn=_rvEl("reviewsBtn"); if(!m||!btn) return;
   const close=()=>m.classList.remove("show");
@@ -3877,53 +3907,6 @@ async function _rvAfterLogin(){
   _rvEl("rvStars").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; _rvStar=+b.dataset.s; _rvPaintStars(); });
   _rvEl("rvText").addEventListener("input",e=>{ _rvEl("rvCount").textContent=e.target.value.length+"/280"; });
   _rvEl("rvSend").addEventListener("click",_rvSubmit);
-})();
-// ── Prueba de calibración (protegida con contraseña) ──
-// Solo se guarda una derivada PBKDF2-SHA256 con sal (nunca la contraseña). OJO: es un candado del lado del navegador:
-// sirve para que nadie la use sin querer, pero no es seguridad real (la lógica de prueba vive en esta misma página).
-const _CAL2_SALT="88c3586d5569b35cfdcd9eef82fa8c55", _CAL2_HASH="e2dfa0a1aaf6881a96ceee9e100f80f9dfc02a2d02805c2f1754ef61c2470c3e", _CAL2_ITER=150000;
-const _calEl=id=>document.getElementById(id);
-const _cal2Ok=()=>{ try{ return sessionStorage.getItem("sg_cal2_ok")==="1"; }catch(e){ return false; } };
-let _cal2OnFlag=false; // solo en memoria: al recargar la página la prueba vuelve a estar APAGADA
-function _cal2On(){ return true; } // genSensiMejorado2 es el motor oficial: siempre activo (la contraseña solo protege el panel de datos)
-let _cal2Fails=0,_cal2Until=0,_cal2LastRec=null;
-async function _cal2Check(pw){
-  const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
-  const salt=Uint8Array.from(_CAL2_SALT.match(/../g).map(h=>parseInt(h,16)));
-  const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveBits"]);
-  const h=hex(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt,iterations:_CAL2_ITER},key,256));
-  let d=h.length^_CAL2_HASH.length; for(let i=0;i<h.length;i++) d|=h.charCodeAt(i)^(_CAL2_HASH.charCodeAt(i)||0);
-  return d===0;
-}
-function _calStatus(t,ok){ const s=_calEl("calStatus"); s.textContent=t; s.style.color=ok?"#3DFF8F":"#FF5566"; }
-function _calRender(){
-  const ok=_cal2Ok(); _calEl("calLock").style.display=ok?"none":""; _calEl("calPanel").style.display=ok?"":"none";
-  const t=_calEl("calToggle"); t.textContent="ACTIVA ✅"; t.classList.add("on"); t.disabled=true;
-  const L=_calEl("calLast"), rc=_cal2LastRec;
-  if(L){ if(rc&&rc.spec){ const sc=rc.spec,f=sc.real||{},mk=o=>o?"✓":"≈";
-      L.textContent="Última sensi · pantalla "+Number(sc.diagIn).toFixed(1)+"″ "+mk(f.diagIn)+" · "+Math.round(sc.resLong)+"×"+Math.round(sc.resShort)+" "+mk(f.res)+" · "+Math.round(sc.refreshHz)+" Hz "+mk(f.refreshHz)+" · del pecho a la cabeza el dedo avanza "+rc.dragMm+" mm ("+rc.dragPx+" px, "+rc.D+" % de la altura; según el movimiento del personaje "+rc.dragMmMin+"–"+rc.dragMmMax+" mm). ✓ = dato real del Worker · ≈ = estimado por gama."+(rc.sim?"\nSimulación (estimada): la cabeza queda "+rc.sim.headPx+" px sobre el centro de la pantalla ("+rc.sim.R+" % de la altura) · con sensibilidad efectiva "+rc.sim.eff+" (General y botón juntos) el dedo avanza "+rc.sim.dragMm+" mm ("+rc.sim.D+" % de la altura) y el objetivo del nivel es "+rc.sim.Dt+" % → "+(rc.sim.ver==="cabeza"?"la mira llega a la cabeza ✅":rc.sim.ver==="pasa"?"la mira tiende a pasarse de la cabeza ⚠️ (muy sensible)":"la mira tiende a quedarse en el pecho/cuello ⚠️ (poco sensible)")+".":""); }
-    else L.textContent="Genera una sensi y aquí verás los datos del celular que usó y cuánto avanza el dedo del pecho a la cabeza."; }
-}
-(function(){
-  const m=_calEl("calModal"), btn=_calEl("calBtn"); if(!m||!btn) return;
-  const close=()=>m.classList.remove("show");
-  btn.addEventListener("click",()=>{ _calStatus("",true); _calEl("calPass").value=""; _calRender(); m.classList.add("show"); });
-  _calEl("calCloseX").addEventListener("click",close);
-  m.addEventListener("click",e=>{ if(e.target===m) close(); });
-  async function unlock(){
-    const now=Date.now(); if(now<_cal2Until){ _calStatus("Demasiados intentos. Espera "+Math.ceil((_cal2Until-now)/1000)+" s.",false); return; }
-    const pw=_calEl("calPass").value; if(!pw){ _calStatus("Escribe la contraseña.",false); return; }
-    if(!(window.crypto&&crypto.subtle)){ _calStatus("Este navegador no puede verificar la contraseña aquí (hace falta https).",false); return; }
-    const b=_calEl("calUnlock"); b.disabled=true;
-    try{
-      if(await _cal2Check(pw)){ _cal2Fails=0; try{ sessionStorage.setItem("sg_cal2_ok","1"); }catch(e){} _calEl("calPass").value=""; _calStatus("Sección desbloqueada.",true); _calRender(); }
-      else{ _cal2Fails++; if(_cal2Fails>=5){ _cal2Until=Date.now()+60000; _cal2Fails=0; _calStatus("Contraseña incorrecta. Espera 60 s para volver a intentar.",false); } else _calStatus("Contraseña incorrecta.",false); }
-    }catch(e){ _calStatus("No se pudo verificar la contraseña.",false); }
-    finally{ b.disabled=false; }
-  }
-  _calEl("calUnlock").addEventListener("click",unlock);
-  _calEl("calPass").addEventListener("keydown",e=>{ if(e.key==="Enter") unlock(); });
-  _calEl("calLockBtn").addEventListener("click",()=>{ _cal2OnFlag=false; try{ sessionStorage.removeItem("sg_cal2_ok"); }catch(e){} _calStatus("Sección bloqueada.",true); _calRender(); });
 })();
 // ── Ocultar / mostrar la barra superior (logo, créditos, nombre, menú, notificaciones) ──
 // La barra se desliza hacia arriba y se desvanece mientras el contenido sube; vuelve igual al mostrarla.
@@ -4981,6 +4964,7 @@ async function entrar(googleUID=null){
   // Tutorial de bienvenida: se guarda en Firestore (tutorialSeen), no en localStorage,
   // para que se muestre una sola vez a cada usuario sin importar el dispositivo.
   const _tutSeen=(uSnapForMeet&&uSnapForMeet.exists()&&uSnapForMeet.data().tutorialSeen)===true;
+  _uFlags=(uSnapForMeet&&uSnapForMeet.exists())?{...uSnapForMeet.data()}:{}; _pqStarted=false; _tutFirstRun=!_tutSeen;
   if(!_tutSeen) setTimeout(()=>{ showTutorial(); },600);
 
   nickname=n; localStorage.setItem(_xd("ODEsODQ=",0x36),n);
@@ -5030,7 +5014,6 @@ async function entrar(googleUID=null){
   document.getElementById("cfgBtn").style.display="";
   document.getElementById("menuBtn").style.display="";
   _startInboxDot();
-  _rvAfterLogin(); // ventana de reseña: UNA sola vez, en una visita posterior a haber generado una sensi
   // Re-evaluar mantenimiento ahora que el chat está visible (y no es admin)
   if(!_isAdmin){
     const mSnap2=await getDoc(_maintDocRef).catch(()=>null);
@@ -5047,7 +5030,7 @@ async function entrar(googleUID=null){
   }
   updateCounter(); switchTab("mio");
   addMsg("bot","⚡ Hola "+n+"!\n\nDime tu marca y modelo.\n\nEj: Honor X5C Plus");
-  maybeShowWhatsAppPromo();
+  if(!_tutFirstRun) _popupsStart(); // si es su primera vez, las ventanas salen cuando termine el tutorial
 
   // Listener tiempo real: ban y limite
   // Se re-suscribe automáticamente si el usuario cambia de nombre (ver changeNickBtn),
@@ -5254,28 +5237,7 @@ function _alreadyEntered(){
 pendingTheme=currentTheme; pendingColor=currentColor;
 
 document.getElementById("googleBtn").addEventListener("click",()=>_lgRun(entrarConGoogle));
-const _I18N={
- en:{"ENTENDIDO":"GOT IT","Nuevo botón de notificaciones: toca la campana, arriba a la izquierda, para ver tus avisos.":"New notifications button: tap the bell, top left, to see your alerts.","Nuevo cuadro de notificaciones: aquí ves todo lo que has recibido y puedes borrarlo cuando quieras.":"New notifications box: here you see everything you've received and you can clear it anytime.","Herramienta creada por":"Tool created by","NOTIFICACIONES":"NOTIFICATIONS","BORRAR TODO":"CLEAR ALL","Sin notificaciones":"No notifications","ahora":"now","MODO ALEATORIO ACTIVO":"RANDOM MODE ACTIVE","Para poner un color de acento debes desactivar el modo aleatorio de colores.":"To set an accent color you must turn off the random color mode.","DESACTIVAR Y APLICAR COLOR":"TURN OFF AND APPLY COLOR","CANCELAR":"CANCEL","🚫 QUITAR COLOR":"🚫 REMOVE COLOR","SIGUIENTE":"NEXT","⏱️ ¡Nueva actualización! Ya no esperas un día: ahora tus sensis se restablecen cada 5 horas.":"⏱️ New update! You no longer wait a whole day: now your sensis reset every 5 hours.","🎟️ Los códigos también cambiaron: suben tu límite a 10 sensis cada 5 horas durante los días que dura el código.":"🎟️ Codes changed too: they raise your limit to 10 sensis every 5 hours for as many days as the code lasts.","ENTRA AL CHAT":"JOIN THE CHAT","Elige un nombre para recibir tu sensibilidad personalizada para Free Fire":"Pick a name to get your personalized Free Fire sensitivity","ENTRAR CON GOOGLE":"SIGN IN WITH GOOGLE","O ESCRIBE TU NOMBRE":"OR TYPE YOUR NAME","Tu nombre (ej: SniperX, NoobKiller...)":"Your name (e.g. SniperX, NoobKiller...)","⚡ ENTRAR":"⚡ ENTER","Google: límite por cuenta":"Google: limit per account","Sin cuenta: por dispositivo":"No account: per device","🌐 EN VIVO":"🌐 LIVE","💬 MI CHAT":"💬 MY CHAT","EN LÍNEA":"ONLINE","SENSIS HOY":"SENSIS TODAY","VERIFICANDO...":"VERIFYING...","Validando credenciales...":"Checking credentials...","¡SESIÓN EXITOSA!":"LOGIN SUCCESSFUL!","Bienvenido,":"Welcome,","Cuenta de Google verificada ✅":"Google account verified ✅","ELIGE TU NOMBRE":"CHOOSE YOUR NAME","Será tu nombre en el chat y el ranking. Podrás cambiarlo después.":"This will be your name in the chat and ranking. You can change it later.","💾 GUARDAR NOMBRE":"💾 SAVE NAME","¡LISTO!":"ALL SET!","Mínimo 2 letras o números (sin espacios ni símbolos).":"At least 2 letters or numbers (no spaces or symbols).","Ese nombre ya está en uso, elige otro.":"That name is already taken, pick another."},
- pt:{"ENTENDIDO":"ENTENDI","Nuevo botón de notificaciones: toca la campana, arriba a la izquierda, para ver tus avisos.":"Novo botão de notificações: toque no sino, no canto superior esquerdo, para ver seus avisos.","Nuevo cuadro de notificaciones: aquí ves todo lo que has recibido y puedes borrarlo cuando quieras.":"Nova caixa de notificações: aqui você vê tudo o que recebeu e pode apagar quando quiser.","Herramienta creada por":"Ferramenta criada por","NOTIFICACIONES":"NOTIFICAÇÕES","BORRAR TODO":"LIMPAR TUDO","Sin notificaciones":"Sem notificações","ahora":"agora","MODO ALEATORIO ACTIVO":"MODO ALEATÓRIO ATIVO","Para poner un color de acento debes desactivar el modo aleatorio de colores.":"Para definir uma cor de destaque, você deve desativar o modo aleatório de cores.","DESACTIVAR Y APLICAR COLOR":"DESATIVAR E APLICAR COR","CANCELAR":"CANCELAR","🚫 QUITAR COLOR":"🚫 REMOVER COR","SIGUIENTE":"PRÓXIMO","⏱️ ¡Nueva actualización! Ya no esperas un día: ahora tus sensis se restablecen cada 5 horas.":"⏱️ Nova atualização! Você não espera mais um dia: agora suas sensis são restabelecidas a cada 5 horas.","🎟️ Los códigos también cambiaron: suben tu límite a 10 sensis cada 5 horas durante los días que dura el código.":"🎟️ Os códigos também mudaram: aumentam seu limite para 10 sensis a cada 5 horas pelos dias que o código durar.","ENTRA AL CHAT":"ENTRE NO CHAT","Elige un nombre para recibir tu sensibilidad personalizada para Free Fire":"Escolha um nome para receber sua sensibilidade personalizada de Free Fire","ENTRAR CON GOOGLE":"ENTRAR COM O GOOGLE","O ESCRIBE TU NOMBRE":"OU DIGITE SEU NOME","Tu nombre (ej: SniperX, NoobKiller...)":"Seu nome (ex: SniperX, NoobKiller...)","Google: límite por cuenta":"Google: limite por conta","Sin cuenta: por dispositivo":"Sem conta: por dispositivo","🌐 EN VIVO":"🌐 AO VIVO","💬 MI CHAT":"💬 MEU CHAT","EN LÍNEA":"ONLINE","SENSIS HOY":"SENSIS HOJE","VERIFICANDO...":"VERIFICANDO...","Validando credenciales...":"Validando credenciais...","¡SESIÓN EXITOSA!":"LOGIN CONCLUÍDO!","Bienvenido,":"Bem-vindo,","Cuenta de Google verificada ✅":"Conta Google verificada ✅","ELIGE TU NOMBRE":"ESCOLHA SEU NOME","Será tu nombre en el chat y el ranking. Podrás cambiarlo después.":"Será seu nome no chat e no ranking. Você poderá mudar depois.","💾 GUARDAR NOMBRE":"💾 SALVAR NOME","¡LISTO!":"PRONTO!","Mínimo 2 letras o números (sin espacios ni símbolos).":"Mínimo 2 letras ou números (sem espaços ou símbolos).","Ese nombre ya está en uso, elige otro.":"Esse nome já está em uso, escolha outro."},
- fr:{"ENTENDIDO":"COMPRIS","Nuevo botón de notificaciones: toca la campana, arriba a la izquierda, para ver tus avisos.":"Nouveau bouton de notifications : touche la cloche, en haut à gauche, pour voir tes alertes.","Nuevo cuadro de notificaciones: aquí ves todo lo que has recibido y puedes borrarlo cuando quieras.":"Nouvelle boîte de notifications : tu y vois tout ce que tu as reçu et tu peux l'effacer quand tu veux.","Herramienta creada por":"Outil créé par","NOTIFICACIONES":"NOTIFICATIONS","BORRAR TODO":"TOUT EFFACER","Sin notificaciones":"Aucune notification","ahora":"à l'instant","MODO ALEATORIO ACTIVO":"MODE ALÉATOIRE ACTIF","Para poner un color de acento debes desactivar el modo aleatorio de colores.":"Pour choisir une couleur d'accent, tu dois désactiver le mode couleurs aléatoires.","DESACTIVAR Y APLICAR COLOR":"DÉSACTIVER ET APPLIQUER LA COULEUR","CANCELAR":"ANNULER","🚫 QUITAR COLOR":"🚫 RETIRER LA COULEUR","SIGUIENTE":"SUIVANT","⏱️ ¡Nueva actualización! Ya no esperas un día: ahora tus sensis se restablecen cada 5 horas.":"⏱️ Nouvelle mise à jour ! Plus besoin d'attendre un jour : tes sensis se réinitialisent maintenant toutes les 5 heures.","🎟️ Los códigos también cambiaron: suben tu límite a 10 sensis cada 5 horas durante los días que dura el código.":"🎟️ Les codes ont aussi changé : ils portent ta limite à 10 sensis toutes les 5 heures pendant la durée du code.","ENTRA AL CHAT":"REJOINS LE CHAT","Elige un nombre para recibir tu sensibilidad personalizada para Free Fire":"Choisis un nom pour recevoir ta sensibilité Free Fire personnalisée","ENTRAR CON GOOGLE":"SE CONNECTER AVEC GOOGLE","O ESCRIBE TU NOMBRE":"OU ÉCRIS TON NOM","Tu nombre (ej: SniperX, NoobKiller...)":"Ton nom (ex : SniperX, NoobKiller...)","⚡ ENTRAR":"⚡ ENTRER","Google: límite por cuenta":"Google : limite par compte","Sin cuenta: por dispositivo":"Sans compte : par appareil","🌐 EN VIVO":"🌐 EN DIRECT","💬 MI CHAT":"💬 MON CHAT","EN LÍNEA":"EN LIGNE","SENSIS HOY":"SENSIS AUJOURD'HUI","VERIFICANDO...":"VÉRIFICATION...","Validando credenciales...":"Validation des identifiants...","¡SESIÓN EXITOSA!":"CONNEXION RÉUSSIE !","Bienvenido,":"Bienvenue,","Cuenta de Google verificada ✅":"Compte Google vérifié ✅","ELIGE TU NOMBRE":"CHOISIS TON NOM","Será tu nombre en el chat y el ranking. Podrás cambiarlo después.":"Ce sera ton nom dans le chat et le classement. Tu pourras le changer plus tard.","💾 GUARDAR NOMBRE":"💾 ENREGISTRER LE NOM","¡LISTO!":"C'EST PRÊT !","Mínimo 2 letras o números (sin espacios ni símbolos).":"Minimum 2 lettres ou chiffres (sans espaces ni symboles).","Ese nombre ya está en uso, elige otro.":"Ce nom est déjà pris, choisis-en un autre."}
-};
-const _LANG=(((()=>{try{return localStorage.getItem("sg_lang");}catch(e){return null;}})()||(navigator.languages&&navigator.languages[0])||navigator.language||"es")+"").slice(0,2).toLowerCase();
-const _D=_I18N[_LANG],_K=_D?Object.keys(_D).sort((a,b)=>b.length-a.length):[];
-function _trStr(t){ for(const k of _K){ if(t.includes(k)) t=t.split(k).join(_D[k]); } return t; }
-function _trTree(r){
-  if(!_D) return;
-  if(r.nodeType===3){ const v=_trStr(r.nodeValue); if(v!==r.nodeValue) r.nodeValue=v; return; }
-  if(r.nodeType!==1||/^(SCRIPT|STYLE)$/.test(r.tagName)) return;
-  const w=document.createTreeWalker(r,NodeFilter.SHOW_TEXT|NodeFilter.SHOW_ELEMENT); let n=r;
-  do{
-    if(n.nodeType===3){ if(!/^(SCRIPT|STYLE)$/.test(n.parentNode.tagName)){ const v=_trStr(n.nodeValue); if(v!==n.nodeValue) n.nodeValue=v; } }
-    else if(n.placeholder){ const v=_trStr(n.placeholder); if(v!==n.placeholder) n.placeholder=v; }
-  }while(n=w.nextNode());
-}
-if(_D){
-  document.documentElement.lang=_LANG; _trTree(document.body);
-  new MutationObserver(ms=>{ for(const m of ms){ if(m.type==="characterData") _trTree(m.target); else m.addedNodes.forEach(_trTree); } }).observe(document.body,{childList:true,subtree:true,characterData:true});
-}
+// (el sistema de idiomas vive en i18n.js, que se carga antes que este archivo)
 function _ptWash(x,y,c){
   if(matchMedia("(prefers-reduced-motion:reduce)").matches) return;
   const d=document.createElement("div");
@@ -5878,7 +5840,8 @@ function _genSpec(r){
 }
 function _genBrandFill(){
   const s=document.getElementById("genBrand"); if(!s||s.options.length>1) return;
-  [...new Set(MARCAS)].forEach(m=>{ const o=document.createElement("option"); o.value=m; o.textContent=m; s.appendChild(o); });
+  const all=[...new Set(MARCAS)], top=all.slice(0,22), rest=all.slice(22).sort((x,y)=>x.localeCompare(y)); // las más usadas primero; el resto, de la A a la Z
+  top.concat(rest).forEach(m=>{ const o=document.createElement("option"); o.value=m; o.textContent=m; s.appendChild(o); });
 }
 function _genSyncDpi(){
   const b=document.getElementById("genDpi"), br=document.getElementById("genBrand").value, noDpi=!!br&&_grp(br)==="E"; // iPhone/iPad no tienen ajuste de DPI
@@ -5906,7 +5869,7 @@ function _genSkeleton(){
   const b=document.getElementById("genSpecsBox"); b.textContent=""; b.className="sk";
   const t=document.createElement("div"); t.className="gsp-t"; t.textContent="📡 INVESTIGANDO SPECS";
   const g=document.createElement("div"); g.className="gsp-g";
-  _GSP_NAMES.forEach((n,i)=>{ const x=document.createElement("div"); x.className="gsp-c sk"; const l=document.createElement("span"); l.className="gsp-l"; l.textContent=_GSP_ICO[i]+" "+n; const v=document.createElement("span"); v.className="gsp-v"; x.append(l,v); g.appendChild(x); });
+  _GSP_NAMES.forEach((n,i)=>{ const x=document.createElement("div"); x.className="gsp-c sk"; const l=document.createElement("span"); l.className="gsp-l"; const ic=document.createElement("span"); ic.textContent=_GSP_ICO[i]+" "; const nm=document.createElement("span"); nm.textContent=n; l.append(ic,nm); const v=document.createElement("span"); v.className="gsp-v"; x.append(l,v); g.appendChild(x); });
   b.append(t,g); document.getElementById("genForm").classList.add("has-out");
 }
 function _genSpecsStart(marca,modelo){
@@ -5918,7 +5881,7 @@ function _genSpecsStart(marca,modelo){
       const g=document.createElement("div"); g.className="gsp-g";
       vals.forEach((v,i)=>{
         const x=document.createElement("div"); x.className="gsp-c "+(v[1]?"ok":"est"); x.style.animationDelay=(i*85)+"ms";
-        const l=document.createElement("span"); l.className="gsp-l"; l.textContent=_GSP_ICO[i]+" "+_GSP_NAMES[i];
+        const l=document.createElement("span"); l.className="gsp-l"; const ic=document.createElement("span"); ic.textContent=_GSP_ICO[i]+" "; const nm=document.createElement("span"); nm.textContent=_GSP_NAMES[i]; l.append(ic,nm);
         const val=document.createElement("span"); val.className="gsp-v"; val.textContent=v[0];
         const s=document.createElement("span"); s.className="gsp-s"; s.textContent=v[1]?"✓":"≈";
         x.append(l,val,s); g.appendChild(x);
@@ -5987,4 +5950,14 @@ const _FAMOSOS=["Donato","Krek Gamer","Elis","Nobru","Cerol","Bak","Ruok FF","To
   b.addEventListener("click",()=>{ const mm=document.getElementById("menuModal"); if(mm) mm.classList.remove("show"); m.classList.add("show"); });
   document.getElementById("famousCloseX").addEventListener("click",close);
   m.addEventListener("click",e=>{ if(e.target===m) close(); });
+})();
+
+// ── Selector de idioma (Ajustes → Interfaz): guarda la elección en este dispositivo y recarga para aplicarla ──
+(function(){
+  const s=document.getElementById("langSel"); if(!s) return;
+  let cur=""; try{ cur=localStorage.getItem("sg_lang")||""; }catch(e){}
+  const auto=document.createElement("option"); auto.value=""; auto.textContent="Automático"; s.appendChild(auto);
+  _LANGS_NAMES.forEach(([c,n])=>{ const o=document.createElement("option"); o.value=c; o.textContent=n; s.appendChild(o); }); // los nombres van en su propio idioma
+  s.value=cur;
+  s.addEventListener("change",()=>{ try{ if(s.value) localStorage.setItem("sg_lang",s.value); else localStorage.removeItem("sg_lang"); }catch(e){} location.reload(); });
 })();
